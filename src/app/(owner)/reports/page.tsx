@@ -32,11 +32,22 @@ function firstValue(
     | string[]
     | undefined,
 ): string | undefined {
-  return Array.isArray(
-    value,
-  )
+  return Array.isArray(value)
     ? value[0]
     : value;
+}
+
+function buildExportHref(
+  from: string,
+  to: string,
+): string {
+  const params =
+    new URLSearchParams({
+      from,
+      to,
+    });
+
+  return `/reports/export?${params.toString()}`;
 }
 
 export default async function ReportsPage({
@@ -45,11 +56,6 @@ export default async function ReportsPage({
   const params =
     await searchParams;
 
-  /*
-   * Reuse parser yang sama dengan
-   * Expenses/HPP:
-   * default bulan berjalan Asia/Jakarta.
-   */
   const filters =
     parseRoutineCostFilters({
       from:
@@ -63,22 +69,29 @@ export default async function ReportsPage({
         ),
     });
 
+  const from =
+    parseDateOnly(
+      filters.from,
+    );
+
+  const to =
+    parseDateOnly(
+      filters.to,
+    );
+
   const data =
     await getReportSummaryForPeriod(
-      parseDateOnly(
-        filters.from,
-      ),
-
-      parseDateOnly(
-        filters.to,
-      ),
+      from,
+      to,
     );
 
   return (
     <ReportSummary
-      data={
-        data
-      }
+      data={data}
+      exportHref={buildExportHref(
+        data.period.from,
+        data.period.to,
+      )}
     />
   );
 }

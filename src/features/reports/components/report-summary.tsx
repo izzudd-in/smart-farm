@@ -1,6 +1,9 @@
+import Link from "next/link";
+
 import {
   AlertTriangle,
   CheckCircle2,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import {
@@ -25,20 +28,16 @@ import type {
 
 type ReportSummaryProps = {
   data: ReportSummaryForPeriod;
+  exportHref: string;
 };
 
 const currencyFormatter =
   new Intl.NumberFormat(
     "id-ID",
     {
-      style:
-        "currency",
-
-      currency:
-        "IDR",
-
-      maximumFractionDigits:
-        2,
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 2,
     },
   );
 
@@ -46,8 +45,7 @@ const quantityFormatter =
   new Intl.NumberFormat(
     "id-ID",
     {
-      maximumFractionDigits:
-        3,
+      maximumFractionDigits: 3,
     },
   );
 
@@ -57,26 +55,16 @@ const integerFormatter =
   );
 
 function formatMoney(
-  value:
-    | string
-    | null,
+  value: string | null,
 ): string {
-  if (
-    value === null
-  ) {
+  if (value === null) {
     return "Belum lengkap";
   }
 
   const numeric =
-    Number(
-      value,
-    );
+    Number(value);
 
-  if (
-    !Number.isFinite(
-      numeric,
-    )
-  ) {
+  if (!Number.isFinite(numeric)) {
     return "—";
   }
 
@@ -89,15 +77,9 @@ function formatKg(
   value: string,
 ): string {
   const numeric =
-    Number(
-      value,
-    );
+    Number(value);
 
-  if (
-    !Number.isFinite(
-      numeric,
-    )
-  ) {
+  if (!Number.isFinite(numeric)) {
     return "0 kg";
   }
 
@@ -107,37 +89,24 @@ function formatKg(
 }
 
 function formatPercent(
-  value:
-    | string
-    | null,
+  value: string | null,
 ): string {
-  if (
-    value === null
-  ) {
+  if (value === null) {
     return "—";
   }
 
   const numeric =
-    Number(
-      value,
-    );
+    Number(value);
 
-  if (
-    !Number.isFinite(
-      numeric,
-    )
-  ) {
+  if (!Number.isFinite(numeric)) {
     return "—";
   }
 
   return `${numeric.toLocaleString(
     "id-ID",
     {
-      minimumFractionDigits:
-        2,
-
-      maximumFractionDigits:
-        2,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     },
   )}%`;
 }
@@ -148,17 +117,10 @@ function formatDate(
   return new Intl.DateTimeFormat(
     "id-ID",
     {
-      day:
-        "2-digit",
-
-      month:
-        "short",
-
-      year:
-        "numeric",
-
-      timeZone:
-        "UTC",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
     },
   ).format(
     new Date(
@@ -174,17 +136,13 @@ function HppStatusBadge({
 }) {
   const map = {
     READY: {
-      label:
-        "Lengkap",
-
+      label: "Lengkap",
       className:
         "border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]",
     },
 
     PROVISIONAL: {
-      label:
-        "Sementara",
-
+      label: "Sementara",
       className:
         "border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]",
     },
@@ -192,15 +150,12 @@ function HppStatusBadge({
     MISSING_FEED_COST: {
       label:
         "Biaya pakan belum lengkap",
-
       className:
         "border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]",
     },
 
     NO_PRODUCTION: {
-      label:
-        "Tanpa produksi",
-
+      label: "Tanpa produksi",
       className:
         "border-border bg-[#F9FAFB] text-muted",
     },
@@ -213,18 +168,14 @@ function HppStatusBadge({
   >;
 
   const meta =
-    map[
-      status
-    ];
+    map[status];
 
   return (
     <span
       className={[
         "inline-flex rounded-full border px-2 py-1 text-[11px] font-medium",
         meta.className,
-      ].join(
-        " ",
-      )}
+      ].join(" ")}
     >
       {meta.label}
     </span>
@@ -238,33 +189,25 @@ function ProfitStatusBadge({
 }) {
   const map = {
     READY: {
-      label:
-        "Lengkap",
-
+      label: "Lengkap",
       className:
         "border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]",
     },
 
     PROVISIONAL: {
-      label:
-        "Sementara",
-
+      label: "Sementara",
       className:
         "border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]",
     },
 
     MISSING_COST: {
-      label:
-        "Biaya belum lengkap",
-
+      label: "Biaya belum lengkap",
       className:
         "border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]",
     },
 
     NO_REVENUE: {
-      label:
-        "Tanpa penjualan",
-
+      label: "Tanpa penjualan",
       className:
         "border-border bg-[#F9FAFB] text-muted",
     },
@@ -277,18 +220,14 @@ function ProfitStatusBadge({
   >;
 
   const meta =
-    map[
-      status
-    ];
+    map[status];
 
   return (
     <span
       className={[
         "inline-flex rounded-full border px-2 py-1 text-[11px] font-medium",
         meta.className,
-      ].join(
-        " ",
-      )}
+      ].join(" ")}
     >
       {meta.label}
     </span>
@@ -311,9 +250,7 @@ function KpiCard({
         emphasized
           ? "border-primary/30"
           : "",
-      ].join(
-        " ",
-      )}
+      ].join(" ")}
     >
       <p className="text-xs font-medium text-muted">
         {label}
@@ -325,9 +262,7 @@ function KpiCard({
           emphasized
             ? "text-primary-hover"
             : "text-foreground",
-        ].join(
-          " ",
-        )}
+        ].join(" ")}
       >
         {value}
       </p>
@@ -357,13 +292,12 @@ function Metric({
 
 export function ReportSummary({
   data,
+  exportHref,
 }: ReportSummaryProps) {
   const hasDataQualityIssue =
-    data.dataQuality
-      .incompleteReports >
+    data.dataQuality.incompleteReports >
       0 ||
-    data.dataQuality
-      .missingFeedCostReports >
+    data.dataQuality.missingFeedCostReports >
       0 ||
     data.hpp.status !==
       "READY" ||
@@ -372,14 +306,25 @@ export function ReportSummary({
 
   return (
     <div className="min-w-0 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Laporan
-        </h1>
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Laporan
+          </h1>
 
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          Review produksi, penjualan, biaya, HPP, profit operasional, dan posisi stok dalam satu periode.
-        </p>
+          <p className="mt-1 max-w-2xl text-sm text-muted">
+            Review produksi, penjualan, biaya, HPP, profit operasional, dan posisi stok dalam satu periode.
+          </p>
+        </div>
+
+        <Link
+          href={exportHref}
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-[10px] border border-primary bg-white px-4 text-sm font-semibold text-primary-hover transition-colors hover:bg-primary-soft sm:w-auto"
+        >
+          <FileSpreadsheet className="h-4 w-4 shrink-0" />
+
+          Export Excel
+        </Link>
       </div>
 
       <Card className="p-4">
@@ -454,21 +399,17 @@ export function ReportSummary({
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <KpiCard
             label="Produksi Telur Jual"
-            value={
-              formatKg(
-                data.production
-                  .saleableEggKg,
-              )
-            }
+            value={formatKg(
+              data.production
+                .saleableEggKg,
+            )}
           />
 
           <KpiCard
             label="Omzet"
-            value={
-              formatMoney(
-                data.sales.revenue,
-              )
-            }
+            value={formatMoney(
+              data.sales.revenue,
+            )}
           />
 
           <KpiCard
@@ -512,32 +453,26 @@ export function ReportSummary({
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Metric
               label="Telur Jual"
-              value={
-                formatKg(
-                  data.production
-                    .saleableEggKg,
-                )
-              }
+              value={formatKg(
+                data.production
+                  .saleableEggKg,
+              )}
             />
 
             <Metric
               label="Telur Rusak"
-              value={
-                formatKg(
-                  data.production
-                    .damagedEggKg,
-                )
-              }
+              value={formatKg(
+                data.production
+                  .damagedEggKg,
+              )}
             />
 
             <Metric
               label="Persentase Rusak"
-              value={
-                formatPercent(
-                  data.production
-                    .damageRatePercent,
-                )
-              }
+              value={formatPercent(
+                data.production
+                  .damageRatePercent,
+              )}
             />
 
             <Metric
@@ -613,20 +548,16 @@ export function ReportSummary({
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Metric
               label="Omzet"
-              value={
-                formatMoney(
-                  data.sales.revenue,
-                )
-              }
+              value={formatMoney(
+                data.sales.revenue,
+              )}
             />
 
             <Metric
               label="Terjual"
-              value={
-                formatKg(
-                  data.sales.soldKg,
-                )
-              }
+              value={formatKg(
+                data.sales.soldKg,
+              )}
             />
 
             <Metric
@@ -663,40 +594,32 @@ export function ReportSummary({
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Metric
               label="Biaya Pakan"
-              value={
-                formatMoney(
-                  data.cost.feedCost,
-                )
-              }
+              value={formatMoney(
+                data.cost.feedCost,
+              )}
             />
 
             <Metric
               label="Alokasi Biaya Rutin"
-              value={
-                formatMoney(
-                  data.cost.routineCost,
-                )
-              }
+              value={formatMoney(
+                data.cost.routineCost,
+              )}
             />
 
             <Metric
               label="Pengeluaran Harian"
-              value={
-                formatMoney(
-                  data.cost
-                    .dailyExpenseCost,
-                )
-              }
+              value={formatMoney(
+                data.cost
+                  .dailyExpenseCost,
+              )}
             />
 
             <Metric
               label="Total Biaya Operasional"
-              value={
-                formatMoney(
-                  data.cost
-                    .totalOperationalCost,
-                )
-              }
+              value={formatMoney(
+                data.cost
+                  .totalOperationalCost,
+              )}
             />
           </div>
         </Card>
@@ -757,12 +680,10 @@ export function ReportSummary({
             <div className="col-span-2">
               <Metric
                 label="Margin Operasional"
-                value={
-                  formatPercent(
-                    data.profit
-                      .operationalMarginPercent,
-                  )
-                }
+                value={formatPercent(
+                  data.profit
+                    .operationalMarginPercent,
+                )}
               />
             </div>
           </div>
@@ -798,9 +719,7 @@ export function ReportSummary({
                   .eggStockNegative
                   ? "border-[#FECACA] bg-[#FEF2F2]"
                   : "border-border bg-[#F9FAFB]",
-              ].join(
-                " ",
-              )}
+              ].join(" ")}
             >
               <p className="text-xs text-muted">
                 Stok Telur Akhir
@@ -808,14 +727,12 @@ export function ReportSummary({
 
               <p
                 className={[
-                  "mt-1 text-xl font-semibold",
+                  "mt-1 break-words text-xl font-semibold",
                   data.inventory
                     .eggStockNegative
                     ? "text-danger"
                     : "text-foreground",
-                ].join(
-                  " ",
-                )}
+                ].join(" ")}
               >
                 {formatKg(
                   data.inventory
@@ -851,7 +768,7 @@ export function ReportSummary({
 
                         <span
                           className={[
-                            "shrink-0 text-sm font-semibold",
+                            "min-w-0 break-words text-right text-sm font-semibold",
                             ingredient.isNegative
                               ? "text-danger"
                               : "text-foreground",
@@ -891,7 +808,7 @@ export function ReportSummary({
                 Data Quality
               </h2>
 
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-1 break-words text-sm text-muted">
                 {hasDataQualityIssue
                   ? "Ada data yang perlu diperiksa sebelum menggunakan hasil sebagai angka final."
                   : "Source utama periode ini lengkap."}
@@ -957,10 +874,8 @@ export function ReportSummary({
                     warning,
                   ) => (
                     <li
-                      key={
-                        warning
-                      }
-                      className="list-disc"
+                      key={warning}
+                      className="list-disc break-words"
                     >
                       {warning}
                     </li>
