@@ -2,6 +2,17 @@ import type {
   DailyFeedCompositionInput,
   DailyReportFormInput,
 } from "@/features/daily-operations/types/daily-report";
+
+import {
+  DAILY_EXPENSE_CATEGORY_VALUES,
+  type DailyExpenseCategoryValue,
+} from "@/features/expenses/types/daily-expense";
+
+import {
+  centsToMoney,
+  moneyToCents,
+} from "@/features/expenses/utils/routine-cost-allocation";
+
 import {
   assertFormulaComplete,
   percentageToBasisPoints,
@@ -13,18 +24,27 @@ function parseOptionalNumber(
   value: string,
   label: string,
 ): number | null {
-  const normalized = value
-    .trim()
-    .replace(",", ".");
+  const normalized =
+    value
+      .trim()
+      .replace(
+        ",",
+        ".",
+      );
 
   if (!normalized) {
     return null;
   }
 
-  const numberValue = Number(normalized);
+  const numberValue =
+    Number(
+      normalized,
+    );
 
   if (
-    !Number.isFinite(numberValue) ||
+    !Number.isFinite(
+      numberValue,
+    ) ||
     numberValue < 0
   ) {
     throw new DailyReportValidationError(
@@ -39,16 +59,22 @@ function parseOptionalInteger(
   value: string,
   label: string,
 ): number | null {
-  const normalized = value.trim();
+  const normalized =
+    value.trim();
 
   if (!normalized) {
     return null;
   }
 
-  const numberValue = Number(normalized);
+  const numberValue =
+    Number(
+      normalized,
+    );
 
   if (
-    !Number.isInteger(numberValue) ||
+    !Number.isInteger(
+      numberValue,
+    ) ||
     numberValue < 0
   ) {
     throw new DailyReportValidationError(
@@ -59,77 +85,145 @@ function parseOptionalInteger(
   return numberValue;
 }
 
-function parseOptionalMoney(
-  value: string,
-): string | null {
-  const normalized = value
-    .trim()
-    .replace(",", ".");
+function parseIncidentalExpense(
+  amountInput: string,
+  categoryInput: string,
+) {
+  const normalized =
+    amountInput
+      .trim()
+      .replace(
+        ",",
+        ".",
+      );
 
   if (!normalized) {
-    return null;
+    return {
+      incidentalExpense:
+        null,
+
+      incidentalExpenseCategory:
+        null,
+    };
   }
 
   if (
-    !/^\d+(\.\d{1,2})?$/.test(normalized) ||
-    Number(normalized) < 0
+    !/^\d{1,16}(\.\d{1,2})?$/.test(
+      normalized,
+    )
   ) {
     throw new DailyReportValidationError(
-      "Pengeluaran harus berupa angka 0 atau lebih dengan maksimal 2 desimal.",
+      "Nominal pengeluaran harus berupa angka dengan maksimal 2 angka desimal.",
     );
   }
 
-  return Number(normalized).toFixed(2);
+  const cents =
+    moneyToCents(
+      normalized,
+    );
+
+  if (
+    cents <= BigInt(0)
+  ) {
+    throw new DailyReportValidationError(
+      "Nominal pengeluaran harus lebih dari 0.",
+    );
+  }
+
+  if (
+    !DAILY_EXPENSE_CATEGORY_VALUES.includes(
+      categoryInput as DailyExpenseCategoryValue,
+    )
+  ) {
+    throw new DailyReportValidationError(
+      "Kategori pengeluaran wajib dipilih.",
+    );
+  }
+
+  return {
+    incidentalExpense:
+      centsToMoney(
+        cents,
+      ),
+
+    incidentalExpenseCategory:
+      categoryInput as DailyExpenseCategoryValue,
+  };
 }
 
 function parseFeedComposition(
   items: DailyFeedCompositionInput[],
 ) {
-  if (items.length === 0) {
+  if (
+    items.length === 0
+  ) {
     throw new DailyReportValidationError(
       "Komposisi pakan aktual belum tersedia.",
     );
   }
 
-  const seen = new Set<string>();
+  const seen =
+    new Set<string>();
 
-  const parsed = items.map((item) => {
-    const ingredientId =
-      item.ingredientId.trim();
+  const parsed =
+    items.map(
+      (
+        item,
+      ) => {
+        const ingredientId =
+          item.ingredientId.trim();
 
-    if (!ingredientId) {
-      throw new DailyReportValidationError(
-        "Ingredient komposisi pakan tidak valid.",
-      );
-    }
+        if (
+          !ingredientId
+        ) {
+          throw new DailyReportValidationError(
+            "Ingredient komposisi pakan tidak valid.",
+          );
+        }
 
-    if (seen.has(ingredientId)) {
-      throw new DailyReportValidationError(
-        "Ingredient tidak boleh muncul dua kali dalam komposisi pakan.",
-      );
-    }
+        if (
+          seen.has(
+            ingredientId,
+          )
+        ) {
+          throw new DailyReportValidationError(
+            "Ingredient tidak boleh muncul dua kali dalam komposisi pakan.",
+          );
+        }
 
-    seen.add(ingredientId);
+        seen.add(
+          ingredientId,
+        );
 
-    const basisPoints =
-      percentageToBasisPoints(
-        item.percentage,
-      );
+        const basisPoints =
+          percentageToBasisPoints(
+            item.percentage,
+          );
 
-    return {
-      ingredientId,
+        return {
+          ingredientId,
 
-      percentage:
-        (basisPoints / 100).toFixed(2),
+          percentage:
+            (
+              basisPoints /
+              100
+            ).toFixed(
+              2,
+            ),
 
-      basisPoints,
-    };
-  });
+          basisPoints,
+        };
+      },
+    );
 
   assertFormulaComplete(
     parsed.reduce(
-      (total, item) =>
-        total + item.basisPoints,
+      (
+        total,
+        item,
+      ) =>
+        total +
+        item.basisPoints,
       0,
     ),
   );
@@ -144,7 +238,9 @@ export function parseDailyReportInput(
   const kandangId =
     input.kandangId.trim();
 
-  if (!kandangId) {
+  if (
+    !kandangId
+  ) {
     throw new DailyReportValidationError(
       "Kandang wajib dipilih.",
     );
@@ -191,9 +287,42 @@ export function parseDailyReportInput(
   const incidentNote =
     input.incidentNote.trim();
 
-  if (incidentNote.length > 1000) {
+  if (
+    incidentNote.length >
+    1000
+  ) {
     throw new DailyReportValidationError(
       "Catatan maksimal 1000 karakter.",
+    );
+  }
+
+  const incidental =
+    parseIncidentalExpense(
+      input.incidentalExpense,
+      input.incidentalExpenseCategory,
+    );
+
+  const hasAnyValue =
+    saleableEgg !==
+      null ||
+    damagedEgg !==
+      null ||
+    feedUsed !==
+      null ||
+    mortality !==
+      null ||
+    incidental.incidentalExpense !==
+      null ||
+    Boolean(
+      incidentNote,
+    );
+
+  if (
+    !requireComplete &&
+    !hasAnyValue
+  ) {
+    throw new DailyReportValidationError(
+      "Isi minimal satu data sebelum menyimpan draft.",
     );
   }
 
@@ -204,13 +333,11 @@ export function parseDailyReportInput(
     feedUsed,
     mortality,
 
-    incidentalExpense:
-      parseOptionalMoney(
-        input.incidentalExpense,
-      ),
+    ...incidental,
 
     incidentNote:
-      incidentNote || null,
+      incidentNote ||
+      null,
 
     feedCompositionOverride:
       Boolean(

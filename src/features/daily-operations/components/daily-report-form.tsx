@@ -6,7 +6,11 @@ import {
   useState,
   useTransition,
 } from "react";
-import { useRouter } from "next/navigation";
+
+import {
+  useRouter,
+} from "next/navigation";
+
 import {
   ChevronDown,
   ChevronUp,
@@ -20,60 +24,97 @@ import {
   completeDailyReport,
   saveDailyReportDraft,
 } from "@/features/daily-operations/actions/daily-report";
-import type { OperatorTodayKandang } from "@/features/daily-operations/types/daily-report";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 
-import { ReportStatusBadge } from "./report-status-badge";
+import type {
+  OperatorTodayKandang,
+} from "@/features/daily-operations/types/daily-report";
+
+import {
+  DAILY_EXPENSE_CATEGORY_LABELS,
+  DAILY_EXPENSE_CATEGORY_VALUES,
+  type DailyExpenseCategoryValue,
+} from "@/features/expenses/types/daily-expense";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  Card,
+} from "@/components/ui/card";
+
+import {
+  Input,
+} from "@/components/ui/input";
+
+import {
+  ReportStatusBadge,
+} from "./report-status-badge";
 
 type DailyReportFormProps = {
   kandang: OperatorTodayKandang;
 };
 
 function valueOrEmpty(
-  value: number | null | undefined,
+  value:
+    | number
+    | null
+    | undefined,
 ): string {
-  return value === null ||
-    value === undefined
+  return value ===
+    null ||
+    value ===
+      undefined
     ? ""
-    : String(value);
+    : String(
+        value,
+      );
 }
 
 export function DailyReportForm({
   kandang,
 }: DailyReportFormProps) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const report = kandang.report;
+  const report =
+    kandang.report;
 
-  const [saleableEgg, setSaleableEgg] =
-    useState(
-      valueOrEmpty(
-        report?.saleableEgg,
-      ),
-    );
+  const [
+    saleableEgg,
+    setSaleableEgg,
+  ] = useState(
+    valueOrEmpty(
+      report?.saleableEgg,
+    ),
+  );
 
-  const [damagedEgg, setDamagedEgg] =
-    useState(
-      valueOrEmpty(
-        report?.damagedEgg,
-      ),
-    );
+  const [
+    damagedEgg,
+    setDamagedEgg,
+  ] = useState(
+    valueOrEmpty(
+      report?.damagedEgg,
+    ),
+  );
 
-  const [feedUsed, setFeedUsed] =
-    useState(
-      valueOrEmpty(
-        report?.feedUsed,
-      ),
-    );
+  const [
+    feedUsed,
+    setFeedUsed,
+  ] = useState(
+    valueOrEmpty(
+      report?.feedUsed,
+    ),
+  );
 
-  const [mortality, setMortality] =
-    useState(
-      valueOrEmpty(
-        report?.mortality,
-      ),
-    );
+  const [
+    mortality,
+    setMortality,
+  ] = useState(
+    valueOrEmpty(
+      report?.mortality,
+    ),
+  );
 
   const [
     incidentalExpense,
@@ -84,10 +125,22 @@ export function DailyReportForm({
   );
 
   const [
+    incidentalExpenseCategory,
+    setIncidentalExpenseCategory,
+  ] = useState<
+    | DailyExpenseCategoryValue
+    | ""
+  >(
+    report?.incidentalExpenseCategory ??
+      "",
+  );
+
+  const [
     incidentNote,
     setIncidentNote,
   ] = useState(
-    report?.incidentNote ?? "",
+    report?.incidentNote ??
+      "",
   );
 
   const [
@@ -103,14 +156,18 @@ export function DailyReportForm({
   const [
     compositionOverride,
     setCompositionOverride,
-  ] = useState(false);
+  ] = useState(
+    false,
+  );
 
   const [
     composition,
     setComposition,
   ] = useState(
     kandang.feed.items.map(
-      (item) => ({
+      (
+        item,
+      ) => ({
         ingredientId:
           item.ingredientId,
 
@@ -123,32 +180,51 @@ export function DailyReportForm({
     ),
   );
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [success, setSuccess] =
-    useState("");
+  const [
+    success,
+    setSuccess,
+  ] = useState("");
 
-  const [isPending, startTransition] =
-    useTransition();
+  const [
+    isPending,
+    startTransition,
+  ] = useTransition();
 
   const readOnly =
     !kandang.isEditable;
 
   const disabled =
-    isPending || readOnly;
+    isPending ||
+    readOnly;
 
   const coreComplete =
-    saleableEgg.trim() !== "" &&
-    damagedEgg.trim() !== "" &&
-    feedUsed.trim() !== "" &&
-    mortality.trim() !== "";
+    saleableEgg.trim() !==
+      "" &&
+    damagedEgg.trim() !==
+      "" &&
+    feedUsed.trim() !==
+      "" &&
+    mortality.trim() !==
+      "";
+
+  const incidentalNeedsCategory =
+    incidentalExpense.trim() !==
+      "" &&
+    !incidentalExpenseCategory;
 
   const totalComposition =
     useMemo(
       () =>
         composition.reduce(
-          (total, item) => {
+          (
+            total,
+            item,
+          ) => {
             const percentage =
               Number(
                 item.percentage.replace(
@@ -159,38 +235,50 @@ export function DailyReportForm({
 
             return (
               total +
-              (Number.isFinite(
-                percentage,
+              (
+                Number.isFinite(
+                  percentage,
+                )
+                  ? percentage
+                  : 0
               )
-                ? percentage
-                : 0)
             );
           },
           0,
         ),
-      [composition],
+      [
+        composition,
+      ],
     );
 
   const compositionInvalid =
     compositionOverride &&
     Math.abs(
-      totalComposition - 100,
-    ) >= 0.001;
+      totalComposition -
+        100,
+    ) >=
+      0.001;
 
   function updatePercentage(
     ingredientId: string,
     percentage: string,
   ) {
-    setComposition((current) =>
-      current.map((item) =>
-        item.ingredientId ===
-        ingredientId
-          ? {
-              ...item,
-              percentage,
-            }
-          : item,
-      ),
+    setComposition(
+      (
+        current,
+      ) =>
+        current.map(
+          (
+            item,
+          ) =>
+            item.ingredientId ===
+            ingredientId
+              ? {
+                  ...item,
+                  percentage,
+                }
+              : item,
+        ),
     );
   }
 
@@ -199,7 +287,9 @@ export function DailyReportForm({
   ) {
     event.preventDefault();
 
-    if (readOnly) {
+    if (
+      readOnly
+    ) {
       return;
     }
 
@@ -207,12 +297,16 @@ export function DailyReportForm({
     setSuccess("");
 
     const input = {
-      kandangId: kandang.id,
+      kandangId:
+        kandang.id,
+
       saleableEgg,
       damagedEgg,
       feedUsed,
       mortality,
+
       incidentalExpense,
+      incidentalExpenseCategory,
       incidentNote,
 
       feedCompositionOverride:
@@ -220,7 +314,9 @@ export function DailyReportForm({
 
       feedComposition:
         composition.map(
-          (item) => ({
+          (
+            item,
+          ) => ({
             ingredientId:
               item.ingredientId,
 
@@ -230,28 +326,41 @@ export function DailyReportForm({
         ),
     };
 
-    startTransition(async () => {
-      const result = coreComplete
-        ? await completeDailyReport(
-            input,
-          )
-        : await saveDailyReportDraft(
-            input,
+    startTransition(
+      async () => {
+        const result =
+          coreComplete
+            ? await completeDailyReport(
+                input,
+              )
+            : await saveDailyReportDraft(
+                input,
+              );
+
+        if (
+          !result.success
+        ) {
+          setError(
+            result.error,
           );
+          return;
+        }
 
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
+        setSuccess(
+          result.message,
+        );
 
-      setSuccess(result.message);
-
-      router.refresh();
-    });
+        router.refresh();
+      },
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form
+      onSubmit={
+        handleSubmit
+      }
+    >
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4">
           <div className="min-w-0">
@@ -261,12 +370,17 @@ export function DailyReportForm({
             </p>
 
             <p className="mt-1 truncate text-sm text-muted">
-              {kandang.flock.name}
+              {
+                kandang.flock
+                  .name
+              }
             </p>
           </div>
 
           <ReportStatusBadge
-            status={kandang.status}
+            status={
+              kandang.status
+            }
           />
         </div>
 
@@ -275,9 +389,10 @@ export function DailyReportForm({
           kandang.readOnlyReason ? (
             <div className="flex items-start gap-2 rounded-[10px] border border-border bg-[#F9FAFB] p-3 text-sm text-muted">
               <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
-
               <span>
-                {kandang.readOnlyReason}
+                {
+                  kandang.readOnlyReason
+                }
               </span>
             </div>
           ) : null}
@@ -288,7 +403,9 @@ export function DailyReportForm({
               className="flex items-start gap-2 rounded-[10px] border border-[#BBF7D0] bg-primary-soft p-3 text-sm text-primary-hover"
             >
               <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{success}</span>
+              <span>
+                {success}
+              </span>
             </div>
           ) : null}
 
@@ -309,9 +426,15 @@ export function DailyReportForm({
               step="any"
               label="Telur Jual"
               placeholder="0"
-              value={saleableEgg}
-              disabled={disabled}
-              onChange={(event) =>
+              value={
+                saleableEgg
+              }
+              disabled={
+                disabled
+              }
+              onChange={(
+                event,
+              ) =>
                 setSaleableEgg(
                   event.target.value,
                 )
@@ -325,9 +448,15 @@ export function DailyReportForm({
               step="any"
               label="Telur Rusak"
               placeholder="0"
-              value={damagedEgg}
-              disabled={disabled}
-              onChange={(event) =>
+              value={
+                damagedEgg
+              }
+              disabled={
+                disabled
+              }
+              onChange={(
+                event,
+              ) =>
                 setDamagedEgg(
                   event.target.value,
                 )
@@ -341,9 +470,15 @@ export function DailyReportForm({
               step="any"
               label="Pakan Digunakan"
               placeholder="0"
-              value={feedUsed}
-              disabled={disabled}
-              onChange={(event) =>
+              value={
+                feedUsed
+              }
+              disabled={
+                disabled
+              }
+              onChange={(
+                event,
+              ) =>
                 setFeedUsed(
                   event.target.value,
                 )
@@ -357,9 +492,15 @@ export function DailyReportForm({
               step={1}
               label="Ayam Mati"
               placeholder="0"
-              value={mortality}
-              disabled={disabled}
-              onChange={(event) =>
+              value={
+                mortality
+              }
+              disabled={
+                disabled
+              }
+              onChange={(
+                event,
+              ) =>
                 setMortality(
                   event.target.value,
                 )
@@ -380,10 +521,7 @@ export function DailyReportForm({
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-muted">
-                  Jika Pakan Digunakan
-                  diisi, Owner harus
-                  mengaktifkan formula
-                  pakan terlebih dahulu.
+                  Jika Pakan Digunakan diisi, Owner harus mengaktifkan formula pakan terlebih dahulu.
                 </p>
               </div>
             ) : (
@@ -405,7 +543,9 @@ export function DailyReportForm({
                   <p className="mt-3 break-words text-sm text-muted">
                     {composition
                       .map(
-                        (item) =>
+                        (
+                          item,
+                        ) =>
                           `${item.ingredientName} ${Number(
                             item.percentage,
                           ).toLocaleString(
@@ -416,12 +556,16 @@ export function DailyReportForm({
                             },
                           )}%`,
                       )
-                      .join(" · ")}
+                      .join(
+                        " · ",
+                      )}
                   </p>
                 ) : (
                   <div className="mt-4 space-y-3">
                     {composition.map(
-                      (item) => (
+                      (
+                        item,
+                      ) => (
                         <div
                           key={
                             item.ingredientId
@@ -434,36 +578,28 @@ export function DailyReportForm({
                             }
                           </span>
 
-                          <div className="relative">
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min="0.01"
-                              max="100"
-                              step="0.01"
-                              value={
-                                item.percentage
-                              }
-                              disabled={
-                                disabled
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                updatePercentage(
-                                  item.ingredientId,
-                                  event
-                                    .target
-                                    .value,
-                                )
-                              }
-                              className="h-10 w-full rounded-[10px] border border-border bg-white px-3 pr-7 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
-                            />
-
-                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">
-                              %
-                            </span>
-                          </div>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min="0.01"
+                            max="100"
+                            step="0.01"
+                            value={
+                              item.percentage
+                            }
+                            disabled={
+                              disabled
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              updatePercentage(
+                                item.ingredientId,
+                                event.target.value,
+                              )
+                            }
+                            className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                          />
                         </div>
                       ),
                     )}
@@ -490,14 +626,6 @@ export function DailyReportForm({
                         %
                       </span>
                     </div>
-
-                    {compositionInvalid ? (
-                      <p className="text-xs text-danger">
-                        Total komposisi
-                        aktual harus tepat
-                        100%.
-                      </p>
-                    ) : null}
                   </div>
                 )}
 
@@ -506,7 +634,9 @@ export function DailyReportForm({
                     type="button"
                     onClick={() =>
                       setCompositionOverride(
-                        (current) =>
+                        (
+                          current,
+                        ) =>
                           !current,
                       )
                     }
@@ -528,7 +658,9 @@ export function DailyReportForm({
               type="button"
               onClick={() =>
                 setOptionalOpen(
-                  (current) =>
+                  (
+                    current,
+                  ) =>
                     !current,
                 )
               }
@@ -536,7 +668,7 @@ export function DailyReportForm({
             >
               <span className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                Pengeluaran / Kejadian
+                Tambahkan Pengeluaran / Kejadian
               </span>
 
               {optionalOpen ? (
@@ -548,40 +680,125 @@ export function DailyReportForm({
 
             {optionalOpen ? (
               <div className="mt-3 space-y-4 rounded-[10px] bg-[#F9FAFB] p-4">
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor={`expense-category-${kandang.id}`}
+                    className="text-[13px] font-medium text-foreground"
+                  >
+                    Kategori
+                  </label>
+
+                  <select
+                    id={`expense-category-${kandang.id}`}
+                    value={
+                      incidentalExpenseCategory
+                    }
+                    disabled={
+                      disabled ||
+                      incidentalExpense.trim() ===
+                        ""
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setIncidentalExpenseCategory(
+                        event.target
+                          .value as
+                          | DailyExpenseCategoryValue
+                          | "",
+                      )
+                    }
+                    className="h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                  >
+                    <option value="">
+                      Pilih kategori
+                    </option>
+
+                    {DAILY_EXPENSE_CATEGORY_VALUES.map(
+                      (
+                        category,
+                      ) => (
+                        <option
+                          key={
+                            category
+                          }
+                          value={
+                            category
+                          }
+                        >
+                          {
+                            DAILY_EXPENSE_CATEGORY_LABELS[
+                              category
+                            ]
+                          }
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+
                 <Input
                   type="number"
                   inputMode="decimal"
-                  min={0}
+                  min="0.01"
                   step="0.01"
-                  label="Pengeluaran Insidental"
-                  placeholder="0"
+                  label="Nominal"
+                  placeholder="150000"
                   value={
                     incidentalExpense
                   }
-                  disabled={disabled}
-                  onChange={(event) =>
-                    setIncidentalExpense(
-                      event.target.value,
-                    )
+                  disabled={
+                    disabled
                   }
+                  onChange={(
+                    event,
+                  ) => {
+                    const value =
+                      event.target.value;
+
+                    setIncidentalExpense(
+                      value,
+                    );
+
+                    if (
+                      value.trim() ===
+                      ""
+                    ) {
+                      setIncidentalExpenseCategory(
+                        "",
+                      );
+                    }
+                  }}
                 />
+
+                {incidentalNeedsCategory ? (
+                  <p className="text-xs text-danger">
+                    Pilih kategori untuk pengeluaran ini.
+                  </p>
+                ) : null}
 
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor={`incident-${kandang.id}`}
                     className="text-[13px] font-medium text-foreground"
                   >
-                    Kejadian / Catatan
+                    Catatan / Keterangan
                   </label>
 
                   <textarea
                     id={`incident-${kandang.id}`}
                     rows={4}
                     maxLength={1000}
-                    value={incidentNote}
-                    disabled={disabled}
+                    value={
+                      incidentNote
+                    }
+                    disabled={
+                      disabled
+                    }
                     placeholder="Opsional"
-                    onChange={(event) =>
+                    onChange={(
+                      event,
+                    ) =>
                       setIncidentNote(
                         event.target.value,
                       )
@@ -601,7 +818,8 @@ export function DailyReportForm({
                 className="w-full"
                 disabled={
                   isPending ||
-                  compositionInvalid
+                  compositionInvalid ||
+                  incidentalNeedsCategory
                 }
               >
                 {isPending
@@ -613,9 +831,7 @@ export function DailyReportForm({
 
               {!coreComplete ? (
                 <p className="mt-2 text-center text-xs text-muted">
-                  Laporan akan berstatus
-                  Belum Lengkap sampai
-                  empat input utama diisi.
+                  Laporan akan berstatus Belum Lengkap sampai empat input utama diisi.
                 </p>
               ) : null}
             </div>

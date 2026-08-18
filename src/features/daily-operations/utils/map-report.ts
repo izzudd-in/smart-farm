@@ -1,5 +1,14 @@
-import type { DailyReportView } from "@/features/daily-operations/types/daily-report";
-import { getDailyReportStatus } from "@/features/daily-operations/utils/status";
+import type {
+  DailyReportView,
+} from "@/features/daily-operations/types/daily-report";
+
+import type {
+  DailyExpenseCategoryValue,
+} from "@/features/expenses/types/daily-expense";
+
+import {
+  getDailyReportStatus,
+} from "@/features/daily-operations/utils/status";
 
 type DailyReportViewRecord = {
   id: string;
@@ -14,10 +23,17 @@ type DailyReportViewRecord = {
     toString(): string;
   } | null;
 
-  incidentNote: string | null;
+  incidentalExpenseCategory:
+    DailyExpenseCategoryValue | null;
 
-  feedFormulaId: string | null;
-  feedFormulaNameSnapshot: string | null;
+  incidentNote:
+    string | null;
+
+  feedFormulaId:
+    string | null;
+
+  feedFormulaNameSnapshot:
+    string | null;
 
   feedItems: Array<{
     ingredientId: string;
@@ -50,11 +66,16 @@ export function mapDailyReportView(
   report: DailyReportViewRecord,
 ): DailyReportView {
   return {
-    id: report.id,
+    id:
+      report.id,
 
-    date: report.date
-      .toISOString()
-      .slice(0, 10),
+    date:
+      report.date
+        .toISOString()
+        .slice(
+          0,
+          10,
+        ),
 
     kandangId:
       report.kandang.id,
@@ -74,7 +95,10 @@ export function mapDailyReportView(
     flockStartDate:
       report.flock.startDate
         .toISOString()
-        .slice(0, 10),
+        .slice(
+          0,
+          10,
+        ),
 
     operatorId:
       report.operator.id,
@@ -96,7 +120,11 @@ export function mapDailyReportView(
 
     incidentalExpense:
       report.incidentalExpense
-        ?.toString() ?? null,
+        ?.toString() ??
+      null,
+
+    incidentalExpenseCategory:
+      report.incidentalExpenseCategory,
 
     incidentNote:
       report.incidentNote,
@@ -109,7 +137,9 @@ export function mapDailyReportView(
 
     feedItems:
       report.feedItems.map(
-        (item) => ({
+        (
+          item,
+        ) => ({
           ingredientId:
             item.ingredientId,
 
@@ -122,6 +152,8 @@ export function mapDailyReportView(
       ),
 
     status:
-      getDailyReportStatus(report),
+      getDailyReportStatus(
+        report,
+      ),
   };
 }

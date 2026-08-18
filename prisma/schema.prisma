@@ -24,6 +24,26 @@ enum FeedStockAdjustmentType {
   DECREASE
 }
 
+enum RoutineCostCategory {
+  SALARY
+  ELECTRICITY
+  WATER
+  INTERNET
+  RENT
+  SECURITY
+  OTHER
+}
+
+enum DailyExpenseCategory {
+  MEDICINE_VITAMIN
+  DISINFECTANT
+  OVERTIME
+  MAINTENANCE
+  TRANSPORT
+  EQUIPMENT
+  OTHER
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -39,6 +59,8 @@ model User {
   eggStockAdjustments  EggStockAdjustment[] @relation("EggStockAdjustmentCreator")
   feedPurchases        FeedPurchase[]       @relation("FeedPurchaseCreator")
   feedStockAdjustments FeedStockAdjustment[] @relation("FeedStockAdjustmentCreator")
+  routineCosts         RoutineCost[]         @relation("RoutineCostCreator")
+  dailyExpenses        DailyExpense[]        @relation("DailyExpenseCreator")
 
   @@index([role])
   @@index([isActive])
@@ -62,6 +84,8 @@ model Farm {
   eggStockAdjustments  EggStockAdjustment[]
   feedPurchases        FeedPurchase[]
   feedStockAdjustments FeedStockAdjustment[]
+  routineCosts         RoutineCost[]
+  dailyExpenses        DailyExpense[]
 }
 
 model Kandang {
@@ -96,8 +120,8 @@ model Flock {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  kandang          Kandang       @relation("KandangFlocks", fields: [kandangId], references: [id], onDelete: Cascade)
-  activeForKandang Kandang?      @relation("ActiveFlock")
+  kandang          Kandang      @relation("KandangFlocks", fields: [kandangId], references: [id], onDelete: Cascade)
+  activeForKandang Kandang?     @relation("ActiveFlock")
   dailyReports     DailyReport[]
 
   @@unique([kandangId, name])
@@ -116,8 +140,9 @@ model DailyReport {
   feedUsed    Float?
   mortality   Int?
 
-  incidentalExpense Decimal? @db.Decimal(14, 2)
-  incidentNote      String?  @db.Text
+  incidentalExpense         Decimal?              @db.Decimal(14, 2)
+  incidentalExpenseCategory DailyExpenseCategory?
+  incidentNote              String?               @db.Text
 
   feedFormulaId           String?
   feedFormulaNameSnapshot String?
@@ -129,7 +154,7 @@ model DailyReport {
   flock    Flock   @relation(fields: [flockId], references: [id], onDelete: Restrict)
   operator User    @relation("DailyReportOperator", fields: [operatorId], references: [id], onDelete: Restrict)
 
-  feedFormula FeedFormula?         @relation(fields: [feedFormulaId], references: [id], onDelete: SetNull)
+  feedFormula FeedFormula?          @relation(fields: [feedFormulaId], references: [id], onDelete: SetNull)
   feedItems   DailyReportFeedItem[]
 
   @@unique([date, kandangId])
@@ -137,6 +162,7 @@ model DailyReport {
   @@index([flockId, date])
   @@index([kandangId, date])
   @@index([feedFormulaId])
+  @@index([date, incidentalExpenseCategory])
 }
 
 model DailyReportFeedItem {
@@ -317,6 +343,46 @@ model FeedStockAdjustment {
   @@index([farmId, occurredAt])
   @@index([ingredientId, occurredAt])
   @@index([ingredientId, type])
+  @@index([createdById])
+}
+
+model RoutineCost {
+  id          String              @id @default(cuid())
+  farmId      String
+  category    RoutineCostCategory
+  name        String
+  amount      Decimal             @db.Decimal(18, 2)
+  periodStart DateTime            @db.Date
+  periodEnd   DateTime            @db.Date
+  note        String?             @db.Text
+  createdById String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  farm      Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  createdBy User @relation("RoutineCostCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([farmId, periodStart, periodEnd])
+  @@index([farmId, category])
+  @@index([createdById])
+}
+
+model DailyExpense {
+  id          String               @id @default(cuid())
+  farmId      String
+  category    DailyExpenseCategory
+  amount      Decimal              @db.Decimal(18, 2)
+  occurredAt  DateTime             @db.Date
+  description String               @db.Text
+  createdById String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  farm      Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  createdBy User @relation("DailyExpenseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([farmId, occurredAt])
+  @@index([farmId, category, occurredAt])
   @@index([createdById])
 }
 

@@ -1,15 +1,24 @@
 import "dotenv/config";
 
-import { PrismaPg } from "@prisma/adapter-pg";
-
-import { PrismaClient } from "../src/generated/prisma/client";
 import {
+  PrismaPg,
+} from "@prisma/adapter-pg";
+
+import {
+  PrismaClient,
+} from "../src/generated/prisma/client";
+
+import {
+  DailyExpenseCategory,
   EggStockAdjustmentType,
   FeedStockAdjustmentType,
+  RoutineCostCategory,
   UserRole,
 } from "../src/generated/prisma/enums";
 
-import { hashPassword } from "../src/lib/auth/password";
+import {
+  hashPassword,
+} from "../src/lib/auth/password";
 
 import {
   calculateFinalPricePerKg,
@@ -76,7 +85,8 @@ async function ensureCustomer(
     await prisma.customer.findFirst({
       where: {
         farmId,
-        name: data.name,
+        name:
+          data.name,
       },
 
       select: {
@@ -87,7 +97,8 @@ async function ensureCustomer(
   if (existing) {
     return prisma.customer.update({
       where: {
-        id: existing.id,
+        id:
+          existing.id,
       },
 
       data: {
@@ -100,7 +111,8 @@ async function ensureCustomer(
         discountPerKg:
           data.discountPerKg,
 
-        isActive: true,
+        isActive:
+          true,
       },
     });
   }
@@ -108,14 +120,21 @@ async function ensureCustomer(
   return prisma.customer.create({
     data: {
       farmId,
-      name: data.name,
-      phone: data.phone,
-      address: data.address,
+
+      name:
+        data.name,
+
+      phone:
+        data.phone,
+
+      address:
+        data.address,
 
       discountPerKg:
         data.discountPerKg,
 
-      isActive: true,
+      isActive:
+        true,
     },
   });
 }
@@ -173,7 +192,8 @@ async function ensureOrder(
   const existing =
     await prisma.order.findUnique({
       where: {
-        id: data.id,
+        id:
+          data.id,
       },
 
       select: {
@@ -210,7 +230,8 @@ async function ensureFeedPurchase(
   const existing =
     await prisma.feedPurchase.findUnique({
       where: {
-        id: data.id,
+        id:
+          data.id,
       },
 
       select: {
@@ -283,19 +304,99 @@ async function ensureFeedOpening(
   });
 }
 
-async function main() {
-  await prisma.systemState.upsert({
+async function ensureRoutineCost(
+  data: {
+    id: string;
+    farmId: string;
+    category: RoutineCostCategory;
+    name: string;
+    amount: string;
+    periodStart: Date;
+    periodEnd: Date;
+    note: string;
+    createdById: string;
+  },
+) {
+  return prisma.routineCost.upsert({
     where: {
-      key: "foundation",
+      id:
+        data.id,
     },
 
     update: {
-      value: "ready",
+      farmId:
+        data.farmId,
+
+      category:
+        data.category,
+
+      name:
+        data.name,
+
+      amount:
+        data.amount,
+
+      periodStart:
+        data.periodStart,
+
+      periodEnd:
+        data.periodEnd,
+
+      note:
+        data.note,
+    },
+
+    create:
+      data,
+  });
+}
+
+async function ensureDailyExpense(
+  data: {
+    id: string;
+    farmId: string;
+    category: DailyExpenseCategory;
+    amount: string;
+    occurredAt: Date;
+    description: string;
+    createdById: string;
+  },
+) {
+  return prisma.dailyExpense.upsert({
+    where: {
+      id: data.id,
+    },
+
+    update: {
+      farmId: data.farmId,
+      category: data.category,
+      amount: data.amount,
+      occurredAt: data.occurredAt,
+      description: data.description,
+    },
+
+    create: data,
+  });
+}
+
+async function main() {
+  await prisma.systemState.upsert({
+    where: {
+      key:
+        "foundation",
+    },
+
+    update: {
+      value:
+        "ready",
     },
 
     create: {
-      key: "foundation",
-      value: "ready",
+      key:
+        "foundation",
+
+      value:
+        "ready",
     },
   });
 
@@ -323,7 +424,8 @@ async function main() {
         role:
           developmentUser.role,
 
-        isActive: true,
+        isActive:
+          true,
       },
 
       create: {
@@ -338,7 +440,8 @@ async function main() {
         role:
           developmentUser.role,
 
-        isActive: true,
+        isActive:
+          true,
       },
     });
   }
@@ -362,20 +465,33 @@ async function main() {
   const farm =
     await prisma.farm.upsert({
       where: {
-        scope: "PRIMARY",
+        scope:
+          "PRIMARY",
       },
 
       update: {
-        code: "UDINFARM",
-        name: "UdinFarm",
-        isActive: true,
+        code:
+          "UDINFARM",
+
+        name:
+          "UdinFarm",
+
+        isActive:
+          true,
       },
 
       create: {
-        scope: "PRIMARY",
-        code: "UDINFARM",
-        name: "UdinFarm",
-        isActive: true,
+        scope:
+          "PRIMARY",
+
+        code:
+          "UDINFARM",
+
+        name:
+          "UdinFarm",
+
+        isActive:
+          true,
       },
     });
 
@@ -385,13 +501,17 @@ async function main() {
         farmId_code: {
           farmId:
             farm.id,
-          code: "A",
+          code:
+            "A",
         },
       },
 
       update: {
-        name: "Kandang A",
-        isActive: true,
+        name:
+          "Kandang A",
+
+        isActive:
+          true,
 
         operators: {
           set: [
@@ -407,9 +527,14 @@ async function main() {
         farmId:
           farm.id,
 
-        code: "A",
-        name: "Kandang A",
-        isActive: true,
+        code:
+          "A",
+
+        name:
+          "Kandang A",
+
+        isActive:
+          true,
 
         operators: {
           connect: {
@@ -426,13 +551,17 @@ async function main() {
         farmId_code: {
           farmId:
             farm.id,
-          code: "B",
+          code:
+            "B",
         },
       },
 
       update: {
-        name: "Kandang B",
-        isActive: true,
+        name:
+          "Kandang B",
+
+        isActive:
+          true,
 
         operators: {
           set: [
@@ -448,9 +577,14 @@ async function main() {
         farmId:
           farm.id,
 
-        code: "B",
-        name: "Kandang B",
-        isActive: true,
+        code:
+          "B",
+
+        name:
+          "Kandang B",
+
+        isActive:
+          true,
 
         operators: {
           connect: {
@@ -590,7 +724,8 @@ async function main() {
       },
 
       update: {
-        unit: "kg",
+        unit:
+          "kg",
 
         currentPricePerKg:
           "5500.00",
@@ -630,7 +765,8 @@ async function main() {
       },
 
       update: {
-        unit: "kg",
+        unit:
+          "kg",
 
         currentPricePerKg:
           "8500.00",
@@ -670,7 +806,8 @@ async function main() {
       },
 
       update: {
-        unit: "kg",
+        unit:
+          "kg",
 
         currentPricePerKg:
           "3500.00",
@@ -710,7 +847,8 @@ async function main() {
       },
 
       update: {
-        isActive: false,
+        isActive:
+          false,
       },
 
       create: {
@@ -1024,6 +1162,9 @@ async function main() {
         incidentalExpense:
           "25000.00",
 
+        incidentalExpenseCategory:
+          DailyExpenseCategory.MAINTENANCE,
+
         incidentNote:
           "Pembersihan saluran air kandang.",
 
@@ -1063,6 +1204,9 @@ async function main() {
 
         incidentalExpense:
           "25000.00",
+
+        incidentalExpenseCategory:
+          DailyExpenseCategory.MAINTENANCE,
 
         incidentNote:
           "Pembersihan saluran air kandang.",
@@ -1111,6 +1255,9 @@ async function main() {
         incidentalExpense:
           null,
 
+        incidentalExpenseCategory:
+          null,
+
         incidentNote:
           "Telur rusak belum direkap.",
 
@@ -1147,6 +1294,12 @@ async function main() {
 
         mortality:
           1,
+
+        incidentalExpense:
+          null,
+
+        incidentalExpenseCategory:
+          null,
 
         incidentNote:
           "Telur rusak belum direkap.",
@@ -1228,11 +1381,14 @@ async function main() {
       },
 
       select: {
-        id: true,
+        id:
+          true,
       },
     });
 
-  if (!existingEggOpening) {
+  if (
+    !existingEggOpening
+  ) {
     await prisma.eggStockAdjustment.create({
       data: {
         id:
@@ -1272,11 +1428,14 @@ async function main() {
       },
 
       select: {
-        id: true,
+        id:
+          true,
       },
     });
 
-  if (!existingEggAdjustment) {
+  if (
+    !existingEggAdjustment
+  ) {
     await prisma.eggStockAdjustment.create({
       data: {
         id:
@@ -1442,6 +1601,155 @@ async function main() {
       owner.id,
   });
 
+  await ensureRoutineCost({
+    id:
+      "seed-routine-cost-salary-202608",
+
+    farmId:
+      farm.id,
+
+    category:
+      RoutineCostCategory.SALARY,
+
+    name:
+      "Gaji Karyawan",
+
+    amount:
+      "9300000.00",
+
+    periodStart:
+      new Date(
+        "2026-08-01T00:00:00.000Z",
+      ),
+
+    periodEnd:
+      new Date(
+        "2026-08-31T00:00:00.000Z",
+      ),
+
+    note:
+      "Gaji karyawan bulan Agustus 2026.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureRoutineCost({
+    id:
+      "seed-routine-cost-electricity-202608",
+
+    farmId:
+      farm.id,
+
+    category:
+      RoutineCostCategory.ELECTRICITY,
+
+    name:
+      "Listrik Farm",
+
+    amount:
+      "1550000.00",
+
+    periodStart:
+      new Date(
+        "2026-08-01T00:00:00.000Z",
+      ),
+
+    periodEnd:
+      new Date(
+        "2026-08-31T00:00:00.000Z",
+      ),
+
+    note:
+      "Biaya listrik bulan Agustus 2026.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureRoutineCost({
+    id:
+      "seed-routine-cost-water-202608",
+
+    farmId:
+      farm.id,
+
+    category:
+      RoutineCostCategory.WATER,
+
+    name:
+      "Air Farm",
+
+    amount:
+      "310000.00",
+
+    periodStart:
+      new Date(
+        "2026-08-01T00:00:00.000Z",
+      ),
+
+    periodEnd:
+      new Date(
+        "2026-08-31T00:00:00.000Z",
+      ),
+
+    note:
+      "Biaya air bulan Agustus 2026.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureDailyExpense({
+    id:
+      "seed-daily-expense-transport-20260817",
+
+    farmId:
+      farm.id,
+
+    category:
+      DailyExpenseCategory.TRANSPORT,
+
+    amount:
+      "200000.00",
+
+    occurredAt:
+      new Date(
+        "2026-08-17T00:00:00.000Z",
+      ),
+
+    description:
+      "Transport pengambilan kebutuhan farm.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureDailyExpense({
+    id:
+      "seed-daily-expense-equipment-20260818",
+
+    farmId:
+      farm.id,
+
+    category:
+      DailyExpenseCategory.EQUIPMENT,
+
+    amount:
+      "125000.00",
+
+    occurredAt:
+      new Date(
+        "2026-08-18T00:00:00.000Z",
+      ),
+
+    description:
+      "Pembelian alat operasional kecil.",
+
+    createdById:
+      owner.id,
+  });
+
   console.log(
     "Database seed completed.",
   );
@@ -1469,18 +1777,35 @@ async function main() {
   console.log(
     "Feed inventory seed completed.",
   );
+
+  console.log(
+    "Routine cost seed completed.",
+  );
+
+  console.log(
+    "Daily expense seed completed.",
+  );
 }
 
 main()
-  .catch((error) => {
-    console.error(
-      "Database seed failed.",
-    );
+  .catch(
+    (
+      error,
+    ) => {
+      console.error(
+        "Database seed failed.",
+      );
 
-    console.error(error);
+      console.error(
+        error,
+      );
 
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+      process.exitCode =
+        1;
+    },
+  )
+  .finally(
+    async () => {
+      await prisma.$disconnect();
+    },
+  );

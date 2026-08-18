@@ -7,21 +7,36 @@ export const dailyReportViewSelect = {
   feedUsed: true,
   mortality: true,
 
-  incidentalExpense: true,
-  incidentNote: true,
+  incidentalExpense:
+    true,
 
-  feedFormulaId: true,
-  feedFormulaNameSnapshot: true,
+  incidentalExpenseCategory:
+    true,
+
+  incidentNote:
+    true,
+
+  feedFormulaId:
+    true,
+
+  feedFormulaNameSnapshot:
+    true,
 
   feedItems: {
     orderBy: {
-      ingredientNameSnapshot: "asc",
+      ingredientNameSnapshot:
+        "asc",
     },
 
     select: {
-      ingredientId: true,
-      ingredientNameSnapshot: true,
-      percentage: true,
+      ingredientId:
+        true,
+
+      ingredientNameSnapshot:
+        true,
+
+      percentage:
+        true,
     },
   },
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+
 import {
   ArrowLeft,
   CalendarDays,
@@ -6,27 +7,47 @@ import {
   Wheat,
 } from "lucide-react";
 
-import type { DailyReportView } from "@/features/daily-operations/types/daily-report";
-import { formatReportDate } from "@/features/daily-operations/utils/date";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+} from "@/components/ui/card";
 
-import { ReportStatusBadge } from "./report-status-badge";
+import type {
+  DailyReportView,
+} from "@/features/daily-operations/types/daily-report";
+
+import {
+  formatReportDate,
+} from "@/features/daily-operations/utils/date";
+
+import {
+  DAILY_EXPENSE_CATEGORY_LABELS,
+} from "@/features/expenses/types/daily-expense";
+
+import {
+  ReportStatusBadge,
+} from "./report-status-badge";
 
 type OperatorReportDetailProps = {
   report: DailyReportView;
 };
 
 function displayNumber(
-  value: number | null,
+  value:
+    | number
+    | null,
 ): string {
-  return value === null
+  return value ===
+    null
     ? "—"
     : new Intl.NumberFormat(
         "id-ID",
         {
-          maximumFractionDigits: 2,
+          maximumFractionDigits:
+            2,
         },
-      ).format(value);
+      ).format(
+        value,
+      );
 }
 
 function Metric({
@@ -77,14 +98,15 @@ export function OperatorReportDetail({
             </div>
 
             <ReportStatusBadge
-              status={report.status}
+              status={
+                report.status
+              }
             />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
             <span className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
-
               {formatReportDate(
                 report.date,
               )}
@@ -92,8 +114,9 @@ export function OperatorReportDetail({
 
             <span className="flex items-center gap-1.5">
               <UserRound className="h-3.5 w-3.5" />
-
-              {report.operatorName}
+              {
+                report.operatorName
+              }
             </span>
           </div>
         </div>
@@ -122,13 +145,13 @@ export function OperatorReportDetail({
             />
           </div>
 
-          {(report.feedUsed !== null ||
+          {(report.feedUsed !==
+            null ||
             report.feedItems.length >
               0) ? (
             <div className="rounded-[10px] border border-border p-4">
               <div className="flex items-center gap-2">
                 <Wheat className="h-4 w-4 text-primary-hover" />
-
                 <h2 className="text-sm font-semibold text-foreground">
                   Pakan
                 </h2>
@@ -140,7 +163,7 @@ export function OperatorReportDetail({
                     Pakan Digunakan
                   </p>
 
-                  <p className="mt-1 text-sm font-medium text-foreground">
+                  <p className="mt-1 text-sm font-medium">
                     {report.feedUsed ===
                     null
                       ? "—"
@@ -155,48 +178,12 @@ export function OperatorReportDetail({
                     Formula
                   </p>
 
-                  <p className="mt-1 text-sm font-medium text-foreground">
+                  <p className="mt-1 text-sm font-medium">
                     {report.feedFormulaName ??
                       "—"}
                   </p>
                 </div>
               </div>
-
-              {report.feedItems.length >
-              0 ? (
-                <div className="mt-4 border-t border-border pt-3">
-                  <p className="text-xs text-muted">
-                    Komposisi Aktual
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {report.feedItems.map(
-                      (item) => (
-                        <span
-                          key={
-                            item.ingredientId
-                          }
-                          className="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs text-foreground"
-                        >
-                          {
-                            item.ingredientName
-                          }{" "}
-                          {Number(
-                            item.percentage,
-                          ).toLocaleString(
-                            "id-ID",
-                            {
-                              maximumFractionDigits:
-                                2,
-                            },
-                          )}
-                          %
-                        </span>
-                      ),
-                    )}
-                  </div>
-                </div>
-              ) : null}
             </div>
           ) : null}
 
@@ -208,38 +195,51 @@ export function OperatorReportDetail({
               </h2>
 
               {report.incidentalExpense ? (
-                <div className="mt-3">
-                  <p className="text-xs text-muted">
-                    Pengeluaran Insidental
-                  </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted">
+                      Kategori
+                    </p>
 
-                  <p className="mt-1 font-medium text-foreground">
-                    Rp{" "}
-                    {new Intl.NumberFormat(
-                      "id-ID",
-                      {
-                        maximumFractionDigits:
-                          2,
-                      },
-                    ).format(
-                      Number(
-                        report.incidentalExpense,
-                      ),
-                    )}
-                  </p>
+                    <p className="mt-1 text-sm font-medium">
+                      {report.incidentalExpenseCategory
+                        ? DAILY_EXPENSE_CATEGORY_LABELS[
+                            report.incidentalExpenseCategory
+                          ]
+                        : "Belum Dikategorikan"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted">
+                      Nominal
+                    </p>
+
+                    <p className="mt-1 text-sm font-medium">
+                      {new Intl.NumberFormat(
+                        "id-ID",
+                        {
+                          style:
+                            "currency",
+                          currency:
+                            "IDR",
+                        },
+                      ).format(
+                        Number(
+                          report.incidentalExpense,
+                        ),
+                      )}
+                    </p>
+                  </div>
                 </div>
               ) : null}
 
               {report.incidentNote ? (
-                <div className="mt-3">
-                  <p className="text-xs text-muted">
-                    Kejadian / Catatan
-                  </p>
-
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                    {report.incidentNote}
-                  </p>
-                </div>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+                  {
+                    report.incidentNote
+                  }
+                </p>
               ) : null}
             </div>
           ) : null}

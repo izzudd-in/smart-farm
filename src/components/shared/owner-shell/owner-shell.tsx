@@ -4,8 +4,12 @@ import {
   type ReactNode,
   useState,
 } from "react";
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import {
+  usePathname,
+} from "next/navigation";
+
 import {
   Boxes,
   ClipboardCheck,
@@ -24,9 +28,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { LogoutButton } from "@/features/auth/components/logout-button";
-import type { AuthUser } from "@/features/auth/types/auth";
+import {
+  Badge,
+} from "@/components/ui/badge";
+
+import {
+  LogoutButton,
+} from "@/features/auth/components/logout-button";
+
+import type {
+  AuthUser,
+} from "@/features/auth/types/auth";
 
 type OwnerShellProps = {
   children: ReactNode;
@@ -49,65 +61,98 @@ const navigationGroups: NavigationGroup[] =
     {
       items: [
         {
-          label: "Dashboard",
-          icon: LayoutDashboard,
-          href: "/dashboard",
+          label:
+            "Dashboard",
+          icon:
+            LayoutDashboard,
+          href:
+            "/dashboard",
         },
       ],
     },
     {
-      title: "Farm",
+      title:
+        "Farm",
+
       items: [
         {
-          label: "Operasional",
-          icon: ClipboardCheck,
-          href: "/daily",
+          label:
+            "Operasional",
+          icon:
+            ClipboardCheck,
+          href:
+            "/daily",
         },
         {
-          label: "Kandang",
-          icon: Warehouse,
-          href: "/farm",
+          label:
+            "Kandang",
+          icon:
+            Warehouse,
+          href:
+            "/farm",
         },
         {
-          label: "Produksi",
-          icon: Egg,
-          href: "/production",
+          label:
+            "Produksi",
+          icon:
+            Egg,
+          href:
+            "/production",
         },
         {
-          label: "Pakan",
-          icon: Wheat,
-          href: "/feed",
+          label:
+            "Pakan",
+          icon:
+            Wheat,
+          href:
+            "/feed",
         },
         {
-          label: "Stok",
-          icon: Boxes,
-          href: "/inventory",
+          label:
+            "Stok",
+          icon:
+            Boxes,
+          href:
+            "/inventory",
         },
       ],
     },
     {
-      title: "Bisnis",
+      title:
+        "Bisnis",
+
       items: [
         {
-          label: "Penjualan",
-          icon: ShoppingCart,
-          href: "/sales",
+          label:
+            "Penjualan",
+          icon:
+            ShoppingCart,
+          href:
+            "/sales",
         },
         {
-          label: "Biaya",
-          icon: Receipt,
+          label:
+            "Biaya",
+          icon:
+            Receipt,
+          href:
+            "/expenses",
         },
         {
-          label: "HPP & Profit",
-          icon: Wallet,
+          label:
+            "HPP & Profit",
+          icon:
+            Wallet,
         },
       ],
     },
     {
       items: [
         {
-          label: "Laporan",
-          icon: FileSpreadsheet,
+          label:
+            "Laporan",
+          icon:
+            FileSpreadsheet,
         },
       ],
     },
@@ -132,7 +177,8 @@ function SidebarItem({
   item: NavigationItem;
   active: boolean;
 }) {
-  const Icon = item.icon;
+  const Icon =
+    item.icon;
 
   if (!item.href) {
     return (
@@ -152,8 +198,12 @@ function SidebarItem({
 
   return (
     <Link
-      href={item.href}
-      title={item.label}
+      href={
+        item.href
+      }
+      title={
+        item.label
+      }
       aria-current={
         active
           ? "page"
@@ -184,8 +234,12 @@ export function OwnerShell({
   const pathname =
     usePathname();
 
-  const [moreOpen, setMoreOpen] =
-    useState(false);
+  const [
+    moreOpen,
+    setMoreOpen,
+  ] = useState(
+    false,
+  );
 
   const dashboardActive =
     isPathActive(
@@ -223,16 +277,24 @@ export function OwnerShell({
     isPathActive(
       pathname,
       "/feed",
+    ) ||
+    isPathActive(
+      pathname,
+      "/expenses",
     );
 
   const moreItems =
     navigationGroups
       .flatMap(
-        (group) =>
+        (
+          group,
+        ) =>
           group.items,
       )
       .filter(
-        (item) =>
+        (
+          item,
+        ) =>
           item.label !==
             "Dashboard" &&
           item.label !==
@@ -268,22 +330,30 @@ export function OwnerShell({
               groupIndex,
             ) => (
               <div
-                key={groupIndex}
+                key={
+                  groupIndex
+                }
                 className="space-y-1"
               >
                 {group.title ? (
                   <p className="mb-1.5 hidden px-3 text-[11px] font-medium uppercase tracking-wide text-muted-light lg:block">
-                    {group.title}
+                    {
+                      group.title
+                    }
                   </p>
                 ) : null}
 
                 {group.items.map(
-                  (item) => (
+                  (
+                    item,
+                  ) => (
                     <SidebarItem
                       key={
                         item.label
                       }
-                      item={item}
+                      item={
+                        item
+                      }
                       active={
                         item.href
                           ? isPathActive(
@@ -309,7 +379,9 @@ export function OwnerShell({
 
               <div className="hidden min-w-0 flex-1 lg:block">
                 <p className="truncate text-sm font-medium text-foreground">
-                  {user.name}
+                  {
+                    user.name
+                  }
                 </p>
 
                 <p className="text-xs text-muted">
@@ -442,7 +514,9 @@ export function OwnerShell({
             moreOpen
           }
           onClick={() =>
-            setMoreOpen(true)
+            setMoreOpen(
+              true,
+            )
           }
           className={[
             "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
@@ -467,7 +541,9 @@ export function OwnerShell({
             aria-label="Tutup menu"
             className="absolute inset-0 cursor-default bg-black/40"
             onClick={() =>
-              setMoreOpen(false)
+              setMoreOpen(
+                false,
+              )
             }
           />
 
@@ -484,7 +560,9 @@ export function OwnerShell({
                 </p>
 
                 <p className="mt-0.5 truncate text-xs text-muted">
-                  {user.name}
+                  {
+                    user.name
+                  }
                 </p>
               </div>
 
@@ -504,11 +582,15 @@ export function OwnerShell({
 
             <div className="grid grid-cols-2 gap-2">
               {moreItems.map(
-                (item) => {
+                (
+                  item,
+                ) => {
                   const Icon =
                     item.icon;
 
-                  if (item.href) {
+                  if (
+                    item.href
+                  ) {
                     const active =
                       isPathActive(
                         pathname,
@@ -538,9 +620,7 @@ export function OwnerShell({
                           active
                             ? "border-[#BBF7D0] bg-primary-soft text-primary-hover"
                             : "border-border bg-white text-[#4B5563]",
-                        ].join(
-                          " ",
-                        )}
+                        ].join(" ")}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
 

@@ -1,34 +1,57 @@
 import Link from "next/link";
+
 import {
   ArrowLeft,
-  Banknote,
   CalendarDays,
-  MessageSquareText,
   UserRound,
   Wheat,
 } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
-import type { DailyReportView } from "@/features/daily-operations/types/daily-report";
-import { formatReportDate } from "@/features/daily-operations/utils/date";
+import {
+  Card,
+} from "@/components/ui/card";
 
-import { ReportStatusBadge } from "./report-status-badge";
+import type {
+  DailyReportView,
+} from "@/features/daily-operations/types/daily-report";
+
+import {
+  formatReportDate,
+} from "@/features/daily-operations/utils/date";
+
+import {
+  DAILY_EXPENSE_CATEGORY_LABELS,
+} from "@/features/expenses/types/daily-expense";
+
+import {
+  ReportStatusBadge,
+} from "./report-status-badge";
 
 type OwnerReportDetailProps = {
   report: DailyReportView;
 };
 
 const numberFormatter =
-  new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 2,
-  });
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      maximumFractionDigits:
+        2,
+    },
+  );
 
 const currencyFormatter =
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 2,
-  });
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      style:
+        "currency",
+      currency:
+        "IDR",
+      maximumFractionDigits:
+        2,
+    },
+  );
 
 function Metric({
   label,
@@ -51,10 +74,13 @@ function Metric({
 }
 
 function formatAmount(
-  value: number | null,
+  value:
+    | number
+    | null,
   suffix: string,
 ): string {
-  return value === null
+  return value ===
+    null
     ? "—"
     : `${numberFormatter.format(
         value,
@@ -89,14 +115,15 @@ export function OwnerReportDetail({
             </div>
 
             <ReportStatusBadge
-              status={report.status}
+              status={
+                report.status
+              }
             />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
             <span className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
-
               {formatReportDate(
                 report.date,
               )}
@@ -104,8 +131,9 @@ export function OwnerReportDetail({
 
             <span className="flex items-center gap-1.5">
               <UserRound className="h-3.5 w-3.5" />
-
-              {report.operatorName}
+              {
+                report.operatorName
+              }
             </span>
           </div>
         </div>
@@ -131,7 +159,8 @@ export function OwnerReportDetail({
             <Metric
               label="Ayam Mati"
               value={
-                report.mortality === null
+                report.mortality ===
+                null
                   ? "—"
                   : `${numberFormatter.format(
                       report.mortality,
@@ -140,13 +169,13 @@ export function OwnerReportDetail({
             />
           </div>
 
-          {(report.feedUsed !== null ||
+          {(report.feedUsed !==
+            null ||
             report.feedItems.length >
               0) ? (
             <div className="rounded-[10px] border border-border p-4">
               <div className="flex items-center gap-2">
                 <Wheat className="h-4 w-4 text-primary-hover" />
-
                 <h2 className="text-sm font-semibold text-foreground">
                   Pakan
                 </h2>
@@ -158,7 +187,7 @@ export function OwnerReportDetail({
                     Pakan Digunakan
                   </p>
 
-                  <p className="mt-1 text-sm font-medium text-foreground">
+                  <p className="mt-1 text-sm font-medium">
                     {formatAmount(
                       report.feedUsed,
                       "kg",
@@ -171,48 +200,12 @@ export function OwnerReportDetail({
                     Formula
                   </p>
 
-                  <p className="mt-1 text-sm font-medium text-foreground">
+                  <p className="mt-1 text-sm font-medium">
                     {report.feedFormulaName ??
                       "—"}
                   </p>
                 </div>
               </div>
-
-              {report.feedItems.length >
-              0 ? (
-                <div className="mt-4 border-t border-border pt-3">
-                  <p className="text-xs text-muted">
-                    Komposisi Aktual
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {report.feedItems.map(
-                      (item) => (
-                        <span
-                          key={
-                            item.ingredientId
-                          }
-                          className="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs text-foreground"
-                        >
-                          {
-                            item.ingredientName
-                          }{" "}
-                          {Number(
-                            item.percentage,
-                          ).toLocaleString(
-                            "id-ID",
-                            {
-                              maximumFractionDigits:
-                                2,
-                            },
-                          )}
-                          %
-                        </span>
-                      ),
-                    )}
-                  </div>
-                </div>
-              ) : null}
             </div>
           ) : null}
 
@@ -223,43 +216,45 @@ export function OwnerReportDetail({
                 Pengeluaran / Kejadian
               </h2>
 
-              <div className="mt-3 space-y-3">
-                {report.incidentalExpense ? (
-                  <div className="flex items-start gap-2">
-                    <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+              {report.incidentalExpense ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted">
+                      Kategori
+                    </p>
 
-                    <div>
-                      <p className="text-xs text-muted">
-                        Pengeluaran Insidental
-                      </p>
-
-                      <p className="mt-1 text-sm font-medium text-foreground">
-                        {currencyFormatter.format(
-                          Number(
-                            report.incidentalExpense,
-                          ),
-                        )}
-                      </p>
-                    </div>
+                    <p className="mt-1 text-sm font-medium">
+                      {report.incidentalExpenseCategory
+                        ? DAILY_EXPENSE_CATEGORY_LABELS[
+                            report.incidentalExpenseCategory
+                          ]
+                        : "Belum Dikategorikan"}
+                    </p>
                   </div>
-                ) : null}
 
-                {report.incidentNote ? (
-                  <div className="flex items-start gap-2">
-                    <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+                  <div>
+                    <p className="text-xs text-muted">
+                      Nominal
+                    </p>
 
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted">
-                        Kejadian / Catatan
-                      </p>
-
-                      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
-                        {report.incidentNote}
-                      </p>
-                    </div>
+                    <p className="mt-1 text-sm font-medium">
+                      {currencyFormatter.format(
+                        Number(
+                          report.incidentalExpense,
+                        ),
+                      )}
+                    </p>
                   </div>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+
+              {report.incidentNote ? (
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+                  {
+                    report.incidentNote
+                  }
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>

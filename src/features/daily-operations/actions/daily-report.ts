@@ -1,21 +1,39 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
 
-import { UserRole } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/db/prisma";
-import { requireRole } from "@/server/auth/guards";
+import {
+  UserRole,
+} from "@/generated/prisma/enums";
+
+import {
+  prisma,
+} from "@/lib/db/prisma";
+
+import {
+  requireRole,
+} from "@/server/auth/guards";
 
 import {
   DailyReportValidationError,
   parseDailyReportInput,
 } from "@/features/daily-operations/schemas/daily-report";
+
 import type {
   DailyReportActionResult,
   DailyReportFormInput,
 } from "@/features/daily-operations/types/daily-report";
-import { getJakartaTodayDate } from "@/features/daily-operations/utils/date";
-import { getDailyReportStatus } from "@/features/daily-operations/utils/status";
+
+import {
+  getJakartaTodayDate,
+} from "@/features/daily-operations/utils/date";
+
+import {
+  getDailyReportStatus,
+} from "@/features/daily-operations/utils/status";
+
 import {
   assertFormulaComplete,
   percentageToBasisPoints,
@@ -32,6 +50,9 @@ const OWNER_DAILY_PATH =
 
 const FEED_PATH =
   "/feed";
+
+const EXPENSES_PATH =
+  "/expenses";
 
 function ruleError(
   message: string,
@@ -50,7 +71,8 @@ function handleActionError(
   ) {
     return {
       success: false,
-      error: error.message,
+      error:
+        error.message,
     };
   }
 
@@ -63,10 +85,11 @@ function handleActionError(
     return {
       success: false,
 
-      error: error.message.replace(
-        "DAILY_REPORT_RULE:",
-        "",
-      ),
+      error:
+        error.message.replace(
+          "DAILY_REPORT_RULE:",
+          "",
+        ),
     };
   }
 
@@ -75,15 +98,20 @@ function handleActionError(
     [
       "UNAUTHENTICATED",
       "FORBIDDEN",
-    ].includes(error.message)
+    ].includes(
+      error.message,
+    )
   ) {
     return {
       success: false,
-      error: "Akses ditolak.",
+      error:
+        "Akses ditolak.",
     };
   }
 
-  console.error(error);
+  console.error(
+    error,
+  );
 
   return {
     success: false,
@@ -118,24 +146,34 @@ async function saveReport(
           const kandang =
             await tx.kandang.findFirst({
               where: {
-                id: parsed.kandangId,
-                isActive: true,
+                id:
+                  parsed.kandangId,
+
+                isActive:
+                  true,
 
                 operators: {
                   some: {
-                    id: user.id,
+                    id:
+                      user.id,
                   },
                 },
               },
 
               select: {
-                id: true,
-                farmId: true,
+                id:
+                  true,
+
+                farmId:
+                  true,
 
                 activeFlock: {
                   select: {
-                    id: true,
-                    startDate: true,
+                    id:
+                      true,
+
+                    startDate:
+                      true,
                   },
                 },
               },
@@ -147,7 +185,9 @@ async function saveReport(
             );
           }
 
-          if (!kandang.activeFlock) {
+          if (
+            !kandang.activeFlock
+          ) {
             throw ruleError(
               "Kandang belum memiliki flock aktif.",
             );
@@ -155,7 +195,8 @@ async function saveReport(
 
           if (
             reportDate <
-            kandang.activeFlock.startDate
+            kandang.activeFlock
+              .startDate
           ) {
             throw ruleError(
               "Laporan tidak boleh dibuat sebelum flock dimulai.",
@@ -166,24 +207,34 @@ async function saveReport(
             await tx.dailyReport.findUnique({
               where: {
                 date_kandangId: {
-                  date: reportDate,
+                  date:
+                    reportDate,
+
                   kandangId:
                     kandang.id,
                 },
               },
 
               select: {
-                id: true,
-                flockId: true,
-                operatorId: true,
+                id:
+                  true,
 
-                feedFormulaId: true,
+                flockId:
+                  true,
+
+                operatorId:
+                  true,
+
+                feedFormulaId:
+                  true,
+
                 feedFormulaNameSnapshot:
                   true,
 
                 operator: {
                   select: {
-                    name: true,
+                    name:
+                      true,
                   },
                 },
 
@@ -194,10 +245,14 @@ async function saveReport(
                   },
 
                   select: {
-                    ingredientId: true,
+                    ingredientId:
+                      true,
+
                     ingredientNameSnapshot:
                       true,
-                    percentage: true,
+
+                    percentage:
+                      true,
                   },
                 },
               },
@@ -224,30 +279,35 @@ async function saveReport(
           }
 
           type SnapshotItem = {
-            ingredientId: string;
-            ingredientNameSnapshot: string;
-            percentage: string;
+            ingredientId:
+              string;
+
+            ingredientNameSnapshot:
+              string;
+
+            percentage:
+              string;
           };
 
           type Snapshot = {
-            formulaId: string | null;
-            formulaNameSnapshot: string;
-            items: SnapshotItem[];
+            formulaId:
+              string | null;
+
+            formulaNameSnapshot:
+              string;
+
+            items:
+              SnapshotItem[];
           };
 
           let snapshot:
-            Snapshot | null = null;
-
-          const hasExistingSnapshot =
-            Boolean(
-              existing &&
-                existing.feedItems
-                  .length > 0,
-            );
+            Snapshot | null =
+              null;
 
           if (
             existing &&
-            hasExistingSnapshot
+            existing.feedItems
+              .length > 0
           ) {
             snapshot = {
               formulaId:
@@ -259,7 +319,9 @@ async function saveReport(
 
               items:
                 existing.feedItems.map(
-                  (item) => ({
+                  (
+                    item,
+                  ) => ({
                     ingredientId:
                       item.ingredientId,
 
@@ -278,22 +340,32 @@ async function saveReport(
                   farmId:
                     kandang.farmId,
 
-                  isActive: true,
+                  isActive:
+                    true,
                 },
 
                 select: {
-                  id: true,
-                  name: true,
+                  id:
+                    true,
+
+                  name:
+                    true,
 
                   items: {
                     select: {
-                      percentage: true,
+                      percentage:
+                        true,
 
                       ingredient: {
                         select: {
-                          id: true,
-                          name: true,
-                          isActive: true,
+                          id:
+                            true,
+
+                          name:
+                            true,
+
+                          isActive:
+                            true,
                         },
                       },
                     },
@@ -301,12 +373,16 @@ async function saveReport(
                 },
               });
 
-            if (activeFormula) {
+            if (
+              activeFormula
+            ) {
               if (
                 activeFormula.items
                   .length === 0 ||
                 activeFormula.items.some(
-                  (item) =>
+                  (
+                    item,
+                  ) =>
                     !item.ingredient
                       .isActive,
                 )
@@ -318,7 +394,10 @@ async function saveReport(
 
               assertFormulaComplete(
                 activeFormula.items.reduce(
-                  (total, item) =>
+                  (
+                    total,
+                    item,
+                  ) =>
                     total +
                     percentageToBasisPoints(
                       item.percentage.toString(),
@@ -336,7 +415,9 @@ async function saveReport(
 
                 items:
                   activeFormula.items.map(
-                    (item) => ({
+                    (
+                      item,
+                    ) => ({
                       ingredientId:
                         item.ingredient.id,
 
@@ -354,7 +435,9 @@ async function saveReport(
           if (
             parsed.feedCompositionOverride
           ) {
-            if (!snapshot) {
+            if (
+              !snapshot
+            ) {
               throw ruleError(
                 "Tidak ada formula pakan yang dapat digunakan sebagai dasar komposisi aktual.",
               );
@@ -363,7 +446,9 @@ async function saveReport(
             const expectedIds =
               new Set(
                 snapshot.items.map(
-                  (item) =>
+                  (
+                    item,
+                  ) =>
                     item.ingredientId,
                 ),
               );
@@ -371,7 +456,9 @@ async function saveReport(
             const actualIds =
               new Set(
                 parsed.feedComposition.map(
-                  (item) =>
+                  (
+                    item,
+                  ) =>
                     item.ingredientId,
                 ),
               );
@@ -382,7 +469,9 @@ async function saveReport(
               Array.from(
                 expectedIds,
               ).some(
-                (ingredientId) =>
+                (
+                  ingredientId,
+                ) =>
                   !actualIds.has(
                     ingredientId,
                   ),
@@ -398,15 +487,21 @@ async function saveReport(
 
               items:
                 snapshot.items.map(
-                  (baseItem) => {
+                  (
+                    baseItem,
+                  ) => {
                     const override =
                       parsed.feedComposition.find(
-                        (item) =>
+                        (
+                          item,
+                        ) =>
                           item.ingredientId ===
                           baseItem.ingredientId,
                       );
 
-                    if (!override) {
+                    if (
+                      !override
+                    ) {
                       throw ruleError(
                         "Komposisi aktual tidak lengkap.",
                       );
@@ -424,7 +519,8 @@ async function saveReport(
           }
 
           if (
-            parsed.feedUsed !== null &&
+            parsed.feedUsed !==
+              null &&
             !snapshot
           ) {
             throw ruleError(
@@ -436,7 +532,8 @@ async function saveReport(
             await tx.dailyReport.upsert({
               where: {
                 date_kandangId: {
-                  date: reportDate,
+                  date:
+                    reportDate,
 
                   kandangId:
                     kandang.id,
@@ -444,7 +541,8 @@ async function saveReport(
               },
 
               create: {
-                date: reportDate,
+                date:
+                  reportDate,
 
                 kandangId:
                   kandang.id,
@@ -469,6 +567,9 @@ async function saveReport(
 
                 incidentalExpense:
                   parsed.incidentalExpense,
+
+                incidentalExpenseCategory:
+                  parsed.incidentalExpenseCategory,
 
                 incidentNote:
                   parsed.incidentNote,
@@ -498,6 +599,9 @@ async function saveReport(
                 incidentalExpense:
                   parsed.incidentalExpense,
 
+                incidentalExpenseCategory:
+                  parsed.incidentalExpenseCategory,
+
                 incidentNote:
                   parsed.incidentNote,
 
@@ -511,11 +615,20 @@ async function saveReport(
               },
 
               select: {
-                id: true,
-                saleableEgg: true,
-                damagedEgg: true,
-                feedUsed: true,
-                mortality: true,
+                id:
+                  true,
+
+                saleableEgg:
+                  true,
+
+                damagedEgg:
+                  true,
+
+                feedUsed:
+                  true,
+
+                mortality:
+                  true,
               },
             });
 
@@ -528,12 +641,15 @@ async function saveReport(
 
           if (
             snapshot &&
-            snapshot.items.length > 0
+            snapshot.items
+              .length > 0
           ) {
             await tx.dailyReportFeedItem.createMany({
               data:
                 snapshot.items.map(
-                  (item) => ({
+                  (
+                    item,
+                  ) => ({
                     dailyReportId:
                       report.id,
 
@@ -555,19 +671,37 @@ async function saveReport(
       );
 
     const status =
-      getDailyReportStatus(saved);
+      getDailyReportStatus(
+        saved,
+      );
 
-    revalidatePath(TODAY_PATH);
-    revalidatePath(HISTORY_PATH);
-    revalidatePath(OWNER_DAILY_PATH);
-    revalidatePath(FEED_PATH);
+    revalidatePath(
+      TODAY_PATH,
+    );
+
+    revalidatePath(
+      HISTORY_PATH,
+    );
+
+    revalidatePath(
+      OWNER_DAILY_PATH,
+    );
+
+    revalidatePath(
+      FEED_PATH,
+    );
+
+    revalidatePath(
+      EXPENSES_PATH,
+    );
 
     return {
       success: true,
       status,
 
       message:
-        status === "COMPLETE"
+        status ===
+        "COMPLETE"
           ? "Laporan hari ini berhasil disimpan dan selesai."
           : "Draft laporan berhasil disimpan.",
     };

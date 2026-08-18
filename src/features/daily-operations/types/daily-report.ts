@@ -1,3 +1,7 @@
+import type {
+  DailyExpenseCategoryValue,
+} from "@/features/expenses/types/daily-expense";
+
 export type DailyReportStatus =
   | "NOT_STARTED"
   | "INCOMPLETE"
@@ -14,7 +18,11 @@ export type DailyReportFormInput = {
   damagedEgg: string;
   feedUsed: string;
   mortality: string;
+
   incidentalExpense: string;
+  incidentalExpenseCategory:
+    | DailyExpenseCategoryValue
+    | "";
   incidentNote: string;
 
   feedCompositionOverride: boolean;
@@ -59,6 +67,8 @@ export type DailyReportView = {
   mortality: number | null;
 
   incidentalExpense: string | null;
+  incidentalExpenseCategory:
+    DailyExpenseCategoryValue | null;
   incidentNote: string | null;
 
   feedFormulaId: string | null;
