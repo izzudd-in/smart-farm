@@ -1,8 +1,6 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  CircleDashed,
-  Info,
 } from "lucide-react";
 
 import {
