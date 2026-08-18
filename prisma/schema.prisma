@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  OWNER
+  OPERATOR
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  kandangs     Kandang[]     @relation("KandangOperators")
+  dailyReports DailyReport[] @relation("DailyReportOperator")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model Farm {
+  id        String   @id @default(cuid())
+  scope     String   @unique @default("PRIMARY")
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kandangs        Kandang[]
+  feedIngredients FeedIngredient[]
+  feedFormulas    FeedFormula[]
+}
+
+model Kandang {
+  id            String   @id @default(cuid())
+  farmId        String
+  code          String
+  name          String
+  isActive      Boolean  @default(true)
+  activeFlockId String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  farm         Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  operators    User[]        @relation("KandangOperators")
+  flocks       Flock[]       @relation("KandangFlocks")
+  activeFlock  Flock?        @relation("ActiveFlock", fields: [activeFlockId], references: [id], onDelete: SetNull)
+  dailyReports DailyReport[]
+
+  @@unique([farmId, code])
+  @@unique([farmId, name])
+  @@index([farmId])
+  @@index([isActive])
+}
+
+model Flock {
+  id                String    @id @default(cuid())
+  kandangId         String
+  name              String
+  startDate         DateTime  @db.Date
+  initialPopulation Int
+  endedAt           DateTime? @db.Date
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  kandang          Kandang       @relation("KandangFlocks", fields: [kandangId], references: [id], onDelete: Cascade)
+  activeForKandang Kandang?      @relation("ActiveFlock")
+  dailyReports     DailyReport[]
+
+  @@unique([kandangId, name])
+  @@index([kandangId, startDate])
+}
+
+model DailyReport {
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  kandangId  String
+  flockId    String
+  operatorId String
+
+  saleableEgg Float?
+  damagedEgg  Float?
+  feedUsed    Float?
+  mortality   Int?
+
+  incidentalExpense Decimal? @db.Decimal(14, 2)
+  incidentNote      String?  @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kandang  Kandang @relation(fields: [kandangId], references: [id], onDelete: Restrict)
+  flock    Flock   @relation(fields: [flockId], references: [id], onDelete: Restrict)
+  operator User    @relation("DailyReportOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+
+  @@unique([date, kandangId])
+  @@index([operatorId, date])
+  @@index([flockId, date])
+  @@index([kandangId, date])
+}
+
+model FeedIngredient {
+  id                String   @id @default(cuid())
+  farmId            String
+  name              String
+  unit              String   @default("kg")
+  currentPricePerKg Decimal  @db.Decimal(14, 2)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  farm         Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  formulaItems FeedFormulaItem[]
+
+  @@unique([farmId, name])
+  @@index([farmId, isActive])
+}
+
+model FeedFormula {
+  id        String   @id @default(cuid())
+  farmId    String
+  name      String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  items FeedFormulaItem[]
+
+  @@unique([farmId, name])
+  @@index([farmId, isActive])
+}
+
+model FeedFormulaItem {
+  id           String  @id @default(cuid())
+  formulaId    String
+  ingredientId String
+  percentage   Decimal @db.Decimal(5, 2)
+
+  formula    FeedFormula    @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  ingredient FeedIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([formulaId, ingredientId])
+  @@index([ingredientId])
+}
+
+model SystemState {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
