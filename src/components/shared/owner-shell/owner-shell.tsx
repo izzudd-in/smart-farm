@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import Link from "next/link";
+
 import {
   usePathname,
 } from "next/navigation";
@@ -63,13 +64,16 @@ const navigationGroups: NavigationGroup[] =
         {
           label:
             "Dashboard",
+
           icon:
             LayoutDashboard,
+
           href:
             "/dashboard",
         },
       ],
     },
+
     {
       title:
         "Farm",
@@ -78,45 +82,60 @@ const navigationGroups: NavigationGroup[] =
         {
           label:
             "Operasional",
+
           icon:
             ClipboardCheck,
+
           href:
             "/daily",
         },
+
         {
           label:
             "Kandang",
+
           icon:
             Warehouse,
+
           href:
             "/farm",
         },
+
         {
           label:
             "Produksi",
+
           icon:
             Egg,
+
           href:
             "/production",
         },
+
         {
           label:
             "Pakan",
+
           icon:
             Wheat,
+
           href:
             "/feed",
         },
+
         {
           label:
             "Stok",
+
           icon:
             Boxes,
+
           href:
             "/inventory",
         },
       ],
     },
+
     {
       title:
         "Bisnis",
@@ -125,36 +144,49 @@ const navigationGroups: NavigationGroup[] =
         {
           label:
             "Penjualan",
+
           icon:
             ShoppingCart,
+
           href:
             "/sales",
         },
+
         {
           label:
             "Biaya",
+
           icon:
             Receipt,
+
           href:
             "/expenses",
         },
+
         {
           label:
             "HPP & Profit",
+
           icon:
             Wallet,
+
           href:
             "/hpp",
         },
       ],
     },
+
     {
       items: [
         {
           label:
             "Laporan",
+
           icon:
             FileSpreadsheet,
+
+          href:
+            "/reports",
         },
       ],
     },
@@ -182,7 +214,9 @@ function SidebarItem({
   const Icon =
     item.icon;
 
-  if (!item.href) {
+  if (
+    !item.href
+  ) {
     return (
       <div
         aria-disabled="true"
@@ -218,7 +252,9 @@ function SidebarItem({
         active
           ? "bg-primary-soft text-primary-hover"
           : "text-[#4B5563] hover:bg-[#F3F4F6] hover:text-foreground",
-      ].join(" ")}
+      ].join(
+        " ",
+      )}
     >
       <Icon className="h-[18px] w-[18px] shrink-0" />
 
@@ -287,6 +323,10 @@ export function OwnerShell({
     isPathActive(
       pathname,
       "/hpp",
+    ) ||
+    isPathActive(
+      pathname,
+      "/reports",
     );
 
   const moreItems =
@@ -441,7 +481,9 @@ export function OwnerShell({
             dashboardActive
               ? "text-primary-hover"
               : "text-muted",
-          ].join(" ")}
+          ].join(
+            " ",
+          )}
         >
           <Home className="h-5 w-5" />
 
@@ -462,7 +504,9 @@ export function OwnerShell({
             dailyActive
               ? "text-primary-hover"
               : "text-muted",
-          ].join(" ")}
+          ].join(
+            " ",
+          )}
         >
           <ClipboardCheck className="h-5 w-5" />
 
@@ -483,7 +527,9 @@ export function OwnerShell({
             salesActive
               ? "text-primary-hover"
               : "text-muted",
-          ].join(" ")}
+          ].join(
+            " ",
+          )}
         >
           <ShoppingCart className="h-5 w-5" />
 
@@ -504,7 +550,9 @@ export function OwnerShell({
             inventoryActive
               ? "text-primary-hover"
               : "text-muted",
-          ].join(" ")}
+          ].join(
+            " ",
+          )}
         >
           <Boxes className="h-5 w-5" />
 
@@ -530,7 +578,9 @@ export function OwnerShell({
             moreSectionActive
               ? "text-primary-hover"
               : "text-muted",
-          ].join(" ")}
+          ].join(
+            " ",
+          )}
         >
           <MoreHorizontal className="h-5 w-5" />
 
@@ -626,7 +676,9 @@ export function OwnerShell({
                           active
                             ? "border-[#BBF7D0] bg-primary-soft text-primary-hover"
                             : "border-border bg-white text-[#4B5563]",
-                        ].join(" ")}
+                        ].join(
+                          " ",
+                        )}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
 
