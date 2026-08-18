@@ -24,6 +24,11 @@ enum FeedStockAdjustmentType {
   DECREASE
 }
 
+enum FeedCostBasis {
+  LATEST_PURCHASE
+  MASTER_PRICE
+}
+
 enum RoutineCostCategory {
   SALARY
   ELECTRICITY
@@ -166,11 +171,13 @@ model DailyReport {
 }
 
 model DailyReportFeedItem {
-  id                     String  @id @default(cuid())
+  id                     String         @id @default(cuid())
   dailyReportId          String
   ingredientId           String
   ingredientNameSnapshot String
-  percentage             Decimal @db.Decimal(5, 2)
+  percentage             Decimal        @db.Decimal(5, 2)
+  unitCostPerKgSnapshot  Decimal?       @db.Decimal(14, 2)
+  costBasisSnapshot      FeedCostBasis?
 
   dailyReport DailyReport    @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
   ingredient  FeedIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)

@@ -5,6 +5,7 @@ import {
 } from "next/cache";
 
 import {
+  FeedCostBasis,
   UserRole,
 } from "@/generated/prisma/enums";
 
@@ -38,6 +39,10 @@ import {
   assertFormulaComplete,
   percentageToBasisPoints,
 } from "@/features/feed/schemas/feed";
+
+import {
+  resolveFeedUnitCostForDate,
+} from "@/features/feed/queries/resolve-feed-unit-cost";
 
 const TODAY_PATH =
   "/operator/today";
@@ -142,7 +147,9 @@ async function saveReport(
 
     const saved =
       await prisma.$transaction(
-        async (tx) => {
+        async (
+          tx,
+        ) => {
           const kandang =
             await tx.kandang.findFirst({
               where: {
@@ -253,6 +260,12 @@ async function saveReport(
 
                     percentage:
                       true,
+
+                    unitCostPerKgSnapshot:
+                      true,
+
+                    costBasisSnapshot:
+                      true,
                   },
                 },
               },
@@ -287,6 +300,12 @@ async function saveReport(
 
             percentage:
               string;
+
+            unitCostPerKgSnapshot:
+              string | null;
+
+            costBasisSnapshot:
+              FeedCostBasis | null;
           };
 
           type Snapshot = {
@@ -304,6 +323,11 @@ async function saveReport(
             Snapshot | null =
               null;
 
+          /*
+           * Existing report:
+           * preserve seluruh snapshot lama,
+           * termasuk cost. Tidak resolve ulang.
+           */
           if (
             existing &&
             existing.feedItems
@@ -321,7 +345,7 @@ async function saveReport(
                 existing.feedItems.map(
                   (
                     item,
-                  ) => ({
+                  ): SnapshotItem => ({
                     ingredientId:
                       item.ingredientId,
 
@@ -330,6 +354,14 @@ async function saveReport(
 
                     percentage:
                       item.percentage.toString(),
+
+                    unitCostPerKgSnapshot:
+                      item.unitCostPerKgSnapshot
+                        ?.toString() ??
+                      null,
+
+                    costBasisSnapshot:
+                      item.costBasisSnapshot,
                   }),
                 ),
             };
@@ -406,6 +438,48 @@ async function saveReport(
                 ),
               );
 
+              const items =
+                await Promise.all(
+                  activeFormula.items.map(
+                    async (
+                      item,
+                    ): Promise<SnapshotItem> => {
+                      const cost =
+                        await resolveFeedUnitCostForDate(
+                          {
+                            farmId:
+                              kandang.farmId,
+
+                            ingredientId:
+                              item.ingredient.id,
+
+                            date:
+                              reportDate,
+                          },
+
+                          tx,
+                        );
+
+                      return {
+                        ingredientId:
+                          item.ingredient.id,
+
+                        ingredientNameSnapshot:
+                          item.ingredient.name,
+
+                        percentage:
+                          item.percentage.toString(),
+
+                        unitCostPerKgSnapshot:
+                          cost.unitCostPerKg,
+
+                        costBasisSnapshot:
+                          cost.basis,
+                      };
+                    },
+                  ),
+                );
+
               snapshot = {
                 formulaId:
                   activeFormula.id,
@@ -413,25 +487,21 @@ async function saveReport(
                 formulaNameSnapshot:
                   activeFormula.name,
 
-                items:
-                  activeFormula.items.map(
-                    (
-                      item,
-                    ) => ({
-                      ingredientId:
-                        item.ingredient.id,
-
-                      ingredientNameSnapshot:
-                        item.ingredient.name,
-
-                      percentage:
-                        item.percentage.toString(),
-                    }),
-                  ),
+                items,
               };
             }
           }
 
+          /*
+           * Actual composition dapat mengganti
+           * persentase maupun menambah/menghapus
+           * ingredient.
+           *
+           * Ingredient yang sudah ada di report
+           * mempertahankan historical cost snapshot.
+           * Ingredient benar-benar baru resolve
+           * berdasarkan DailyReport.date.
+           */
           if (
             parsed.feedCompositionOverride
           ) {
@@ -443,78 +513,159 @@ async function saveReport(
               );
             }
 
-            const expectedIds =
-              new Set(
+            const existingItemByIngredient =
+              new Map(
                 snapshot.items.map(
                   (
                     item,
-                  ) =>
+                  ) => [
                     item.ingredientId,
+                    item,
+                  ],
                 ),
               );
 
-            const actualIds =
-              new Set(
-                parsed.feedComposition.map(
+            const newIngredientIds =
+              parsed.feedComposition
+                .map(
                   (
                     item,
                   ) =>
                     item.ingredientId,
+                )
+                .filter(
+                  (
+                    ingredientId,
+                  ) =>
+                    !existingItemByIngredient.has(
+                      ingredientId,
+                    ),
+                );
+
+            const newIngredients =
+              newIngredientIds.length >
+              0
+                ? await tx.feedIngredient.findMany({
+                    where: {
+                      farmId:
+                        kandang.farmId,
+
+                      isActive:
+                        true,
+
+                      id: {
+                        in:
+                          newIngredientIds,
+                      },
+                    },
+
+                    select: {
+                      id:
+                        true,
+
+                      name:
+                        true,
+                    },
+                  })
+                : [];
+
+            if (
+              newIngredients.length !==
+              newIngredientIds.length
+            ) {
+              throw ruleError(
+                "Komposisi aktual mengandung bahan pakan yang tidak valid atau sudah nonaktif.",
+              );
+            }
+
+            const newIngredientById =
+              new Map(
+                newIngredients.map(
+                  (
+                    ingredient,
+                  ) => [
+                    ingredient.id,
+                    ingredient,
+                  ],
                 ),
               );
 
-            if (
-              expectedIds.size !==
-                actualIds.size ||
-              Array.from(
-                expectedIds,
-              ).some(
-                (
-                  ingredientId,
-                ) =>
-                  !actualIds.has(
-                    ingredientId,
-                  ),
-              )
-            ) {
-              throw ruleError(
-                "Override komposisi hanya boleh mengubah persentase bahan dari formula yang digunakan.",
+            const nextItems =
+              await Promise.all(
+                parsed.feedComposition.map(
+                  async (
+                    compositionItem,
+                  ): Promise<SnapshotItem> => {
+                    const existingItem =
+                      existingItemByIngredient.get(
+                        compositionItem.ingredientId,
+                      );
+
+                    if (
+                      existingItem
+                    ) {
+                      return {
+                        ...existingItem,
+
+                        percentage:
+                          compositionItem.percentage,
+                      };
+                    }
+
+                    const ingredient =
+                      newIngredientById.get(
+                        compositionItem.ingredientId,
+                      );
+
+                    if (
+                      !ingredient
+                    ) {
+                      throw ruleError(
+                        "Bahan pakan baru pada komposisi aktual tidak ditemukan.",
+                      );
+                    }
+
+                    const cost =
+                      await resolveFeedUnitCostForDate(
+                        {
+                          farmId:
+                            kandang.farmId,
+
+                          ingredientId:
+                            ingredient.id,
+
+                          date:
+                            reportDate,
+                        },
+
+                        tx,
+                      );
+
+                    return {
+                      ingredientId:
+                        ingredient.id,
+
+                      ingredientNameSnapshot:
+                        ingredient.name,
+
+                      percentage:
+                        compositionItem.percentage,
+
+                      unitCostPerKgSnapshot:
+                        cost.unitCostPerKg,
+
+                      costBasisSnapshot:
+                        cost.basis,
+                    };
+                  },
+                ),
               );
-            }
 
             snapshot = {
               ...snapshot,
 
               items:
-                snapshot.items.map(
-                  (
-                    baseItem,
-                  ) => {
-                    const override =
-                      parsed.feedComposition.find(
-                        (
-                          item,
-                        ) =>
-                          item.ingredientId ===
-                          baseItem.ingredientId,
-                      );
-
-                    if (
-                      !override
-                    ) {
-                      throw ruleError(
-                        "Komposisi aktual tidak lengkap.",
-                      );
-                    }
-
-                    return {
-                      ...baseItem,
-
-                      percentage:
-                        override.percentage,
-                    };
-                  },
-                ),
+                nextItems,
             };
           }
 
@@ -632,6 +783,12 @@ async function saveReport(
               },
             });
 
+          /*
+           * Existing DB rows memang diganti sebagai
+           * composition snapshot, tetapi nilai historical
+           * cost untuk ingredient yang bertahan sudah
+           * dicopy ke `snapshot` di atas.
+           */
           await tx.dailyReportFeedItem.deleteMany({
             where: {
               dailyReportId:
@@ -661,6 +818,12 @@ async function saveReport(
 
                     percentage:
                       item.percentage,
+
+                    unitCostPerKgSnapshot:
+                      item.unitCostPerKgSnapshot,
+
+                    costBasisSnapshot:
+                      item.costBasisSnapshot,
                   }),
                 ),
             });
@@ -705,7 +868,9 @@ async function saveReport(
           ? "Laporan hari ini berhasil disimpan dan selesai."
           : "Draft laporan berhasil disimpan.",
     };
-  } catch (error) {
+  } catch (
+    error
+  ) {
     return handleActionError(
       error,
     );

@@ -143,6 +143,8 @@ const navigationGroups: NavigationGroup[] =
             "HPP & Profit",
           icon:
             Wallet,
+          href:
+            "/hpp",
         },
       ],
     },
@@ -281,6 +283,10 @@ export function OwnerShell({
     isPathActive(
       pathname,
       "/expenses",
+    ) ||
+    isPathActive(
+      pathname,
+      "/hpp",
     );
 
   const moreItems =
