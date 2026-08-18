@@ -15,12 +15,16 @@ import {
 
 import type {
   DailyHppBreakdown,
-  HppPeriodResult,
   HppStatus,
 } from "@/features/finance/types/hpp";
 
+import type {
+  ProfitPeriodResult,
+  ProfitStatus,
+} from "@/features/finance/types/profit";
+
 type HppMonitoringProps = {
-  data: HppPeriodResult;
+  data: ProfitPeriodResult;
 };
 
 const currencyFormatter =
@@ -29,8 +33,10 @@ const currencyFormatter =
     {
       style:
         "currency",
+
       currency:
         "IDR",
+
       maximumFractionDigits:
         2,
     },
@@ -53,7 +59,7 @@ function formatMoney(
   if (
     value === null
   ) {
-    return "Belum lengkap";
+    return "Belum dapat dihitung";
   }
 
   const numeric =
@@ -61,18 +67,12 @@ function formatMoney(
       value,
     );
 
-  if (
-    !Number.isFinite(
+  return currencyFormatter.format(
+    Number.isFinite(
       numeric,
     )
-  ) {
-    return currencyFormatter.format(
-      0,
-    );
-  }
-
-  return currencyFormatter.format(
-    numeric,
+      ? numeric
+      : 0,
   );
 }
 
@@ -84,16 +84,12 @@ function formatKg(
       value,
     );
 
-  if (
-    !Number.isFinite(
+  return `${quantityFormatter.format(
+    Number.isFinite(
       numeric,
     )
-  ) {
-    return "0 kg";
-  }
-
-  return `${quantityFormatter.format(
-    numeric,
+      ? numeric
+      : 0,
   )} kg`;
 }
 
@@ -105,10 +101,13 @@ function formatDate(
     {
       day:
         "2-digit",
+
       month:
         "short",
+
       year:
         "numeric",
+
       timeZone:
         "UTC",
     },
@@ -119,8 +118,52 @@ function formatDate(
   );
 }
 
-function getStatusMeta(
+function getHppStatusMeta(
   status: HppStatus,
+) {
+  switch (
+    status
+  ) {
+    case "READY":
+      return {
+        label:
+          "Data lengkap",
+
+        className:
+          "border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]",
+      };
+
+    case "PROVISIONAL":
+      return {
+        label:
+          "Data sementara",
+
+        className:
+          "border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]",
+      };
+
+    case "MISSING_FEED_COST":
+      return {
+        label:
+          "Biaya pakan belum lengkap",
+
+        className:
+          "border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]",
+      };
+
+    case "NO_PRODUCTION":
+      return {
+        label:
+          "Belum ada produksi",
+
+        className:
+          "border-border bg-[#F9FAFB] text-muted",
+      };
+  }
+}
+
+function getProfitStatusMeta(
+  status: ProfitStatus,
 ) {
   switch (
     status
@@ -140,7 +183,7 @@ function getStatusMeta(
     case "PROVISIONAL":
       return {
         label:
-          "Data sementara",
+          "Estimasi sementara",
 
         icon:
           CircleDashed,
@@ -149,10 +192,10 @@ function getStatusMeta(
           "border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]",
       };
 
-    case "MISSING_FEED_COST":
+    case "MISSING_COST":
       return {
         label:
-          "Biaya pakan belum lengkap",
+          "Biaya belum lengkap",
 
         icon:
           AlertTriangle,
@@ -161,10 +204,10 @@ function getStatusMeta(
           "border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]",
       };
 
-    case "NO_PRODUCTION":
+    case "NO_REVENUE":
       return {
         label:
-          "Belum ada produksi",
+          "Belum ada penjualan",
 
         icon:
           Info,
@@ -175,44 +218,61 @@ function getStatusMeta(
   }
 }
 
-function StatusBox({
-  status,
-  warnings,
+function DataQuality({
+  data,
 }: {
-  status: HppStatus;
-  warnings: string[];
+  data: ProfitPeriodResult;
 }) {
-  const meta =
-    getStatusMeta(
-      status,
+  const profitMeta =
+    getProfitStatusMeta(
+      data.status,
+    );
+
+  const hppMeta =
+    getHppStatusMeta(
+      data.hpp.status,
     );
 
   const Icon =
-    meta.icon;
+    profitMeta.icon;
 
   return (
     <div
       className={[
         "rounded-[10px] border p-3",
-        meta.className,
+        profitMeta.className,
       ].join(
         " ",
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Icon className="h-4 w-4 shrink-0" />
 
         <p className="text-sm font-semibold">
           {
-            meta.label
+            profitMeta.label
           }
         </p>
+
+        <span
+          className={[
+            "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+            hppMeta.className,
+          ].join(
+            " ",
+          )}
+        >
+          HPP ·{" "}
+          {
+            hppMeta.label
+          }
+        </span>
       </div>
 
-      {warnings.length >
+      {data.warnings.length >
       0 ? (
         <ul className="mt-2 space-y-1 pl-6 text-xs leading-5">
-          {warnings.map(
+          {data.warnings.map(
             (
               warning,
             ) => (
@@ -272,7 +332,7 @@ function KpiCard({
       </p>
 
       {detail ? (
-        <p className="mt-1 text-[11px] leading-4 text-muted">
+        <p className="mt-1 break-words text-[11px] leading-4 text-muted">
           {detail}
         </p>
       ) : null}
@@ -286,7 +346,7 @@ function DailyRow({
   day: DailyHppBreakdown;
 }) {
   const status =
-    getStatusMeta(
+    getHppStatusMeta(
       day.status,
     );
 
@@ -315,72 +375,72 @@ function DailyRow({
         </div>
 
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] text-muted">
               Produksi
             </p>
 
-            <p className="mt-1 text-sm font-medium text-foreground">
+            <p className="mt-1 break-words text-sm font-medium text-foreground">
               {formatKg(
                 day.productionKg,
               )}
             </p>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] text-muted">
               Pakan
             </p>
 
-            <p className="mt-1 text-sm font-medium text-foreground">
+            <p className="mt-1 break-words text-sm font-medium text-foreground">
               {formatMoney(
                 day.feedCost,
               )}
             </p>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] text-muted">
               Rutin
             </p>
 
-            <p className="mt-1 text-sm font-medium text-foreground">
+            <p className="mt-1 break-words text-sm font-medium text-foreground">
               {formatMoney(
                 day.routineCost,
               )}
             </p>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] text-muted">
               Expense
             </p>
 
-            <p className="mt-1 text-sm font-medium text-foreground">
+            <p className="mt-1 break-words text-sm font-medium text-foreground">
               {formatMoney(
                 day.dailyExpenseCost,
               )}
             </p>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] text-muted">
               Total
             </p>
 
-            <p className="mt-1 text-sm font-medium text-foreground">
+            <p className="mt-1 break-words text-sm font-medium text-foreground">
               {formatMoney(
                 day.totalCost,
               )}
             </p>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] text-muted">
               HPP / kg
             </p>
 
-            <p className="mt-1 text-sm font-semibold text-primary-hover">
+            <p className="mt-1 break-words text-sm font-semibold text-primary-hover">
               {day.hppPerKg
                 ? formatMoney(
                     day.hppPerKg,
@@ -406,6 +466,10 @@ function DailyRow({
 export function HppMonitoring({
   data,
 }: HppMonitoringProps) {
+  const {
+    hpp,
+  } = data;
+
   return (
     <div className="min-w-0 space-y-6">
       <div>
@@ -414,7 +478,7 @@ export function HppMonitoring({
         </h1>
 
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          Pantau biaya operasional dan HPP telur berdasarkan data farm aktual.
+          Pantau biaya operasional, HPP telur, dan estimasi hasil operasional berdasarkan data farm aktual.
         </p>
       </div>
 
@@ -470,88 +534,204 @@ export function HppMonitoring({
         </form>
       </Card>
 
-      <StatusBox
-        status={
-          data.status
-        }
-        warnings={
-          data.warnings
+      <DataQuality
+        data={
+          data
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiCard
-          label="Produksi Telur Jual"
-          value={
-            formatKg(
-              data.productionKg,
-            )
-          }
-        />
-
-        <KpiCard
-          label="Biaya Pakan"
-          value={
-            formatMoney(
-              data.feedCost,
-            )
-          }
-        />
-
-        <KpiCard
-          label="Total Biaya Operasional"
-          value={
-            formatMoney(
-              data.totalOperationalCost,
-            )
-          }
-          detail={
-            data.totalOperationalCost
-              ? `Pakan ${formatMoney(
-                  data.feedCost,
-                )} · Rutin ${formatMoney(
-                  data.routineCost,
-                )} · Harian ${formatMoney(
-                  data.dailyExpenseCost,
-                )}`
-              : `Rutin ${formatMoney(
-                  data.routineCost,
-                )} · Harian ${formatMoney(
-                  data.dailyExpenseCost,
-                )}`
-          }
-        />
-
-        <KpiCard
-          label="HPP Operasional / kg"
-          value={
-            data.hppPerKg
-              ? formatMoney(
-                  data.hppPerKg,
-                )
-              : "Belum dapat dihitung"
-          }
-          emphasized
-        />
-      </div>
-
-      <div className="rounded-[10px] border border-border bg-[#F9FAFB] px-4 py-3 text-xs leading-5 text-muted">
-        HPP operasional dihitung dari biaya pakan, alokasi biaya rutin, dan pengeluaran harian yang tercatat di sistem. Nilai ini belum merupakan HPP akuntansi penuh dan belum memasukkan depresiasi, pajak, bunga, maupun inventory valuation.
-      </div>
-
-      <div>
-        <div className="mb-3">
+      <section className="space-y-3">
+        <div>
           <h2 className="font-semibold text-foreground">
-            Breakdown Harian
+            HPP Operasional
           </h2>
 
           <p className="mt-1 text-xs text-muted">
-            Breakdown derived per tanggal. HPP periode di atas tetap dihitung dari total biaya periode ÷ total produksi periode, bukan rata-rata HPP harian.
+            HPP farm-level berdasarkan produksi telur jual dan biaya operasional pada periode yang sama.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <KpiCard
+            label="Produksi Telur Jual"
+            value={
+              formatKg(
+                hpp.productionKg,
+              )
+            }
+          />
+
+          <KpiCard
+            label="Biaya Pakan"
+            value={
+              formatMoney(
+                hpp.feedCost,
+              )
+            }
+          />
+
+          <KpiCard
+            label="Total Biaya Operasional"
+            value={
+              formatMoney(
+                hpp.totalOperationalCost,
+              )
+            }
+            detail={
+              hpp.totalOperationalCost
+                ? `Pakan ${formatMoney(
+                    hpp.feedCost,
+                  )} · Rutin ${formatMoney(
+                    hpp.routineCost,
+                  )} · Harian ${formatMoney(
+                    hpp.dailyExpenseCost,
+                  )}`
+                : `Rutin ${formatMoney(
+                    hpp.routineCost,
+                  )} · Harian ${formatMoney(
+                    hpp.dailyExpenseCost,
+                  )}`
+            }
+          />
+
+          <KpiCard
+            label="HPP Operasional / kg"
+            value={
+              hpp.hppPerKg
+                ? formatMoney(
+                    hpp.hppPerKg,
+                  )
+                : "Belum dapat dihitung"
+            }
+            emphasized
+          />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="font-semibold text-foreground">
+            Profit Operasional
+          </h2>
+
+          <p className="mt-1 text-xs text-muted">
+            Estimasi hasil periode dari omzet dikurangi total biaya operasional periode.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <KpiCard
+            label="Omzet"
+            value={
+              formatMoney(
+                data.revenue,
+              )
+            }
+            detail={`${data.orderCount.toLocaleString(
+              "id-ID",
+            )} order`}
+          />
+
+          <KpiCard
+            label="Terjual"
+            value={
+              formatKg(
+                data.soldKg,
+              )
+            }
+          />
+
+          <KpiCard
+            label="Total Biaya Operasional"
+            value={
+              formatMoney(
+                hpp.totalOperationalCost,
+              )
+            }
+          />
+
+          <KpiCard
+            label="Estimasi Profit Operasional"
+            value={
+              data.estimatedOperationalProfit ===
+              null
+                ? "Belum dapat dihitung"
+                : formatMoney(
+                    data.estimatedOperationalProfit,
+                  )
+            }
+            detail={
+              data.operationalMarginPercent
+                ? `Margin Operasional ${data.operationalMarginPercent.replace(
+                    ".",
+                    ",",
+                  )}%`
+                : "Margin Operasional —"
+            }
+            emphasized
+          />
+        </div>
+
+        <Card className="p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted">
+                Rata-rata Harga Jual
+              </p>
+
+              <p className="mt-1 font-semibold text-foreground">
+                {data.averageSellingPricePerKg
+                  ? `${formatMoney(
+                      data.averageSellingPricePerKg,
+                    )}/kg`
+                  : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-muted">
+                HPP Operasional
+              </p>
+
+              <p className="mt-1 font-semibold text-foreground">
+                {hpp.hppPerKg
+                  ? `${formatMoney(
+                      hpp.hppPerKg,
+                    )}/kg`
+                  : "—"}
+              </p>
+            </div>
+          </div>
+
+          {data.hasProductionSalesTimingDifference ? (
+            <p className="mt-4 border-t border-border pt-3 text-xs leading-5 text-muted">
+              Produksi periode dan penjualan periode tidak harus sama. Telur yang terjual dapat berasal dari stok periode sebelumnya, dan produksi periode ini dapat belum seluruhnya terjual.
+            </p>
+          ) : null}
+        </Card>
+
+        <div className="rounded-[10px] border border-border bg-[#F9FAFB] px-4 py-3 text-xs leading-5 text-muted">
+          Estimasi profit operasional membandingkan penjualan dan biaya operasional pada periode yang sama. Nilai ini belum menggunakan inventory valuation/COGS akuntansi, sehingga perbedaan waktu antara produksi dan penjualan dapat memengaruhi hasil.
+        </div>
+      </section>
+
+      <div className="rounded-[10px] border border-border bg-[#F9FAFB] px-4 py-3 text-xs leading-5 text-muted">
+        HPP operasional dihitung dari biaya pakan, alokasi biaya rutin, dan pengeluaran harian yang tercatat di sistem. Nilai ini belum merupakan HPP akuntansi penuh dan belum memasukkan inventory valuation, depresiasi, pajak, bunga, maupun biaya lain yang belum dimodelkan.
+      </div>
+
+      <section>
+        <div className="mb-3">
+          <h2 className="font-semibold text-foreground">
+            Breakdown HPP Harian
+          </h2>
+
+          <p className="mt-1 text-xs text-muted">
+            Breakdown harian hanya untuk HPP. Estimasi Profit Operasional tetap dihitung pada level periode karena waktu produksi dan penjualan dapat berbeda.
           </p>
         </div>
 
         <div className="space-y-3">
-          {data.daily.map(
+          {hpp.daily.map(
             (
               day,
             ) => (
@@ -566,7 +746,7 @@ export function HppMonitoring({
             ),
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

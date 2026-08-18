@@ -3,16 +3,16 @@ import {
 } from "@/features/daily-operations/utils/date";
 
 import {
+  parseRoutineCostFilters,
+} from "@/features/expenses/schemas/routine-cost";
+
+import {
   HppMonitoring,
 } from "@/features/finance/components/hpp-monitoring";
 
 import {
-  getHppForPeriod,
-} from "@/features/finance/queries/get-hpp";
-
-import {
-  parseRoutineCostFilters,
-} from "@/features/expenses/schemas/routine-cost";
+  getProfitForPeriod,
+} from "@/features/finance/queries/get-profit";
 
 type HppPageProps = {
   searchParams: Promise<{
@@ -46,9 +46,11 @@ export default async function HppPage({
     await searchParams;
 
   /*
-   * Existing Routine Cost filter parser
-   * sudah menyediakan default bulan berjalan
-   * dengan Asia/Jakarta.
+   * Shared period filter untuk:
+   * HPP + Revenue + Profit.
+   *
+   * Parser existing juga memberi
+   * default bulan berjalan Asia/Jakarta.
    */
   const filters =
     parseRoutineCostFilters({
@@ -63,8 +65,14 @@ export default async function HppPage({
         ),
     });
 
+  /*
+   * Page hanya memanggil Profit engine.
+   *
+   * getProfitForPeriod() memanggil
+   * getHppForPeriod() tepat satu kali.
+   */
   const data =
-    await getHppForPeriod(
+    await getProfitForPeriod(
       parseDateOnly(
         filters.from,
       ),
@@ -76,7 +84,9 @@ export default async function HppPage({
 
   return (
     <HppMonitoring
-      data={data}
+      data={
+        data
+      }
     />
   );
 }
