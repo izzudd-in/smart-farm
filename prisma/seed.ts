@@ -3,12 +3,22 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../src/generated/prisma/client";
-import { UserRole } from "../src/generated/prisma/enums";
+import {
+  EggStockAdjustmentType,
+  FeedStockAdjustmentType,
+  UserRole,
+} from "../src/generated/prisma/enums";
+
 import { hashPassword } from "../src/lib/auth/password";
+
 import {
   calculateFinalPricePerKg,
   calculateOrderTotal,
 } from "../src/features/sales/utils/pricing";
+
+import {
+  calculateFeedPurchaseTotal,
+} from "../src/features/inventory/utils/feed-stock";
 
 const databaseUrl =
   process.env.DATABASE_URL;
@@ -19,10 +29,11 @@ if (!databaseUrl) {
   );
 }
 
-const adapter = new PrismaPg({
-  connectionString:
-    databaseUrl,
-});
+const adapter =
+  new PrismaPg({
+    connectionString:
+      databaseUrl,
+  });
 
 const prisma =
   new PrismaClient({
@@ -35,8 +46,10 @@ const developmentUsers = [
       "Owner Development",
     email:
       "owner@smartfarm.local",
-    password: "owner123",
-    role: UserRole.OWNER,
+    password:
+      "owner123",
+    role:
+      UserRole.OWNER,
   },
   {
     name:
@@ -78,10 +91,15 @@ async function ensureCustomer(
       },
 
       data: {
-        phone: data.phone,
-        address: data.address,
+        phone:
+          data.phone,
+
+        address:
+          data.address,
+
         discountPerKg:
           data.discountPerKg,
+
         isActive: true,
       },
     });
@@ -93,8 +111,10 @@ async function ensureCustomer(
       name: data.name,
       phone: data.phone,
       address: data.address,
+
       discountPerKg:
         data.discountPerKg,
+
       isActive: true,
     },
   });
@@ -142,13 +162,11 @@ async function ensureOrder(
     customerId: string;
     customerNameSnapshot: string;
     orderedAt: Date;
-
     quantityKg: string;
     basePricePerKg: string;
     discountPerKg: string;
     finalPricePerKg: string;
     totalPrice: string;
-
     note: string;
   },
 ) {
@@ -176,6 +194,95 @@ async function ensureOrder(
   });
 }
 
+async function ensureFeedPurchase(
+  data: {
+    id: string;
+    farmId: string;
+    ingredientId: string;
+    purchasedAt: Date;
+    quantityKg: string;
+    unitPricePerKg: string;
+    supplier: string;
+    note: string;
+    createdById: string;
+  },
+) {
+  const existing =
+    await prisma.feedPurchase.findUnique({
+      where: {
+        id: data.id,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.feedPurchase.create({
+    data: {
+      ...data,
+
+      totalPrice:
+        calculateFeedPurchaseTotal(
+          data.quantityKg,
+          data.unitPricePerKg,
+        ),
+    },
+
+    select: {
+      id: true,
+    },
+  });
+}
+
+async function ensureFeedOpening(
+  data: {
+    id: string;
+    farmId: string;
+    ingredientId: string;
+    occurredAt: Date;
+    quantityKg: string;
+    note: string;
+    createdById: string;
+  },
+) {
+  const existing =
+    await prisma.feedStockAdjustment.findUnique({
+      where: {
+        openingKey:
+          data.ingredientId,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.feedStockAdjustment.create({
+    data: {
+      ...data,
+
+      type:
+        FeedStockAdjustmentType.OPENING,
+
+      openingKey:
+        data.ingredientId,
+    },
+
+    select: {
+      id: true,
+    },
+  });
+}
+
 async function main() {
   await prisma.systemState.upsert({
     where: {
@@ -192,7 +299,10 @@ async function main() {
     },
   });
 
-  for (const developmentUser of developmentUsers) {
+  for (
+    const developmentUser
+    of developmentUsers
+  ) {
     const passwordHash =
       await hashPassword(
         developmentUser.password,
@@ -207,24 +317,39 @@ async function main() {
       update: {
         name:
           developmentUser.name,
+
         passwordHash,
+
         role:
           developmentUser.role,
+
         isActive: true,
       },
 
       create: {
         name:
           developmentUser.name,
+
         email:
           developmentUser.email,
+
         passwordHash,
+
         role:
           developmentUser.role,
+
         isActive: true,
       },
     });
   }
+
+  const owner =
+    await prisma.user.findUniqueOrThrow({
+      where: {
+        email:
+          "owner@smartfarm.local",
+      },
+    });
 
   const operator =
     await prisma.user.findUniqueOrThrow({
@@ -258,7 +383,8 @@ async function main() {
     await prisma.kandang.upsert({
       where: {
         farmId_code: {
-          farmId: farm.id,
+          farmId:
+            farm.id,
           code: "A",
         },
       },
@@ -270,21 +396,25 @@ async function main() {
         operators: {
           set: [
             {
-              id: operator.id,
+              id:
+                operator.id,
             },
           ],
         },
       },
 
       create: {
-        farmId: farm.id,
+        farmId:
+          farm.id,
+
         code: "A",
         name: "Kandang A",
         isActive: true,
 
         operators: {
           connect: {
-            id: operator.id,
+            id:
+              operator.id,
           },
         },
       },
@@ -294,7 +424,8 @@ async function main() {
     await prisma.kandang.upsert({
       where: {
         farmId_code: {
-          farmId: farm.id,
+          farmId:
+            farm.id,
           code: "B",
         },
       },
@@ -306,21 +437,25 @@ async function main() {
         operators: {
           set: [
             {
-              id: operator.id,
+              id:
+                operator.id,
             },
           ],
         },
       },
 
       create: {
-        farmId: farm.id,
+        farmId:
+          farm.id,
+
         code: "B",
         name: "Kandang B",
         isActive: true,
 
         operators: {
           connect: {
-            id: operator.id,
+            id:
+              operator.id,
           },
         },
       },
@@ -332,28 +467,37 @@ async function main() {
         kandangId_name: {
           kandangId:
             kandangA.id,
+
           name:
             "Flock A 2026",
         },
       },
 
       update: {
-        startDate: new Date(
-          "2026-02-01T00:00:00.000Z",
-        ),
+        startDate:
+          new Date(
+            "2026-02-01T00:00:00.000Z",
+          ),
+
         initialPopulation:
           5000,
-        endedAt: null,
+
+        endedAt:
+          null,
       },
 
       create: {
         kandangId:
           kandangA.id,
+
         name:
           "Flock A 2026",
-        startDate: new Date(
-          "2026-02-01T00:00:00.000Z",
-        ),
+
+        startDate:
+          new Date(
+            "2026-02-01T00:00:00.000Z",
+          ),
+
         initialPopulation:
           5000,
       },
@@ -365,28 +509,37 @@ async function main() {
         kandangId_name: {
           kandangId:
             kandangB.id,
+
           name:
             "Flock B 2026",
         },
       },
 
       update: {
-        startDate: new Date(
-          "2026-03-15T00:00:00.000Z",
-        ),
+        startDate:
+          new Date(
+            "2026-03-15T00:00:00.000Z",
+          ),
+
         initialPopulation:
           4500,
-        endedAt: null,
+
+        endedAt:
+          null,
       },
 
       create: {
         kandangId:
           kandangB.id,
+
         name:
           "Flock B 2026",
-        startDate: new Date(
-          "2026-03-15T00:00:00.000Z",
-        ),
+
+        startDate:
+          new Date(
+            "2026-03-15T00:00:00.000Z",
+          ),
+
         initialPopulation:
           4500,
       },
@@ -394,13 +547,15 @@ async function main() {
 
   await prisma.kandang.update({
     where: {
-      id: kandangA.id,
+      id:
+        kandangA.id,
     },
 
     data: {
       activeFlock: {
         connect: {
-          id: flockA.id,
+          id:
+            flockA.id,
         },
       },
     },
@@ -408,13 +563,15 @@ async function main() {
 
   await prisma.kandang.update({
     where: {
-      id: kandangB.id,
+      id:
+        kandangB.id,
     },
 
     data: {
       activeFlock: {
         connect: {
-          id: flockB.id,
+          id:
+            flockB.id,
         },
       },
     },
@@ -424,25 +581,39 @@ async function main() {
     await prisma.feedIngredient.upsert({
       where: {
         farmId_name: {
-          farmId: farm.id,
-          name: "Jagung",
+          farmId:
+            farm.id,
+
+          name:
+            "Jagung",
         },
       },
 
       update: {
         unit: "kg",
+
         currentPricePerKg:
           "5500.00",
-        isActive: true,
+
+        isActive:
+          true,
       },
 
       create: {
-        farmId: farm.id,
-        name: "Jagung",
-        unit: "kg",
+        farmId:
+          farm.id,
+
+        name:
+          "Jagung",
+
+        unit:
+          "kg",
+
         currentPricePerKg:
           "5500.00",
-        isActive: true,
+
+        isActive:
+          true,
       },
     });
 
@@ -450,25 +621,39 @@ async function main() {
     await prisma.feedIngredient.upsert({
       where: {
         farmId_name: {
-          farmId: farm.id,
-          name: "Konsentrat",
+          farmId:
+            farm.id,
+
+          name:
+            "Konsentrat",
         },
       },
 
       update: {
         unit: "kg",
+
         currentPricePerKg:
           "8500.00",
-        isActive: true,
+
+        isActive:
+          true,
       },
 
       create: {
-        farmId: farm.id,
-        name: "Konsentrat",
-        unit: "kg",
+        farmId:
+          farm.id,
+
+        name:
+          "Konsentrat",
+
+        unit:
+          "kg",
+
         currentPricePerKg:
           "8500.00",
-        isActive: true,
+
+        isActive:
+          true,
       },
     });
 
@@ -476,25 +661,39 @@ async function main() {
     await prisma.feedIngredient.upsert({
       where: {
         farmId_name: {
-          farmId: farm.id,
-          name: "Dedak",
+          farmId:
+            farm.id,
+
+          name:
+            "Dedak",
         },
       },
 
       update: {
         unit: "kg",
+
         currentPricePerKg:
           "3500.00",
-        isActive: true,
+
+        isActive:
+          true,
       },
 
       create: {
-        farmId: farm.id,
-        name: "Dedak",
-        unit: "kg",
+        farmId:
+          farm.id,
+
+        name:
+          "Dedak",
+
+        unit:
+          "kg",
+
         currentPricePerKg:
           "3500.00",
-        isActive: true,
+
+        isActive:
+          true,
       },
     });
 
@@ -502,7 +701,9 @@ async function main() {
     await prisma.feedFormula.upsert({
       where: {
         farmId_name: {
-          farmId: farm.id,
+          farmId:
+            farm.id,
+
           name:
             "Formula Layer Utama",
         },
@@ -513,25 +714,32 @@ async function main() {
       },
 
       create: {
-        farmId: farm.id,
+        farmId:
+          farm.id,
+
         name:
           "Formula Layer Utama",
-        isActive: false,
+
+        isActive:
+          false,
       },
     });
 
   await prisma.$transaction([
     prisma.feedFormula.updateMany({
       where: {
-        farmId: farm.id,
+        farmId:
+          farm.id,
 
         id: {
-          not: formula.id,
+          not:
+            formula.id,
         },
       },
 
       data: {
-        isActive: false,
+        isActive:
+          false,
       },
     }),
 
@@ -547,24 +755,30 @@ async function main() {
         {
           formulaId:
             formula.id,
+
           ingredientId:
             jagung.id,
+
           percentage:
             "50.00",
         },
         {
           formulaId:
             formula.id,
+
           ingredientId:
             konsentrat.id,
+
           percentage:
             "35.00",
         },
         {
           formulaId:
             formula.id,
+
           ingredientId:
             dedak.id,
+
           percentage:
             "15.00",
         },
@@ -573,11 +787,13 @@ async function main() {
 
     prisma.feedFormula.update({
       where: {
-        id: formula.id,
+        id:
+          formula.id,
       },
 
       data: {
-        isActive: true,
+        isActive:
+          true,
       },
     }),
   ]);
@@ -586,10 +802,15 @@ async function main() {
     await ensureCustomer(
       farm.id,
       {
-        name: "Toko Berkah",
+        name:
+          "Toko Berkah",
+
         phone:
           "081234567890",
-        address: "Jember",
+
+        address:
+          "Jember",
+
         discountPerKg:
           "500.00",
       },
@@ -599,10 +820,15 @@ async function main() {
     await ensureCustomer(
       farm.id,
       {
-        name: "Warung Maju",
+        name:
+          "Warung Maju",
+
         phone:
           "081298765432",
-        address: "Jember",
+
+        address:
+          "Jember",
+
         discountPerKg:
           "0.00",
       },
@@ -634,7 +860,8 @@ async function main() {
     id:
       "seed-order-toko-20260815",
 
-    farmId: farm.id,
+    farmId:
+      farm.id,
 
     customerId:
       tokoBerkah.id,
@@ -642,11 +869,13 @@ async function main() {
     customerNameSnapshot:
       tokoBerkah.name,
 
-    orderedAt: new Date(
-      "2026-08-15T00:00:00.000Z",
-    ),
+    orderedAt:
+      new Date(
+        "2026-08-15T00:00:00.000Z",
+      ),
 
-    quantityKg: "100",
+    quantityKg:
+      "100",
 
     basePricePerKg:
       "27500.00",
@@ -677,7 +906,8 @@ async function main() {
     id:
       "seed-order-toko-20260818",
 
-    farmId: farm.id,
+    farmId:
+      farm.id,
 
     customerId:
       tokoBerkah.id,
@@ -685,11 +915,13 @@ async function main() {
     customerNameSnapshot:
       tokoBerkah.name,
 
-    orderedAt: new Date(
-      "2026-08-18T00:00:00.000Z",
-    ),
+    orderedAt:
+      new Date(
+        "2026-08-18T00:00:00.000Z",
+      ),
 
-    quantityKg: "100",
+    quantityKg:
+      "100",
 
     basePricePerKg:
       "28000.00",
@@ -720,7 +952,8 @@ async function main() {
     id:
       "seed-order-warung-20260818",
 
-    farmId: farm.id,
+    farmId:
+      farm.id,
 
     customerId:
       warungMaju.id,
@@ -728,11 +961,13 @@ async function main() {
     customerNameSnapshot:
       warungMaju.name,
 
-    orderedAt: new Date(
-      "2026-08-18T00:00:00.000Z",
-    ),
+    orderedAt:
+      new Date(
+        "2026-08-18T00:00:00.000Z",
+      ),
 
-    quantityKg: "25.5",
+    quantityKg:
+      "25.5",
 
     basePricePerKg:
       "28000.00",
@@ -757,9 +992,11 @@ async function main() {
     await prisma.dailyReport.upsert({
       where: {
         date_kandangId: {
-          date: new Date(
-            "2026-08-17T00:00:00.000Z",
-          ),
+          date:
+            new Date(
+              "2026-08-17T00:00:00.000Z",
+            ),
+
           kandangId:
             kandangA.id,
         },
@@ -768,42 +1005,71 @@ async function main() {
       update: {
         flockId:
           flockA.id,
+
         operatorId:
           operator.id,
-        saleableEgg: 185.5,
-        damagedEgg: 4.5,
-        feedUsed: 480,
-        mortality: 3,
+
+        saleableEgg:
+          185.5,
+
+        damagedEgg:
+          4.5,
+
+        feedUsed:
+          480,
+
+        mortality:
+          3,
+
         incidentalExpense:
           "25000.00",
+
         incidentNote:
           "Pembersihan saluran air kandang.",
+
         feedFormulaId:
           formula.id,
+
         feedFormulaNameSnapshot:
           "Formula Layer Utama",
       },
 
       create: {
-        date: new Date(
-          "2026-08-17T00:00:00.000Z",
-        ),
+        date:
+          new Date(
+            "2026-08-17T00:00:00.000Z",
+          ),
+
         kandangId:
           kandangA.id,
+
         flockId:
           flockA.id,
+
         operatorId:
           operator.id,
-        saleableEgg: 185.5,
-        damagedEgg: 4.5,
-        feedUsed: 480,
-        mortality: 3,
+
+        saleableEgg:
+          185.5,
+
+        damagedEgg:
+          4.5,
+
+        feedUsed:
+          480,
+
+        mortality:
+          3,
+
         incidentalExpense:
           "25000.00",
+
         incidentNote:
           "Pembersihan saluran air kandang.",
+
         feedFormulaId:
           formula.id,
+
         feedFormulaNameSnapshot:
           "Formula Layer Utama",
       },
@@ -813,9 +1079,11 @@ async function main() {
     await prisma.dailyReport.upsert({
       where: {
         date_kandangId: {
-          date: new Date(
-            "2026-08-16T00:00:00.000Z",
-          ),
+          date:
+            new Date(
+              "2026-08-16T00:00:00.000Z",
+            ),
+
           kandangId:
             kandangB.id,
         },
@@ -824,49 +1092,80 @@ async function main() {
       update: {
         flockId:
           flockB.id,
+
         operatorId:
           operator.id,
-        saleableEgg: 170,
-        damagedEgg: null,
-        feedUsed: 430,
-        mortality: 1,
+
+        saleableEgg:
+          170,
+
+        damagedEgg:
+          null,
+
+        feedUsed:
+          430,
+
+        mortality:
+          1,
+
         incidentalExpense:
           null,
+
         incidentNote:
           "Telur rusak belum direkap.",
+
         feedFormulaId:
           formula.id,
+
         feedFormulaNameSnapshot:
           "Formula Layer Utama",
       },
 
       create: {
-        date: new Date(
-          "2026-08-16T00:00:00.000Z",
-        ),
+        date:
+          new Date(
+            "2026-08-16T00:00:00.000Z",
+          ),
+
         kandangId:
           kandangB.id,
+
         flockId:
           flockB.id,
+
         operatorId:
           operator.id,
-        saleableEgg: 170,
-        damagedEgg: null,
-        feedUsed: 430,
-        mortality: 1,
+
+        saleableEgg:
+          170,
+
+        damagedEgg:
+          null,
+
+        feedUsed:
+          430,
+
+        mortality:
+          1,
+
         incidentNote:
           "Telur rusak belum direkap.",
+
         feedFormulaId:
           formula.id,
+
         feedFormulaNameSnapshot:
           "Formula Layer Utama",
       },
     });
 
-  for (const report of [
-    reportA,
-    reportB,
-  ]) {
+  for (
+    const report
+    of [
+      reportA,
+      reportB,
+    ]
+  ) {
     await prisma.$transaction([
       prisma.dailyReportFeedItem.deleteMany({
         where: {
@@ -880,30 +1179,39 @@ async function main() {
           {
             dailyReportId:
               report.id,
+
             ingredientId:
               jagung.id,
+
             ingredientNameSnapshot:
               "Jagung",
+
             percentage:
               "50.00",
           },
           {
             dailyReportId:
               report.id,
+
             ingredientId:
               konsentrat.id,
+
             ingredientNameSnapshot:
               "Konsentrat",
+
             percentage:
               "35.00",
           },
           {
             dailyReportId:
               report.id,
+
             ingredientId:
               dedak.id,
+
             ingredientNameSnapshot:
               "Dedak",
+
             percentage:
               "15.00",
           },
@@ -911,6 +1219,228 @@ async function main() {
       }),
     ]);
   }
+
+  const existingEggOpening =
+    await prisma.eggStockAdjustment.findUnique({
+      where: {
+        openingKey:
+          farm.id,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (!existingEggOpening) {
+    await prisma.eggStockAdjustment.create({
+      data: {
+        id:
+          "seed-egg-opening-20260801",
+
+        farmId:
+          farm.id,
+
+        occurredAt:
+          new Date(
+            "2026-08-01T00:00:00.000Z",
+          ),
+
+        type:
+          EggStockAdjustmentType.OPENING,
+
+        quantityKg:
+          "100.000",
+
+        note:
+          "Stok awal development.",
+
+        createdById:
+          owner.id,
+
+        openingKey:
+          farm.id,
+      },
+    });
+  }
+
+  const existingEggAdjustment =
+    await prisma.eggStockAdjustment.findUnique({
+      where: {
+        id:
+          "seed-egg-adjustment-20260817",
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (!existingEggAdjustment) {
+    await prisma.eggStockAdjustment.create({
+      data: {
+        id:
+          "seed-egg-adjustment-20260817",
+
+        farmId:
+          farm.id,
+
+        occurredAt:
+          new Date(
+            "2026-08-17T00:00:00.000Z",
+          ),
+
+        type:
+          EggStockAdjustmentType.DECREASE,
+
+        quantityKg:
+          "2.000",
+
+        note:
+          "Telur pecah setelah penyimpanan.",
+
+        createdById:
+          owner.id,
+      },
+    });
+  }
+
+  await ensureFeedOpening({
+    id:
+      "seed-feed-opening-jagung",
+
+    farmId:
+      farm.id,
+
+    ingredientId:
+      jagung.id,
+
+    occurredAt:
+      new Date(
+        "2026-08-01T00:00:00.000Z",
+      ),
+
+    quantityKg:
+      "400.000",
+
+    note:
+      "Stok awal Jagung development.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureFeedOpening({
+    id:
+      "seed-feed-opening-konsentrat",
+
+    farmId:
+      farm.id,
+
+    ingredientId:
+      konsentrat.id,
+
+    occurredAt:
+      new Date(
+        "2026-08-01T00:00:00.000Z",
+      ),
+
+    quantityKg:
+      "300.000",
+
+    note:
+      "Stok awal Konsentrat development.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureFeedOpening({
+    id:
+      "seed-feed-opening-dedak",
+
+    farmId:
+      farm.id,
+
+    ingredientId:
+      dedak.id,
+
+    occurredAt:
+      new Date(
+        "2026-08-01T00:00:00.000Z",
+      ),
+
+    quantityKg:
+      "200.000",
+
+    note:
+      "Stok awal Dedak development.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureFeedPurchase({
+    id:
+      "seed-feed-purchase-jagung-20260817",
+
+    farmId:
+      farm.id,
+
+    ingredientId:
+      jagung.id,
+
+    purchasedAt:
+      new Date(
+        "2026-08-17T00:00:00.000Z",
+      ),
+
+    quantityKg:
+      "200.000",
+
+    unitPricePerKg:
+      "5500.00",
+
+    supplier:
+      "Supplier Development",
+
+    note:
+      "Pembelian Jagung development.",
+
+    createdById:
+      owner.id,
+  });
+
+  await ensureFeedPurchase({
+    id:
+      "seed-feed-purchase-konsentrat-20260817",
+
+    farmId:
+      farm.id,
+
+    ingredientId:
+      konsentrat.id,
+
+    purchasedAt:
+      new Date(
+        "2026-08-17T00:00:00.000Z",
+      ),
+
+    quantityKg:
+      "150.000",
+
+    unitPricePerKg:
+      "8500.00",
+
+    supplier:
+      "Supplier Development",
+
+    note:
+      "Pembelian Konsentrat development.",
+
+    createdById:
+      owner.id,
+  });
 
   console.log(
     "Database seed completed.",
@@ -921,7 +1451,7 @@ async function main() {
   );
 
   console.log(
-    "Farm + Feed seed completed.",
+    "Farm + Feed master seed completed.",
   );
 
   console.log(
@@ -930,6 +1460,14 @@ async function main() {
 
   console.log(
     "Daily Operations seed completed.",
+  );
+
+  console.log(
+    "Egg inventory seed completed.",
+  );
+
+  console.log(
+    "Feed inventory seed completed.",
   );
 }
 

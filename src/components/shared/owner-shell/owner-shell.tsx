@@ -81,6 +81,7 @@ const navigationGroups: NavigationGroup[] =
         {
           label: "Stok",
           icon: Boxes,
+          href: "/inventory",
         },
       ],
     },
@@ -176,28 +177,6 @@ function SidebarItem({
   );
 }
 
-function DisabledBottomItem({
-  icon: Icon,
-  label,
-}: {
-  icon: LucideIcon;
-  label: string;
-}) {
-  return (
-    <div
-      aria-disabled="true"
-      title={`${label} belum tersedia`}
-      className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-muted-light opacity-55"
-    >
-      <Icon className="h-5 w-5" />
-
-      <span className="truncate text-[10px]">
-        {label}
-      </span>
-    </div>
-  );
-}
-
 export function OwnerShell({
   children,
   user,
@@ -226,6 +205,12 @@ export function OwnerShell({
       "/sales",
     );
 
+  const inventoryActive =
+    isPathActive(
+      pathname,
+      "/inventory",
+    );
+
   const moreSectionActive =
     isPathActive(
       pathname,
@@ -251,7 +236,11 @@ export function OwnerShell({
           item.label !==
             "Dashboard" &&
           item.label !==
-            "Operasional",
+            "Operasional" &&
+          item.label !==
+            "Penjualan" &&
+          item.label !==
+            "Stok",
       );
 
   return (
@@ -425,10 +414,26 @@ export function OwnerShell({
           </span>
         </Link>
 
-        <DisabledBottomItem
-          icon={Boxes}
-          label="Stok"
-        />
+        <Link
+          href="/inventory"
+          aria-current={
+            inventoryActive
+              ? "page"
+              : undefined
+          }
+          className={[
+            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            inventoryActive
+              ? "text-primary-hover"
+              : "text-muted",
+          ].join(" ")}
+        >
+          <Boxes className="h-5 w-5" />
+
+          <span className="text-[10px] font-medium">
+            Stok
+          </span>
+        </Link>
 
         <button
           type="button"

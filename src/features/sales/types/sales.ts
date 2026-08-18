@@ -106,7 +106,15 @@ export type OrderView = {
   createdAt: string;
 };
 
+export type SalesSummary = {
+  totalSales: string;
+  totalQuantityKg: string;
+  orderCount: number;
+  activeCustomerCount: number;
+};
+
 export type OrderListData = {
   filters: OrderFilters;
+  summary: SalesSummary;
   orders: OrderView[];
 };

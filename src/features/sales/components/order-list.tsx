@@ -34,6 +34,14 @@ const quantityFormatter =
     },
   );
 
+const integerFormatter =
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      maximumFractionDigits: 0,
+    },
+  );
+
 function formatDate(
   value: string,
 ): string {
@@ -52,16 +60,83 @@ function formatDate(
   );
 }
 
+type SummaryCardProps = {
+  label: string;
+  value: string;
+};
+
+function SummaryCard({
+  label,
+  value,
+}: SummaryCardProps) {
+  return (
+    <Card className="min-w-0 p-4">
+      <p className="text-xs font-medium text-muted">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+        {value}
+      </p>
+    </Card>
+  );
+}
+
 export function OrderList({
   data,
   customers,
 }: OrderListProps) {
+  const {
+    summary,
+    filters,
+  } = data;
+
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
+    <div className="min-w-0 space-y-4">
+      <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryCard
+          label="Total Penjualan"
+          value={
+            currencyFormatter.format(
+              Number(
+                summary.totalSales,
+              ),
+            )
+          }
+        />
+
+        <SummaryCard
+          label="Total Kg Terjual"
+          value={`${quantityFormatter.format(
+            Number(
+              summary.totalQuantityKg,
+            ),
+          )} kg`}
+        />
+
+        <SummaryCard
+          label="Jumlah Order"
+          value={
+            integerFormatter.format(
+              summary.orderCount,
+            )
+          }
+        />
+
+        <SummaryCard
+          label="Customer Aktif"
+          value={
+            integerFormatter.format(
+              summary.activeCustomerCount,
+            )
+          }
+        />
+      </div>
+
+      <Card className="min-w-0 p-4">
         <form
           method="get"
-          className="grid gap-3 md:grid-cols-[170px_170px_1fr_auto]"
+          className="grid min-w-0 gap-3 md:grid-cols-[170px_170px_minmax(0,1fr)_auto]"
         >
           <input
             type="hidden"
@@ -69,7 +144,7 @@ export function OrderList({
             value="order"
           />
 
-          <div>
+          <div className="min-w-0">
             <label
               htmlFor="order-from"
               className="mb-1.5 block text-xs font-medium text-muted"
@@ -81,17 +156,15 @@ export function OrderList({
               id="order-from"
               name="from"
               type="date"
-              max={
-                data.filters.to
-              }
+              max={filters.to}
               defaultValue={
-                data.filters.from
+                filters.from
               }
-              className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="h-10 w-full min-w-0 rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
               htmlFor="order-to"
               className="mb-1.5 block text-xs font-medium text-muted"
@@ -103,14 +176,15 @@ export function OrderList({
               id="order-to"
               name="to"
               type="date"
+              min={filters.from}
               defaultValue={
-                data.filters.to
+                filters.to
               }
-              className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="h-10 w-full min-w-0 rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
               htmlFor="order-customer-filter"
               className="mb-1.5 block text-xs font-medium text-muted"
@@ -122,10 +196,9 @@ export function OrderList({
               id="order-customer-filter"
               name="customer"
               defaultValue={
-                data.filters
-                  .customerId
+                filters.customerId
               }
-              className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              className="h-10 w-full min-w-0 rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             >
               <option value="">
                 Semua Customer
@@ -151,7 +224,7 @@ export function OrderList({
             </select>
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="flex min-w-0 items-end gap-2">
             <Button
               type="submit"
               size="sm"
@@ -161,7 +234,7 @@ export function OrderList({
 
             <Link
               href="/sales?tab=order"
-              className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border bg-white px-3 text-xs font-medium text-foreground hover:bg-[#F9FAFB]"
+              className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border bg-white px-3 text-xs font-medium text-foreground transition-colors hover:bg-[#F9FAFB]"
             >
               Reset
             </Link>
@@ -178,67 +251,137 @@ export function OrderList({
           </p>
 
           <p className="mt-1 text-sm text-muted">
-            Order baru akan muncul di sini.
+            Ubah filter atau buat order baru.
           </p>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {data.orders.map(
-            (order) => (
-              <Card
-                key={order.id}
-                className="min-w-0 p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-foreground">
+        <>
+          <div className="space-y-2 md:hidden">
+            {data.orders.map(
+              (order) => (
+                <Card
+                  key={order.id}
+                  className="min-w-0 p-4"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground">
+                        {order.customerName}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted">
+                        {formatDate(
+                          order.orderedAt,
+                        )}
+                      </p>
+                    </div>
+
+                    <Link
+                      href={`/sales/orders/${order.id}`}
+                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary-hover hover:bg-primary-soft"
+                    >
+                      Detail
+
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+
+                  <div className="mt-4 flex min-w-0 items-end justify-between gap-3 border-t border-border pt-3">
+                    <p className="shrink-0 text-sm font-medium text-muted">
+                      {quantityFormatter.format(
+                        Number(
+                          order.quantityKg,
+                        ),
+                      )}{" "}
+                      kg
+                    </p>
+
+                    <p className="min-w-0 truncate text-right text-base font-semibold text-foreground">
+                      {currencyFormatter.format(
+                        Number(
+                          order.totalPrice,
+                        ),
+                      )}
+                    </p>
+                  </div>
+                </Card>
+              ),
+            )}
+          </div>
+
+          <Card className="hidden overflow-hidden md:block">
+            <div className="grid grid-cols-[minmax(0,1fr)_140px_130px_180px_80px] items-center gap-4 border-b border-border bg-[#F9FAFB] px-4 py-2.5 text-xs font-medium text-muted">
+              <span>
+                Customer
+              </span>
+
+              <span>
+                Tanggal
+              </span>
+
+              <span className="text-right">
+                Jumlah
+              </span>
+
+              <span className="text-right">
+                Total
+              </span>
+
+              <span />
+            </div>
+
+            <div className="divide-y divide-border">
+              {data.orders.map(
+                (order) => (
+                  <div
+                    key={order.id}
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_140px_130px_180px_80px] items-center gap-4 px-4 py-3"
+                  >
+                    <p className="min-w-0 truncate text-sm font-medium text-foreground">
                       {order.customerName}
                     </p>
 
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="text-sm text-muted">
                       {formatDate(
                         order.orderedAt,
                       )}
                     </p>
+
+                    <p className="text-right text-sm text-foreground">
+                      {quantityFormatter.format(
+                        Number(
+                          order.quantityKg,
+                        ),
+                      )}{" "}
+                      kg
+                    </p>
+
+                    <p className="text-right text-sm font-semibold text-foreground">
+                      {currencyFormatter.format(
+                        Number(
+                          order.totalPrice,
+                        ),
+                      )}
+                    </p>
+
+                    <Link
+                      href={`/sales/orders/${order.id}`}
+                      className="inline-flex h-8 items-center justify-end gap-1 text-xs font-medium text-primary-hover hover:underline"
+                    >
+                      Detail
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
                   </div>
-
-                  <Link
-                    href={`/sales/orders/${order.id}`}
-                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary-hover hover:bg-primary-soft"
-                  >
-                    Detail
-
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-
-                <div className="mt-4 flex items-end justify-between gap-4 border-t border-border pt-3">
-                  <p className="text-sm font-medium text-muted">
-                    {quantityFormatter.format(
-                      Number(
-                        order.quantityKg,
-                      ),
-                    )}{" "}
-                    kg
-                  </p>
-
-                  <p className="text-lg font-semibold text-foreground">
-                    {currencyFormatter.format(
-                      Number(
-                        order.totalPrice,
-                      ),
-                    )}
-                  </p>
-                </div>
-              </Card>
-            ),
-          )}
-        </div>
+                ),
+              )}
+            </div>
+          </Card>
+        </>
       )}
 
       {data.orders.length >= 100 ? (
         <p className="text-center text-xs text-muted">
-          Menampilkan maksimal 100 transaksi terbaru sesuai filter.
+          History menampilkan maksimal 100 order terbaru. Summary tetap menghitung seluruh order sesuai filter.
         </p>
       ) : null}
     </div>

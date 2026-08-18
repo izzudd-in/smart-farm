@@ -12,6 +12,18 @@ enum UserRole {
   OPERATOR
 }
 
+enum EggStockAdjustmentType {
+  OPENING
+  INCREASE
+  DECREASE
+}
+
+enum FeedStockAdjustmentType {
+  OPENING
+  INCREASE
+  DECREASE
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -22,8 +34,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  kandangs     Kandang[]     @relation("KandangOperators")
-  dailyReports DailyReport[] @relation("DailyReportOperator")
+  kandangs             Kandang[]            @relation("KandangOperators")
+  dailyReports         DailyReport[]        @relation("DailyReportOperator")
+  eggStockAdjustments  EggStockAdjustment[] @relation("EggStockAdjustmentCreator")
+  feedPurchases        FeedPurchase[]       @relation("FeedPurchaseCreator")
+  feedStockAdjustments FeedStockAdjustment[] @relation("FeedStockAdjustmentCreator")
 
   @@index([role])
   @@index([isActive])
@@ -38,12 +53,15 @@ model Farm {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  kandangs        Kandang[]
-  feedIngredients FeedIngredient[]
-  feedFormulas    FeedFormula[]
-  customers       Customer[]
-  eggPrices       EggPrice[]
-  orders          Order[]
+  kandangs             Kandang[]
+  feedIngredients      FeedIngredient[]
+  feedFormulas         FeedFormula[]
+  customers            Customer[]
+  eggPrices            EggPrice[]
+  orders               Order[]
+  eggStockAdjustments  EggStockAdjustment[]
+  feedPurchases        FeedPurchase[]
+  feedStockAdjustments FeedStockAdjustment[]
 }
 
 model Kandang {
@@ -148,6 +166,8 @@ model FeedIngredient {
   farm                 Farm                  @relation(fields: [farmId], references: [id], onDelete: Cascade)
   formulaItems         FeedFormulaItem[]
   dailyReportFeedItems DailyReportFeedItem[]
+  purchases            FeedPurchase[]
+  stockAdjustments     FeedStockAdjustment[]
 
   @@unique([farmId, name])
   @@index([farmId, isActive])
@@ -233,6 +253,71 @@ model Order {
 
   @@index([farmId, orderedAt])
   @@index([customerId, orderedAt])
+}
+
+model EggStockAdjustment {
+  id          String                 @id @default(cuid())
+  farmId      String
+  occurredAt  DateTime               @db.Date
+  type        EggStockAdjustmentType
+  quantityKg  Decimal                @db.Decimal(14, 3)
+  note        String?                @db.Text
+  createdById String
+  openingKey  String?                @unique
+  createdAt   DateTime               @default(now())
+
+  farm      Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  createdBy User @relation("EggStockAdjustmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([farmId, occurredAt])
+  @@index([farmId, type])
+  @@index([createdById])
+}
+
+model FeedPurchase {
+  id           String   @id @default(cuid())
+  farmId       String
+  ingredientId String
+  purchasedAt  DateTime @db.Date
+
+  quantityKg     Decimal @db.Decimal(14, 3)
+  unitPricePerKg Decimal @db.Decimal(14, 2)
+  totalPrice     Decimal @db.Decimal(18, 2)
+
+  supplier    String?
+  note        String?  @db.Text
+  createdById String
+  createdAt   DateTime @default(now())
+
+  farm       Farm           @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  ingredient FeedIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  createdBy  User           @relation("FeedPurchaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([farmId, purchasedAt])
+  @@index([ingredientId, purchasedAt])
+  @@index([createdById])
+}
+
+model FeedStockAdjustment {
+  id           String                  @id @default(cuid())
+  farmId       String
+  ingredientId String
+  occurredAt   DateTime                @db.Date
+  type         FeedStockAdjustmentType
+  quantityKg   Decimal                 @db.Decimal(14, 3)
+  note         String?                 @db.Text
+  createdById  String
+  openingKey   String?                 @unique
+  createdAt    DateTime                @default(now())
+
+  farm       Farm           @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  ingredient FeedIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  createdBy  User           @relation("FeedStockAdjustmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([farmId, occurredAt])
+  @@index([ingredientId, occurredAt])
+  @@index([ingredientId, type])
+  @@index([createdById])
 }
 
 model SystemState {

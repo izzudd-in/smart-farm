@@ -105,45 +105,31 @@ export function OrderFormDialog({
   useEffect(() => {
     let active = true;
 
-    setPreview(null);
-    setPreviewError("");
-
-    if (
-      !customerId ||
-      !orderedAt
-    ) {
-      setIsPreviewLoading(
-        false,
-      );
-
-      return () => {
-        active = false;
-      };
-    }
-
-    setIsPreviewLoading(
-      true,
-    );
-
     async function loadPreview() {
-      const result =
-        await getOrderPricingPreview({
-          customerId,
-          orderedAt,
-        });
+      if (!customerId || !orderedAt) {
+        setIsPreviewLoading(false);
+        setPreview(null);
+        setPreviewError("");
+        return;
+      }
+
+      setIsPreviewLoading(true);
+      setPreview(null);
+      setPreviewError("");
+
+      const result = await getOrderPricingPreview({
+        customerId,
+        orderedAt,
+      });
 
       if (!active) {
         return;
       }
 
-      setIsPreviewLoading(
-        false,
-      );
+      setIsPreviewLoading(false);
 
       if (!result.success) {
-        setPreviewError(
-          result.error,
-        );
+        setPreviewError(result.error);
         return;
       }
 
@@ -155,10 +141,7 @@ export function OrderFormDialog({
     return () => {
       active = false;
     };
-  }, [
-    customerId,
-    orderedAt,
-  ]);
+  }, [customerId, orderedAt]);
 
   function handleSubmit(
     event: FormEvent<HTMLFormElement>,

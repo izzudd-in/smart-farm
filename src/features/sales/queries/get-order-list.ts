@@ -83,32 +83,38 @@ export async function getOrderList(
     UserRole.OWNER,
   );
 
-  const orders =
-    await prisma.order.findMany({
-      where: {
-        farm: {
-          scope: "PRIMARY",
-        },
+  const orderWhere = {
+    farm: {
+      scope: "PRIMARY",
+    },
 
-        orderedAt: {
-          gte:
-            parseDateOnly(
-              filters.from,
-            ),
+    orderedAt: {
+      gte:
+        parseDateOnly(
+          filters.from,
+        ),
 
-          lte:
-            parseDateOnly(
-              filters.to,
-            ),
-        },
+      lte:
+        parseDateOnly(
+          filters.to,
+        ),
+    },
 
-        ...(filters.customerId
-          ? {
-              customerId:
-                filters.customerId,
-            }
-          : {}),
-      },
+    ...(filters.customerId
+      ? {
+          customerId:
+            filters.customerId,
+        }
+      : {}),
+  };
+
+  const [
+    orders,
+    aggregate,
+    activeCustomerCount,
+  ] = await Promise.all([
+    prisma.order.findMany({
+      where: orderWhere,
 
       orderBy: [
         {
@@ -137,10 +143,58 @@ export async function getOrderList(
         note: true,
         createdAt: true,
       },
-    });
+    }),
+
+    prisma.order.aggregate({
+      where: orderWhere,
+
+      _sum: {
+        totalPrice: true,
+        quantityKg: true,
+      },
+
+      _count: {
+        _all: true,
+      },
+    }),
+
+    prisma.customer.count({
+      where: {
+        isActive: true,
+
+        farm: {
+          scope: "PRIMARY",
+        },
+
+        ...(filters.customerId
+          ? {
+              id:
+                filters.customerId,
+            }
+          : {}),
+      },
+    }),
+  ]);
 
   return {
     filters,
+
+    summary: {
+      totalSales:
+        aggregate._sum.totalPrice
+          ?.toString() ??
+        "0.00",
+
+      totalQuantityKg:
+        aggregate._sum.quantityKg
+          ?.toString() ??
+        "0",
+
+      orderCount:
+        aggregate._count._all,
+
+      activeCustomerCount,
+    },
 
     orders:
       orders.map(mapOrder),
