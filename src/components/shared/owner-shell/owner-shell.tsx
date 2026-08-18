@@ -90,6 +90,7 @@ const navigationGroups: NavigationGroup[] =
         {
           label: "Penjualan",
           icon: ShoppingCart,
+          href: "/sales",
         },
         {
           label: "Biaya",
@@ -201,7 +202,8 @@ export function OwnerShell({
   children,
   user,
 }: OwnerShellProps) {
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
   const [moreOpen, setMoreOpen] =
     useState(false);
@@ -230,12 +232,17 @@ export function OwnerShell({
     isPathActive(
       pathname,
       "/feed",
+    ) ||
+    isPathActive(
+      pathname,
+      "/sales",
     );
 
   const moreItems =
     navigationGroups
       .flatMap(
-        (group) => group.items,
+        (group) =>
+          group.items,
       )
       .filter(
         (item) =>
@@ -335,7 +342,9 @@ export function OwnerShell({
               U
             </div>
 
-            <span>UdinFarm</span>
+            <span>
+              UdinFarm
+            </span>
           </Link>
 
           <Badge variant="brand">
@@ -406,7 +415,9 @@ export function OwnerShell({
         <button
           type="button"
           aria-label="Buka menu lainnya"
-          aria-expanded={moreOpen}
+          aria-expanded={
+            moreOpen
+          }
           onClick={() =>
             setMoreOpen(true)
           }
@@ -458,7 +469,9 @@ export function OwnerShell({
                 type="button"
                 aria-label="Tutup"
                 onClick={() =>
-                  setMoreOpen(false)
+                  setMoreOpen(
+                    false,
+                  )
                 }
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[#F3F4F6]"
               >

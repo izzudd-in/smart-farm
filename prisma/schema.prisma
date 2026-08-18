@@ -41,6 +41,8 @@ model Farm {
   kandangs        Kandang[]
   feedIngredients FeedIngredient[]
   feedFormulas    FeedFormula[]
+  customers       Customer[]
+  eggPrices       EggPrice[]
 }
 
 model Kandang {
@@ -177,6 +179,35 @@ model FeedFormulaItem {
 
   @@unique([formulaId, ingredientId])
   @@index([ingredientId])
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  farmId        String
+  name          String
+  phone         String?
+  address       String?
+  discountPerKg Decimal  @default(0) @db.Decimal(14, 2)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+
+  @@index([farmId, isActive])
+  @@index([farmId, name])
+}
+
+model EggPrice {
+  id         String   @id @default(cuid())
+  farmId     String
+  pricePerKg Decimal  @db.Decimal(14, 2)
+  effectiveAt DateTime @db.Date
+  createdAt  DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+
+  @@index([farmId, effectiveAt])
 }
 
 model SystemState {

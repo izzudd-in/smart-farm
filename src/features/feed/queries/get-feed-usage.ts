@@ -123,6 +123,8 @@ export async function getFeedUsage(
         ) {
           return [];
         }
+        const feedUsed =
+          report.feedUsed;
 
         return [
           {
@@ -147,7 +149,7 @@ export async function getFeedUsage(
               report.flock.name,
 
             feedUsed:
-              report.feedUsed,
+              feedUsed,
 
             formulaName:
               report.feedFormulaNameSnapshot,
@@ -170,7 +172,7 @@ export async function getFeedUsage(
                     percentage,
 
                     quantityKg:
-                      report.feedUsed *
+                      feedUsed *
                       (percentage /
                         100),
                   };
