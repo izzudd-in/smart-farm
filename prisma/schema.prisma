@@ -98,6 +98,9 @@ model DailyReport {
   incidentalExpense Decimal? @db.Decimal(14, 2)
   incidentNote      String?  @db.Text
 
+  feedFormulaId           String?
+  feedFormulaNameSnapshot String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -105,10 +108,28 @@ model DailyReport {
   flock    Flock   @relation(fields: [flockId], references: [id], onDelete: Restrict)
   operator User    @relation("DailyReportOperator", fields: [operatorId], references: [id], onDelete: Restrict)
 
+  feedFormula FeedFormula?         @relation(fields: [feedFormulaId], references: [id], onDelete: SetNull)
+  feedItems   DailyReportFeedItem[]
+
   @@unique([date, kandangId])
   @@index([operatorId, date])
   @@index([flockId, date])
   @@index([kandangId, date])
+  @@index([feedFormulaId])
+}
+
+model DailyReportFeedItem {
+  id                     String  @id @default(cuid())
+  dailyReportId          String
+  ingredientId           String
+  ingredientNameSnapshot String
+  percentage             Decimal @db.Decimal(5, 2)
+
+  dailyReport DailyReport    @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+  ingredient  FeedIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([dailyReportId, ingredientId])
+  @@index([ingredientId])
 }
 
 model FeedIngredient {
@@ -121,8 +142,9 @@ model FeedIngredient {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  farm         Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  formulaItems FeedFormulaItem[]
+  farm                 Farm                  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  formulaItems         FeedFormulaItem[]
+  dailyReportFeedItems DailyReportFeedItem[]
 
   @@unique([farmId, name])
   @@index([farmId, isActive])
@@ -136,8 +158,9 @@ model FeedFormula {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  farm  Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  items FeedFormulaItem[]
+  farm         Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  items        FeedFormulaItem[]
+  dailyReports DailyReport[]
 
   @@unique([farmId, name])
   @@index([farmId, isActive])

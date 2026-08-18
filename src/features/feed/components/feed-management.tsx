@@ -18,29 +18,34 @@ import type {
   FeedFormulaView,
   FeedIngredientView,
   FeedPageData,
+  FeedTab,
+  FeedUsageData,
 } from "@/features/feed/types/feed";
 import { Button } from "@/components/ui/button";
 
 import { FeedFormulaList } from "./feed-formula-list";
 import { FeedIngredientList } from "./feed-ingredient-list";
+import { FeedUsagePanel } from "./feed-usage-panel";
 import { FormulaFormDialog } from "./formula-form-dialog";
 import { IngredientFormDialog } from "./ingredient-form-dialog";
 
 type FeedManagementProps = {
   data: FeedPageData;
+  usage: FeedUsageData;
+  initialTab: FeedTab;
 };
-
-type FeedTab =
-  | "formula"
-  | "ingredient";
 
 export function FeedManagement({
   data,
+  usage,
+  initialTab,
 }: FeedManagementProps) {
   const router = useRouter();
 
   const [tab, setTab] =
-    useState<FeedTab>("formula");
+    useState<FeedTab>(
+      initialTab,
+    );
 
   const [
     ingredientDialog,
@@ -69,7 +74,9 @@ export function FeedManagement({
     ingredient: FeedIngredientView,
   ) {
     setActionError("");
-    setPendingId(ingredient.id);
+    setPendingId(
+      ingredient.id,
+    );
 
     startTransition(async () => {
       const result =
@@ -81,7 +88,9 @@ export function FeedManagement({
       setPendingId(null);
 
       if (!result.success) {
-        setActionError(result.error);
+        setActionError(
+          result.error,
+        );
         return;
       }
 
@@ -105,7 +114,9 @@ export function FeedManagement({
       setPendingId(null);
 
       if (!result.success) {
-        setActionError(result.error);
+        setActionError(
+          result.error,
+        );
         return;
       }
 
@@ -127,29 +138,31 @@ export function FeedManagement({
             </div>
 
             <p className="mt-1 text-sm text-muted">
-              Kelola master bahan dan
-              formula pakan.
+              Pemakaian pakan, formula,
+              dan master bahan pakan.
             </p>
           </div>
 
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() =>
-              tab === "formula"
-                ? setFormulaDialog(
-                    "create",
-                  )
-                : setIngredientDialog(
-                    "create",
-                  )
-            }
-          >
-            <Plus className="h-4 w-4" />
+          {tab !== "usage" ? (
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() =>
+                tab === "formula"
+                  ? setFormulaDialog(
+                      "create",
+                    )
+                  : setIngredientDialog(
+                      "create",
+                    )
+              }
+            >
+              <Plus className="h-4 w-4" />
 
-            {tab === "formula"
-              ? "Tambah Formula"
-              : "Tambah Bahan"}
-          </Button>
+              {tab === "formula"
+                ? "Tambah Formula"
+                : "Tambah Bahan"}
+            </Button>
+          ) : null}
         </div>
 
         {actionError ? (
@@ -161,14 +174,29 @@ export function FeedManagement({
           </div>
         ) : null}
 
-        <div className="flex border-b border-border">
+        <div className="flex overflow-x-auto border-b border-border">
+          <button
+            type="button"
+            onClick={() =>
+              setTab("usage")
+            }
+            className={[
+              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              tab === "usage"
+                ? "border-primary text-primary-hover"
+                : "border-transparent text-muted hover:text-foreground",
+            ].join(" ")}
+          >
+            Pemakaian
+          </button>
+
           <button
             type="button"
             onClick={() =>
               setTab("formula")
             }
             className={[
-              "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
               tab === "formula"
                 ? "border-primary text-primary-hover"
                 : "border-transparent text-muted hover:text-foreground",
@@ -183,7 +211,7 @@ export function FeedManagement({
               setTab("ingredient")
             }
             className={[
-              "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
               tab === "ingredient"
                 ? "border-primary text-primary-hover"
                 : "border-transparent text-muted hover:text-foreground",
@@ -193,7 +221,11 @@ export function FeedManagement({
           </button>
         </div>
 
-        {tab === "formula" ? (
+        {tab === "usage" ? (
+          <FeedUsagePanel
+            data={usage}
+          />
+        ) : tab === "formula" ? (
           <FeedFormulaList
             formulas={data.formulas}
             pendingId={
@@ -237,7 +269,9 @@ export function FeedManagement({
               : ingredientDialog
           }
           onClose={() =>
-            setIngredientDialog(null)
+            setIngredientDialog(
+              null,
+            )
           }
         />
       ) : null}

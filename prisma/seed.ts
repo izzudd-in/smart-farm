@@ -16,7 +16,8 @@ if (!databaseUrl) {
 }
 
 const adapter = new PrismaPg({
-  connectionString: databaseUrl,
+  connectionString:
+    databaseUrl,
 });
 
 const prisma = new PrismaClient({
@@ -26,13 +27,16 @@ const prisma = new PrismaClient({
 const developmentUsers = [
   {
     name: "Owner Development",
-    email: "owner@smartfarm.local",
+    email:
+      "owner@smartfarm.local",
     password: "owner123",
     role: UserRole.OWNER,
   },
   {
-    name: "Operator Development",
-    email: "operator@smartfarm.local",
+    name:
+      "Operator Development",
+    email:
+      "operator@smartfarm.local",
     password: "operator123",
     role: UserRole.OPERATOR,
   },
@@ -67,18 +71,29 @@ async function main() {
       },
 
       update: {
-        name: developmentUser.name,
+        name:
+          developmentUser.name,
+
         passwordHash,
-        role: developmentUser.role,
+
+        role:
+          developmentUser.role,
+
         isActive: true,
       },
 
       create: {
-        name: developmentUser.name,
+        name:
+          developmentUser.name,
+
         email:
           developmentUser.email,
+
         passwordHash,
-        role: developmentUser.role,
+
+        role:
+          developmentUser.role,
+
         isActive: true,
       },
     });
@@ -188,8 +203,11 @@ async function main() {
     await prisma.flock.upsert({
       where: {
         kandangId_name: {
-          kandangId: kandangA.id,
-          name: "Flock A 2026",
+          kandangId:
+            kandangA.id,
+
+          name:
+            "Flock A 2026",
         },
       },
 
@@ -197,17 +215,26 @@ async function main() {
         startDate: new Date(
           "2026-02-01T00:00:00.000Z",
         ),
-        initialPopulation: 5000,
+
+        initialPopulation:
+          5000,
+
         endedAt: null,
       },
 
       create: {
-        kandangId: kandangA.id,
-        name: "Flock A 2026",
+        kandangId:
+          kandangA.id,
+
+        name:
+          "Flock A 2026",
+
         startDate: new Date(
           "2026-02-01T00:00:00.000Z",
         ),
-        initialPopulation: 5000,
+
+        initialPopulation:
+          5000,
       },
     });
 
@@ -215,8 +242,11 @@ async function main() {
     await prisma.flock.upsert({
       where: {
         kandangId_name: {
-          kandangId: kandangB.id,
-          name: "Flock B 2026",
+          kandangId:
+            kandangB.id,
+
+          name:
+            "Flock B 2026",
         },
       },
 
@@ -224,17 +254,26 @@ async function main() {
         startDate: new Date(
           "2026-03-15T00:00:00.000Z",
         ),
-        initialPopulation: 4500,
+
+        initialPopulation:
+          4500,
+
         endedAt: null,
       },
 
       create: {
-        kandangId: kandangB.id,
-        name: "Flock B 2026",
+        kandangId:
+          kandangB.id,
+
+        name:
+          "Flock B 2026",
+
         startDate: new Date(
           "2026-03-15T00:00:00.000Z",
         ),
-        initialPopulation: 4500,
+
+        initialPopulation:
+          4500,
       },
     });
 
@@ -277,8 +316,10 @@ async function main() {
 
       update: {
         unit: "kg",
+
         currentPricePerKg:
           "5500.00",
+
         isActive: true,
       },
 
@@ -286,8 +327,10 @@ async function main() {
         farmId: farm.id,
         name: "Jagung",
         unit: "kg",
+
         currentPricePerKg:
           "5500.00",
+
         isActive: true,
       },
     });
@@ -297,23 +340,32 @@ async function main() {
       where: {
         farmId_name: {
           farmId: farm.id,
-          name: "Konsentrat",
+
+          name:
+            "Konsentrat",
         },
       },
 
       update: {
         unit: "kg",
+
         currentPricePerKg:
           "8500.00",
+
         isActive: true,
       },
 
       create: {
         farmId: farm.id,
-        name: "Konsentrat",
+
+        name:
+          "Konsentrat",
+
         unit: "kg",
+
         currentPricePerKg:
           "8500.00",
+
         isActive: true,
       },
     });
@@ -329,8 +381,10 @@ async function main() {
 
       update: {
         unit: "kg",
+
         currentPricePerKg:
           "3500.00",
+
         isActive: true,
       },
 
@@ -338,8 +392,10 @@ async function main() {
         farmId: farm.id,
         name: "Dedak",
         unit: "kg",
+
         currentPricePerKg:
           "3500.00",
+
         isActive: true,
       },
     });
@@ -349,6 +405,7 @@ async function main() {
       where: {
         farmId_name: {
           farmId: farm.id,
+
           name:
             "Formula Layer Utama",
         },
@@ -360,8 +417,10 @@ async function main() {
 
       create: {
         farmId: farm.id,
+
         name:
           "Formula Layer Utama",
+
         isActive: false,
       },
     });
@@ -381,31 +440,44 @@ async function main() {
       },
     }),
 
-    prisma.feedFormulaItem.deleteMany(
-      {
-        where: {
-          formulaId: formula.id,
-        },
+    prisma.feedFormulaItem.deleteMany({
+      where: {
+        formulaId:
+          formula.id,
       },
-    ),
+    }),
 
     prisma.feedFormulaItem.createMany({
       data: [
         {
-          formulaId: formula.id,
-          ingredientId: jagung.id,
-          percentage: "50.00",
+          formulaId:
+            formula.id,
+
+          ingredientId:
+            jagung.id,
+
+          percentage:
+            "50.00",
         },
         {
-          formulaId: formula.id,
+          formulaId:
+            formula.id,
+
           ingredientId:
             konsentrat.id,
-          percentage: "35.00",
+
+          percentage:
+            "35.00",
         },
         {
-          formulaId: formula.id,
-          ingredientId: dedak.id,
-          percentage: "15.00",
+          formulaId:
+            formula.id,
+
+          ingredientId:
+            dedak.id,
+
+          percentage:
+            "15.00",
         },
       ],
     }),
@@ -421,96 +493,190 @@ async function main() {
     }),
   ]);
 
-  await prisma.dailyReport.upsert({
-    where: {
-      date_kandangId: {
+  const reportA =
+    await prisma.dailyReport.upsert({
+      where: {
+        date_kandangId: {
+          date: new Date(
+            "2026-08-17T00:00:00.000Z",
+          ),
+
+          kandangId:
+            kandangA.id,
+        },
+      },
+
+      update: {
+        flockId: flockA.id,
+        operatorId: operator.id,
+
+        saleableEgg: 185.5,
+        damagedEgg: 4.5,
+        feedUsed: 480,
+        mortality: 3,
+
+        incidentalExpense:
+          "25000.00",
+
+        incidentNote:
+          "Pembersihan saluran air kandang.",
+
+        feedFormulaId:
+          formula.id,
+
+        feedFormulaNameSnapshot:
+          "Formula Layer Utama",
+      },
+
+      create: {
         date: new Date(
           "2026-08-17T00:00:00.000Z",
         ),
-        kandangId: kandangA.id,
+
+        kandangId:
+          kandangA.id,
+
+        flockId: flockA.id,
+        operatorId: operator.id,
+
+        saleableEgg: 185.5,
+        damagedEgg: 4.5,
+        feedUsed: 480,
+        mortality: 3,
+
+        incidentalExpense:
+          "25000.00",
+
+        incidentNote:
+          "Pembersihan saluran air kandang.",
+
+        feedFormulaId:
+          formula.id,
+
+        feedFormulaNameSnapshot:
+          "Formula Layer Utama",
       },
-    },
+    });
 
-    update: {
-      flockId: flockA.id,
-      operatorId: operator.id,
+  const reportB =
+    await prisma.dailyReport.upsert({
+      where: {
+        date_kandangId: {
+          date: new Date(
+            "2026-08-16T00:00:00.000Z",
+          ),
 
-      saleableEgg: 185.5,
-      damagedEgg: 4.5,
-      feedUsed: 480,
-      mortality: 3,
+          kandangId:
+            kandangB.id,
+        },
+      },
 
-      incidentalExpense:
-        "25000.00",
+      update: {
+        flockId: flockB.id,
+        operatorId: operator.id,
 
-      incidentNote:
-        "Pembersihan saluran air kandang.",
-    },
+        saleableEgg: 170,
+        damagedEgg: null,
+        feedUsed: 430,
+        mortality: 1,
 
-    create: {
-      date: new Date(
-        "2026-08-17T00:00:00.000Z",
-      ),
+        incidentalExpense:
+          null,
 
-      kandangId: kandangA.id,
-      flockId: flockA.id,
-      operatorId: operator.id,
+        incidentNote:
+          "Telur rusak belum direkap.",
 
-      saleableEgg: 185.5,
-      damagedEgg: 4.5,
-      feedUsed: 480,
-      mortality: 3,
+        feedFormulaId:
+          formula.id,
 
-      incidentalExpense:
-        "25000.00",
+        feedFormulaNameSnapshot:
+          "Formula Layer Utama",
+      },
 
-      incidentNote:
-        "Pembersihan saluran air kandang.",
-    },
-  });
-
-  await prisma.dailyReport.upsert({
-    where: {
-      date_kandangId: {
+      create: {
         date: new Date(
           "2026-08-16T00:00:00.000Z",
         ),
-        kandangId: kandangB.id,
+
+        kandangId:
+          kandangB.id,
+
+        flockId: flockB.id,
+        operatorId: operator.id,
+
+        saleableEgg: 170,
+        damagedEgg: null,
+        feedUsed: 430,
+        mortality: 1,
+
+        incidentNote:
+          "Telur rusak belum direkap.",
+
+        feedFormulaId:
+          formula.id,
+
+        feedFormulaNameSnapshot:
+          "Formula Layer Utama",
       },
-    },
+    });
 
-    update: {
-      flockId: flockB.id,
-      operatorId: operator.id,
+  for (const report of [
+    reportA,
+    reportB,
+  ]) {
+    await prisma.$transaction([
+      prisma.dailyReportFeedItem.deleteMany({
+        where: {
+          dailyReportId:
+            report.id,
+        },
+      }),
 
-      saleableEgg: 170,
-      damagedEgg: null,
-      feedUsed: 430,
-      mortality: 1,
+      prisma.dailyReportFeedItem.createMany({
+        data: [
+          {
+            dailyReportId:
+              report.id,
 
-      incidentalExpense: null,
-      incidentNote:
-        "Telur rusak belum direkap.",
-    },
+            ingredientId:
+              jagung.id,
 
-    create: {
-      date: new Date(
-        "2026-08-16T00:00:00.000Z",
-      ),
+            ingredientNameSnapshot:
+              "Jagung",
 
-      kandangId: kandangB.id,
-      flockId: flockB.id,
-      operatorId: operator.id,
+            percentage:
+              "50.00",
+          },
+          {
+            dailyReportId:
+              report.id,
 
-      saleableEgg: 170,
-      damagedEgg: null,
-      feedUsed: 430,
-      mortality: 1,
+            ingredientId:
+              konsentrat.id,
 
-      incidentNote:
-        "Telur rusak belum direkap.",
-    },
-  });
+            ingredientNameSnapshot:
+              "Konsentrat",
+
+            percentage:
+              "35.00",
+          },
+          {
+            dailyReportId:
+              report.id,
+
+            ingredientId:
+              dedak.id,
+
+            ingredientNameSnapshot:
+              "Dedak",
+
+            percentage:
+              "15.00",
+          },
+        ],
+      }),
+    ]);
+  }
 
   console.log(
     "Database seed completed.",
@@ -529,7 +695,7 @@ async function main() {
   );
 
   console.log(
-    "Daily Operations seed completed.",
+    "Daily Operations + feed snapshot seed completed.",
   );
 }
 

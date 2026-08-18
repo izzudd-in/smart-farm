@@ -3,13 +3,20 @@ import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/server/auth/guards";
 
 import { dailyReportViewSelect } from "@/features/daily-operations/queries/report-fields";
-import type { OperatorTodayData } from "@/features/daily-operations/types/daily-report";
+import type {
+  DailyReportFeedItemView,
+  OperatorTodayData,
+} from "@/features/daily-operations/types/daily-report";
 import {
   getJakartaTodayDate,
   getJakartaTodayString,
 } from "@/features/daily-operations/utils/date";
 import { mapDailyReportView } from "@/features/daily-operations/utils/map-report";
 import { getDailyReportStatus } from "@/features/daily-operations/utils/status";
+import {
+  assertFormulaComplete,
+  percentageToBasisPoints,
+} from "@/features/feed/schemas/feed";
 
 export async function getOperatorTodayData(): Promise<OperatorTodayData> {
   const user = await requireRole(
@@ -22,8 +29,11 @@ export async function getOperatorTodayData(): Promise<OperatorTodayData> {
   const date =
     getJakartaTodayDate();
 
-  const kandangs =
-    await prisma.kandang.findMany({
+  const [
+    kandangs,
+    activeFormula,
+  ] = await Promise.all([
+    prisma.kandang.findMany({
       where: {
         isActive: true,
 
@@ -66,7 +76,89 @@ export async function getOperatorTodayData(): Promise<OperatorTodayData> {
             dailyReportViewSelect,
         },
       },
-    });
+    }),
+
+    prisma.feedFormula.findFirst({
+      where: {
+        isActive: true,
+
+        farm: {
+          scope: "PRIMARY",
+        },
+      },
+
+      select: {
+        id: true,
+        name: true,
+
+        items: {
+          orderBy: {
+            ingredient: {
+              name: "asc",
+            },
+          },
+
+          select: {
+            percentage: true,
+
+            ingredient: {
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  let activeFormulaItems:
+    DailyReportFeedItemView[] = [];
+
+  let activeFormulaValid =
+    false;
+
+  if (
+    activeFormula &&
+    activeFormula.items.length > 0 &&
+    activeFormula.items.every(
+      (item) =>
+        item.ingredient.isActive,
+    )
+  ) {
+    try {
+      assertFormulaComplete(
+        activeFormula.items.reduce(
+          (total, item) =>
+            total +
+            percentageToBasisPoints(
+              item.percentage.toString(),
+            ),
+          0,
+        ),
+      );
+
+      activeFormulaItems =
+        activeFormula.items.map(
+          (item) => ({
+            ingredientId:
+              item.ingredient.id,
+
+            ingredientName:
+              item.ingredient.name,
+
+            percentage:
+              item.percentage.toString(),
+          }),
+        );
+
+      activeFormulaValid = true;
+    } catch {
+      activeFormulaValid = false;
+    }
+  }
 
   return {
     date: dateString,
@@ -79,14 +171,13 @@ export async function getOperatorTodayData(): Promise<OperatorTodayData> {
           return [];
         }
 
-        const activeFlockStart =
+        const flockStart =
           kandang.activeFlock.startDate
             .toISOString()
             .slice(0, 10);
 
         if (
-          activeFlockStart >
-          dateString
+          flockStart > dateString
         ) {
           return [];
         }
@@ -109,22 +200,26 @@ export async function getOperatorTodayData(): Promise<OperatorTodayData> {
                 report.flockStartDate,
             }
           : {
-              id: kandang.activeFlock.id,
+              id:
+                kandang.activeFlock.id,
+
               name:
                 kandang.activeFlock.name,
-              startDate:
-                activeFlockStart,
+
+              startDate: flockStart,
             };
 
         let isEditable = true;
-        let readOnlyReason: string | null =
-          null;
+
+        let readOnlyReason:
+          string | null = null;
 
         if (
           report &&
           report.operatorId !== user.id
         ) {
           isEditable = false;
+
           readOnlyReason =
             `Laporan hari ini sudah diisi oleh ${report.operatorName}.`;
         } else if (
@@ -133,9 +228,57 @@ export async function getOperatorTodayData(): Promise<OperatorTodayData> {
             kandang.activeFlock.id
         ) {
           isEditable = false;
+
           readOnlyReason =
             "Laporan hari ini terikat ke flock sebelumnya dan tidak dapat diubah.";
         }
+
+        const hasSnapshot =
+          Boolean(
+            report &&
+              report.feedItems.length >
+                0,
+          );
+
+        const feed = hasSnapshot
+          ? {
+              formulaId:
+                report?.feedFormulaId ??
+                null,
+
+              formulaName:
+                report?.feedFormulaName ??
+                null,
+
+              items:
+                report?.feedItems ?? [],
+
+              source:
+                "REPORT_SNAPSHOT" as const,
+            }
+          : activeFormula &&
+              activeFormulaValid
+            ? {
+                formulaId:
+                  activeFormula.id,
+
+                formulaName:
+                  activeFormula.name,
+
+                items:
+                  activeFormulaItems,
+
+                source:
+                  "ACTIVE_FORMULA" as const,
+              }
+            : {
+                formulaId: null,
+                formulaName: null,
+                items: [],
+
+                source:
+                  "NONE" as const,
+              };
 
         return [
           {
@@ -152,6 +295,8 @@ export async function getOperatorTodayData(): Promise<OperatorTodayData> {
               getDailyReportStatus(
                 null,
               ),
+
+            feed,
 
             isEditable,
             readOnlyReason,

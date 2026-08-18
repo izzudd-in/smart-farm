@@ -16,6 +16,18 @@ type DailyReportViewRecord = {
 
   incidentNote: string | null;
 
+  feedFormulaId: string | null;
+  feedFormulaNameSnapshot: string | null;
+
+  feedItems: Array<{
+    ingredientId: string;
+    ingredientNameSnapshot: string;
+
+    percentage: {
+      toString(): string;
+    };
+  }>;
+
   kandang: {
     id: string;
     code: string;
@@ -44,25 +56,43 @@ export function mapDailyReportView(
       .toISOString()
       .slice(0, 10),
 
-    kandangId: report.kandang.id,
-    kandangCode: report.kandang.code,
-    kandangName: report.kandang.name,
+    kandangId:
+      report.kandang.id,
 
-    flockId: report.flock.id,
-    flockName: report.flock.name,
+    kandangCode:
+      report.kandang.code,
+
+    kandangName:
+      report.kandang.name,
+
+    flockId:
+      report.flock.id,
+
+    flockName:
+      report.flock.name,
 
     flockStartDate:
       report.flock.startDate
         .toISOString()
         .slice(0, 10),
 
-    operatorId: report.operator.id,
-    operatorName: report.operator.name,
+    operatorId:
+      report.operator.id,
 
-    saleableEgg: report.saleableEgg,
-    damagedEgg: report.damagedEgg,
-    feedUsed: report.feedUsed,
-    mortality: report.mortality,
+    operatorName:
+      report.operator.name,
+
+    saleableEgg:
+      report.saleableEgg,
+
+    damagedEgg:
+      report.damagedEgg,
+
+    feedUsed:
+      report.feedUsed,
+
+    mortality:
+      report.mortality,
 
     incidentalExpense:
       report.incidentalExpense
@@ -70,6 +100,26 @@ export function mapDailyReportView(
 
     incidentNote:
       report.incidentNote,
+
+    feedFormulaId:
+      report.feedFormulaId,
+
+    feedFormulaName:
+      report.feedFormulaNameSnapshot,
+
+    feedItems:
+      report.feedItems.map(
+        (item) => ({
+          ingredientId:
+            item.ingredientId,
+
+          ingredientName:
+            item.ingredientNameSnapshot,
+
+          percentage:
+            item.percentage.toString(),
+        }),
+      ),
 
     status:
       getDailyReportStatus(report),

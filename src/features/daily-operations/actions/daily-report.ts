@@ -16,6 +16,10 @@ import type {
 } from "@/features/daily-operations/types/daily-report";
 import { getJakartaTodayDate } from "@/features/daily-operations/utils/date";
 import { getDailyReportStatus } from "@/features/daily-operations/utils/status";
+import {
+  assertFormulaComplete,
+  percentageToBasisPoints,
+} from "@/features/feed/schemas/feed";
 
 const TODAY_PATH =
   "/operator/today";
@@ -25,6 +29,9 @@ const HISTORY_PATH =
 
 const OWNER_DAILY_PATH =
   "/daily";
+
+const FEED_PATH =
+  "/feed";
 
 function ruleError(
   message: string,
@@ -55,6 +62,7 @@ function handleActionError(
   ) {
     return {
       success: false,
+
       error: error.message.replace(
         "DAILY_REPORT_RULE:",
         "",
@@ -79,6 +87,7 @@ function handleActionError(
 
   return {
     success: false,
+
     error:
       "Terjadi kesalahan saat menyimpan laporan.",
   };
@@ -89,9 +98,10 @@ async function saveReport(
   requireComplete: boolean,
 ): Promise<DailyReportActionResult> {
   try {
-    const user = await requireRole(
-      UserRole.OPERATOR,
-    );
+    const user =
+      await requireRole(
+        UserRole.OPERATOR,
+      );
 
     const parsed =
       parseDailyReportInput(
@@ -120,6 +130,7 @@ async function saveReport(
 
               select: {
                 id: true,
+                farmId: true,
 
                 activeFlock: {
                   select: {
@@ -166,9 +177,27 @@ async function saveReport(
                 flockId: true,
                 operatorId: true,
 
+                feedFormulaId: true,
+                feedFormulaNameSnapshot:
+                  true,
+
                 operator: {
                   select: {
                     name: true,
+                  },
+                },
+
+                feedItems: {
+                  orderBy: {
+                    ingredientNameSnapshot:
+                      "asc",
+                  },
+
+                  select: {
+                    ingredientId: true,
+                    ingredientNameSnapshot:
+                      true,
+                    percentage: true,
                   },
                 },
               },
@@ -194,73 +223,334 @@ async function saveReport(
             );
           }
 
-          return tx.dailyReport.upsert({
-            where: {
-              date_kandangId: {
+          type SnapshotItem = {
+            ingredientId: string;
+            ingredientNameSnapshot: string;
+            percentage: string;
+          };
+
+          type Snapshot = {
+            formulaId: string | null;
+            formulaNameSnapshot: string;
+            items: SnapshotItem[];
+          };
+
+          let snapshot:
+            Snapshot | null = null;
+
+          const hasExistingSnapshot =
+            Boolean(
+              existing &&
+                existing.feedItems
+                  .length > 0,
+            );
+
+          if (
+            existing &&
+            hasExistingSnapshot
+          ) {
+            snapshot = {
+              formulaId:
+                existing.feedFormulaId,
+
+              formulaNameSnapshot:
+                existing.feedFormulaNameSnapshot ??
+                "Formula Tersimpan",
+
+              items:
+                existing.feedItems.map(
+                  (item) => ({
+                    ingredientId:
+                      item.ingredientId,
+
+                    ingredientNameSnapshot:
+                      item.ingredientNameSnapshot,
+
+                    percentage:
+                      item.percentage.toString(),
+                  }),
+                ),
+            };
+          } else {
+            const activeFormula =
+              await tx.feedFormula.findFirst({
+                where: {
+                  farmId:
+                    kandang.farmId,
+
+                  isActive: true,
+                },
+
+                select: {
+                  id: true,
+                  name: true,
+
+                  items: {
+                    select: {
+                      percentage: true,
+
+                      ingredient: {
+                        select: {
+                          id: true,
+                          name: true,
+                          isActive: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+
+            if (activeFormula) {
+              if (
+                activeFormula.items
+                  .length === 0 ||
+                activeFormula.items.some(
+                  (item) =>
+                    !item.ingredient
+                      .isActive,
+                )
+              ) {
+                throw ruleError(
+                  "Formula pakan aktif tidak valid. Hubungi Owner untuk memperbaiki formula.",
+                );
+              }
+
+              assertFormulaComplete(
+                activeFormula.items.reduce(
+                  (total, item) =>
+                    total +
+                    percentageToBasisPoints(
+                      item.percentage.toString(),
+                    ),
+                  0,
+                ),
+              );
+
+              snapshot = {
+                formulaId:
+                  activeFormula.id,
+
+                formulaNameSnapshot:
+                  activeFormula.name,
+
+                items:
+                  activeFormula.items.map(
+                    (item) => ({
+                      ingredientId:
+                        item.ingredient.id,
+
+                      ingredientNameSnapshot:
+                        item.ingredient.name,
+
+                      percentage:
+                        item.percentage.toString(),
+                    }),
+                  ),
+              };
+            }
+          }
+
+          if (
+            parsed.feedCompositionOverride
+          ) {
+            if (!snapshot) {
+              throw ruleError(
+                "Tidak ada formula pakan yang dapat digunakan sebagai dasar komposisi aktual.",
+              );
+            }
+
+            const expectedIds =
+              new Set(
+                snapshot.items.map(
+                  (item) =>
+                    item.ingredientId,
+                ),
+              );
+
+            const actualIds =
+              new Set(
+                parsed.feedComposition.map(
+                  (item) =>
+                    item.ingredientId,
+                ),
+              );
+
+            if (
+              expectedIds.size !==
+                actualIds.size ||
+              Array.from(
+                expectedIds,
+              ).some(
+                (ingredientId) =>
+                  !actualIds.has(
+                    ingredientId,
+                  ),
+              )
+            ) {
+              throw ruleError(
+                "Override komposisi hanya boleh mengubah persentase bahan dari formula yang digunakan.",
+              );
+            }
+
+            snapshot = {
+              ...snapshot,
+
+              items:
+                snapshot.items.map(
+                  (baseItem) => {
+                    const override =
+                      parsed.feedComposition.find(
+                        (item) =>
+                          item.ingredientId ===
+                          baseItem.ingredientId,
+                      );
+
+                    if (!override) {
+                      throw ruleError(
+                        "Komposisi aktual tidak lengkap.",
+                      );
+                    }
+
+                    return {
+                      ...baseItem,
+
+                      percentage:
+                        override.percentage,
+                    };
+                  },
+                ),
+            };
+          }
+
+          if (
+            parsed.feedUsed !== null &&
+            !snapshot
+          ) {
+            throw ruleError(
+              "Pakan Digunakan sudah diisi, tetapi belum ada formula pakan aktif. Hubungi Owner untuk mengaktifkan formula.",
+            );
+          }
+
+          const report =
+            await tx.dailyReport.upsert({
+              where: {
+                date_kandangId: {
+                  date: reportDate,
+
+                  kandangId:
+                    kandang.id,
+                },
+              },
+
+              create: {
                 date: reportDate,
+
                 kandangId:
                   kandang.id,
+
+                flockId:
+                  kandang.activeFlock.id,
+
+                operatorId:
+                  user.id,
+
+                saleableEgg:
+                  parsed.saleableEgg,
+
+                damagedEgg:
+                  parsed.damagedEgg,
+
+                feedUsed:
+                  parsed.feedUsed,
+
+                mortality:
+                  parsed.mortality,
+
+                incidentalExpense:
+                  parsed.incidentalExpense,
+
+                incidentNote:
+                  parsed.incidentNote,
+
+                feedFormulaId:
+                  snapshot?.formulaId ??
+                  null,
+
+                feedFormulaNameSnapshot:
+                  snapshot?.formulaNameSnapshot ??
+                  null,
               },
-            },
 
-            create: {
-              date: reportDate,
+              update: {
+                saleableEgg:
+                  parsed.saleableEgg,
 
-              kandangId:
-                kandang.id,
+                damagedEgg:
+                  parsed.damagedEgg,
 
-              flockId:
-                kandang.activeFlock.id,
+                feedUsed:
+                  parsed.feedUsed,
 
-              operatorId:
-                user.id,
+                mortality:
+                  parsed.mortality,
 
-              saleableEgg:
-                parsed.saleableEgg,
+                incidentalExpense:
+                  parsed.incidentalExpense,
 
-              damagedEgg:
-                parsed.damagedEgg,
+                incidentNote:
+                  parsed.incidentNote,
 
-              feedUsed:
-                parsed.feedUsed,
+                feedFormulaId:
+                  snapshot?.formulaId ??
+                  null,
 
-              mortality:
-                parsed.mortality,
+                feedFormulaNameSnapshot:
+                  snapshot?.formulaNameSnapshot ??
+                  null,
+              },
 
-              incidentalExpense:
-                parsed.incidentalExpense,
+              select: {
+                id: true,
+                saleableEgg: true,
+                damagedEgg: true,
+                feedUsed: true,
+                mortality: true,
+              },
+            });
 
-              incidentNote:
-                parsed.incidentNote,
-            },
-
-            update: {
-              saleableEgg:
-                parsed.saleableEgg,
-
-              damagedEgg:
-                parsed.damagedEgg,
-
-              feedUsed:
-                parsed.feedUsed,
-
-              mortality:
-                parsed.mortality,
-
-              incidentalExpense:
-                parsed.incidentalExpense,
-
-              incidentNote:
-                parsed.incidentNote,
-            },
-
-            select: {
-              saleableEgg: true,
-              damagedEgg: true,
-              feedUsed: true,
-              mortality: true,
+          await tx.dailyReportFeedItem.deleteMany({
+            where: {
+              dailyReportId:
+                report.id,
             },
           });
+
+          if (
+            snapshot &&
+            snapshot.items.length > 0
+          ) {
+            await tx.dailyReportFeedItem.createMany({
+              data:
+                snapshot.items.map(
+                  (item) => ({
+                    dailyReportId:
+                      report.id,
+
+                    ingredientId:
+                      item.ingredientId,
+
+                    ingredientNameSnapshot:
+                      item.ingredientNameSnapshot,
+
+                    percentage:
+                      item.percentage,
+                  }),
+                ),
+            });
+          }
+
+          return report;
         },
       );
 
@@ -270,10 +560,10 @@ async function saveReport(
     revalidatePath(TODAY_PATH);
     revalidatePath(HISTORY_PATH);
     revalidatePath(OWNER_DAILY_PATH);
+    revalidatePath(FEED_PATH);
 
     return {
       success: true,
-
       status,
 
       message:
@@ -282,18 +572,26 @@ async function saveReport(
           : "Draft laporan berhasil disimpan.",
     };
   } catch (error) {
-    return handleActionError(error);
+    return handleActionError(
+      error,
+    );
   }
 }
 
 export async function saveDailyReportDraft(
   input: DailyReportFormInput,
 ): Promise<DailyReportActionResult> {
-  return saveReport(input, false);
+  return saveReport(
+    input,
+    false,
+  );
 }
 
 export async function completeDailyReport(
   input: DailyReportFormInput,
 ): Promise<DailyReportActionResult> {
-  return saveReport(input, true);
+  return saveReport(
+    input,
+    true,
+  );
 }

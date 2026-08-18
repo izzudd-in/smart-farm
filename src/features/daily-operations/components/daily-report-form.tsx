@@ -2,6 +2,7 @@
 
 import {
   type FormEvent,
+  useMemo,
   useState,
   useTransition,
 } from "react";
@@ -11,6 +12,7 @@ import {
   ChevronUp,
   CircleCheck,
   LockKeyhole,
+  Pencil,
   Plus,
 } from "lucide-react";
 
@@ -77,7 +79,8 @@ export function DailyReportForm({
     incidentalExpense,
     setIncidentalExpense,
   ] = useState(
-    report?.incidentalExpense ?? "",
+    report?.incidentalExpense ??
+      "",
   );
 
   const [
@@ -94,6 +97,29 @@ export function DailyReportForm({
     Boolean(
       report?.incidentalExpense ||
         report?.incidentNote,
+    ),
+  );
+
+  const [
+    compositionOverride,
+    setCompositionOverride,
+  ] = useState(false);
+
+  const [
+    composition,
+    setComposition,
+  ] = useState(
+    kandang.feed.items.map(
+      (item) => ({
+        ingredientId:
+          item.ingredientId,
+
+        ingredientName:
+          item.ingredientName,
+
+        percentage:
+          item.percentage,
+      }),
     ),
   );
 
@@ -118,6 +144,56 @@ export function DailyReportForm({
     feedUsed.trim() !== "" &&
     mortality.trim() !== "";
 
+  const totalComposition =
+    useMemo(
+      () =>
+        composition.reduce(
+          (total, item) => {
+            const percentage =
+              Number(
+                item.percentage.replace(
+                  ",",
+                  ".",
+                ),
+              );
+
+            return (
+              total +
+              (Number.isFinite(
+                percentage,
+              )
+                ? percentage
+                : 0)
+            );
+          },
+          0,
+        ),
+      [composition],
+    );
+
+  const compositionInvalid =
+    compositionOverride &&
+    Math.abs(
+      totalComposition - 100,
+    ) >= 0.001;
+
+  function updatePercentage(
+    ingredientId: string,
+    percentage: string,
+  ) {
+    setComposition((current) =>
+      current.map((item) =>
+        item.ingredientId ===
+        ingredientId
+          ? {
+              ...item,
+              percentage,
+            }
+          : item,
+      ),
+    );
+  }
+
   function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -138,6 +214,20 @@ export function DailyReportForm({
       mortality,
       incidentalExpense,
       incidentNote,
+
+      feedCompositionOverride:
+        compositionOverride,
+
+      feedComposition:
+        composition.map(
+          (item) => ({
+            ingredientId:
+              item.ingredientId,
+
+            percentage:
+              item.percentage,
+          }),
+        ),
     };
 
     startTransition(async () => {
@@ -183,7 +273,7 @@ export function DailyReportForm({
         <div className="space-y-5 p-4">
           {readOnly &&
           kandang.readOnlyReason ? (
-            <div className="flex items-start gap-2 rounded-[10px] border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-sm text-muted">
+            <div className="flex items-start gap-2 rounded-[10px] border border-border bg-[#F9FAFB] p-3 text-sm text-muted">
               <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
 
               <span>
@@ -198,7 +288,6 @@ export function DailyReportForm({
               className="flex items-start gap-2 rounded-[10px] border border-[#BBF7D0] bg-primary-soft p-3 text-sm text-primary-hover"
             >
               <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" />
-
               <span>{success}</span>
             </div>
           ) : null}
@@ -278,6 +367,162 @@ export function DailyReportForm({
             />
           </div>
 
+          <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              Formula Pakan
+            </p>
+
+            {kandang.feed.source ===
+            "NONE" ? (
+              <div className="mt-2">
+                <p className="text-sm font-medium text-[#B45309]">
+                  Belum ada formula aktif
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Jika Pakan Digunakan
+                  diisi, Owner harus
+                  mengaktifkan formula
+                  pakan terlebih dahulu.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="mt-2 font-semibold text-foreground">
+                  {kandang.feed
+                    .formulaName ??
+                    "Formula Tersimpan"}
+                </p>
+
+                <p className="mt-1 text-xs text-muted">
+                  {kandang.feed.source ===
+                  "REPORT_SNAPSHOT"
+                    ? "Komposisi laporan tersimpan"
+                    : "Komposisi standar digunakan"}
+                </p>
+
+                {!compositionOverride ? (
+                  <p className="mt-3 break-words text-sm text-muted">
+                    {composition
+                      .map(
+                        (item) =>
+                          `${item.ingredientName} ${Number(
+                            item.percentage,
+                          ).toLocaleString(
+                            "id-ID",
+                            {
+                              maximumFractionDigits:
+                                2,
+                            },
+                          )}%`,
+                      )
+                      .join(" · ")}
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {composition.map(
+                      (item) => (
+                        <div
+                          key={
+                            item.ingredientId
+                          }
+                          className="grid grid-cols-[1fr_110px] items-center gap-3"
+                        >
+                          <span className="min-w-0 truncate text-sm text-foreground">
+                            {
+                              item.ingredientName
+                            }
+                          </span>
+
+                          <div className="relative">
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0.01"
+                              max="100"
+                              step="0.01"
+                              value={
+                                item.percentage
+                              }
+                              disabled={
+                                disabled
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                updatePercentage(
+                                  item.ingredientId,
+                                  event
+                                    .target
+                                    .value,
+                                )
+                              }
+                              className="h-10 w-full rounded-[10px] border border-border bg-white px-3 pr-7 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                            />
+
+                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">
+                              %
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+
+                    <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
+                      <span className="text-muted">
+                        Total
+                      </span>
+
+                      <span
+                        className={
+                          compositionInvalid
+                            ? "font-semibold text-danger"
+                            : "font-semibold text-primary-hover"
+                        }
+                      >
+                        {totalComposition.toLocaleString(
+                          "id-ID",
+                          {
+                            maximumFractionDigits:
+                              2,
+                          },
+                        )}
+                        %
+                      </span>
+                    </div>
+
+                    {compositionInvalid ? (
+                      <p className="text-xs text-danger">
+                        Total komposisi
+                        aktual harus tepat
+                        100%.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
+                {!readOnly ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCompositionOverride(
+                        (current) =>
+                          !current,
+                      )
+                    }
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary-hover"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+
+                    {compositionOverride
+                      ? "Gunakan Komposisi Tersimpan"
+                      : "Ubah Komposisi Aktual"}
+                  </button>
+                ) : null}
+              </>
+            )}
+          </div>
+
           <div className="border-t border-border pt-4">
             <button
               type="button"
@@ -354,7 +599,10 @@ export function DailyReportForm({
                 type="submit"
                 size="lg"
                 className="w-full"
-                disabled={isPending}
+                disabled={
+                  isPending ||
+                  compositionInvalid
+                }
               >
                 {isPending
                   ? "Menyimpan..."

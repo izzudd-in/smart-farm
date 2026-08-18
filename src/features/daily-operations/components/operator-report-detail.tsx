@@ -3,14 +3,11 @@ import {
   ArrowLeft,
   CalendarDays,
   UserRound,
+  Wheat,
 } from "lucide-react";
 
-import type {
-  DailyReportView,
-} from "@/features/daily-operations/types/daily-report";
-import {
-  formatReportDate,
-} from "@/features/daily-operations/utils/date";
+import type { DailyReportView } from "@/features/daily-operations/types/daily-report";
+import { formatReportDate } from "@/features/daily-operations/utils/date";
 import { Card } from "@/components/ui/card";
 
 import { ReportStatusBadge } from "./report-status-badge";
@@ -26,6 +23,9 @@ function displayNumber(
     ? "—"
     : new Intl.NumberFormat(
         "id-ID",
+        {
+          maximumFractionDigits: 2,
+        },
       ).format(value);
 }
 
@@ -84,6 +84,7 @@ export function OperatorReportDetail({
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
             <span className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
+
               {formatReportDate(
                 report.date,
               )}
@@ -91,13 +92,14 @@ export function OperatorReportDetail({
 
             <span className="flex items-center gap-1.5">
               <UserRound className="h-3.5 w-3.5" />
+
               {report.operatorName}
             </span>
           </div>
         </div>
 
         <div className="space-y-5 p-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Metric
               label="Telur Jual"
               value={displayNumber(
@@ -113,19 +115,90 @@ export function OperatorReportDetail({
             />
 
             <Metric
-              label="Pakan Digunakan"
-              value={displayNumber(
-                report.feedUsed,
-              )}
-            />
-
-            <Metric
               label="Ayam Mati"
               value={displayNumber(
                 report.mortality,
               )}
             />
           </div>
+
+          {(report.feedUsed !== null ||
+            report.feedItems.length >
+              0) ? (
+            <div className="rounded-[10px] border border-border p-4">
+              <div className="flex items-center gap-2">
+                <Wheat className="h-4 w-4 text-primary-hover" />
+
+                <h2 className="text-sm font-semibold text-foreground">
+                  Pakan
+                </h2>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted">
+                    Pakan Digunakan
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {report.feedUsed ===
+                    null
+                      ? "—"
+                      : `${displayNumber(
+                          report.feedUsed,
+                        )} kg`}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted">
+                    Formula
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {report.feedFormulaName ??
+                      "—"}
+                  </p>
+                </div>
+              </div>
+
+              {report.feedItems.length >
+              0 ? (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="text-xs text-muted">
+                    Komposisi Aktual
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {report.feedItems.map(
+                      (item) => (
+                        <span
+                          key={
+                            item.ingredientId
+                          }
+                          className="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs text-foreground"
+                        >
+                          {
+                            item.ingredientName
+                          }{" "}
+                          {Number(
+                            item.percentage,
+                          ).toLocaleString(
+                            "id-ID",
+                            {
+                              maximumFractionDigits:
+                                2,
+                            },
+                          )}
+                          %
+                        </span>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {(report.incidentalExpense ||
             report.incidentNote) ? (

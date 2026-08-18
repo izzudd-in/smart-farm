@@ -1,6 +1,11 @@
 import type {
+  DailyFeedCompositionInput,
   DailyReportFormInput,
 } from "@/features/daily-operations/types/daily-report";
+import {
+  assertFormulaComplete,
+  percentageToBasisPoints,
+} from "@/features/feed/schemas/feed";
 
 export class DailyReportValidationError extends Error {}
 
@@ -66,22 +71,70 @@ function parseOptionalMoney(
   }
 
   if (
-    !/^\d+(\.\d{1,2})?$/.test(
-      normalized,
-    )
+    !/^\d+(\.\d{1,2})?$/.test(normalized) ||
+    Number(normalized) < 0
   ) {
     throw new DailyReportValidationError(
-      "Pengeluaran harus berupa angka valid dengan maksimal 2 angka desimal.",
+      "Pengeluaran harus berupa angka 0 atau lebih dengan maksimal 2 desimal.",
     );
   }
 
-  if (Number(normalized) < 0) {
+  return Number(normalized).toFixed(2);
+}
+
+function parseFeedComposition(
+  items: DailyFeedCompositionInput[],
+) {
+  if (items.length === 0) {
     throw new DailyReportValidationError(
-      "Pengeluaran tidak boleh negatif.",
+      "Komposisi pakan aktual belum tersedia.",
     );
   }
 
-  return normalized;
+  const seen = new Set<string>();
+
+  const parsed = items.map((item) => {
+    const ingredientId =
+      item.ingredientId.trim();
+
+    if (!ingredientId) {
+      throw new DailyReportValidationError(
+        "Ingredient komposisi pakan tidak valid.",
+      );
+    }
+
+    if (seen.has(ingredientId)) {
+      throw new DailyReportValidationError(
+        "Ingredient tidak boleh muncul dua kali dalam komposisi pakan.",
+      );
+    }
+
+    seen.add(ingredientId);
+
+    const basisPoints =
+      percentageToBasisPoints(
+        item.percentage,
+      );
+
+    return {
+      ingredientId,
+
+      percentage:
+        (basisPoints / 100).toFixed(2),
+
+      basisPoints,
+    };
+  });
+
+  assertFormulaComplete(
+    parsed.reduce(
+      (total, item) =>
+        total + item.basisPoints,
+      0,
+    ),
+  );
+
+  return parsed;
 }
 
 export function parseDailyReportInput(
@@ -150,11 +203,25 @@ export function parseDailyReportInput(
     damagedEgg,
     feedUsed,
     mortality,
+
     incidentalExpense:
       parseOptionalMoney(
         input.incidentalExpense,
       ),
+
     incidentNote:
       incidentNote || null,
+
+    feedCompositionOverride:
+      Boolean(
+        input.feedCompositionOverride,
+      ),
+
+    feedComposition:
+      input.feedCompositionOverride
+        ? parseFeedComposition(
+            input.feedComposition,
+          )
+        : [],
   };
 }

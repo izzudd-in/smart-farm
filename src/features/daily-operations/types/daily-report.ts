@@ -3,6 +3,11 @@ export type DailyReportStatus =
   | "INCOMPLETE"
   | "COMPLETE";
 
+export type DailyFeedCompositionInput = {
+  ingredientId: string;
+  percentage: string;
+};
+
 export type DailyReportFormInput = {
   kandangId: string;
   saleableEgg: string;
@@ -11,6 +16,9 @@ export type DailyReportFormInput = {
   mortality: string;
   incidentalExpense: string;
   incidentNote: string;
+
+  feedCompositionOverride: boolean;
+  feedComposition: DailyFeedCompositionInput[];
 };
 
 export type DailyReportActionResult =
@@ -23,6 +31,12 @@ export type DailyReportActionResult =
       success: false;
       error: string;
     };
+
+export type DailyReportFeedItemView = {
+  ingredientId: string;
+  ingredientName: string;
+  percentage: string;
+};
 
 export type DailyReportView = {
   id: string;
@@ -47,7 +61,22 @@ export type DailyReportView = {
   incidentalExpense: string | null;
   incidentNote: string | null;
 
+  feedFormulaId: string | null;
+  feedFormulaName: string | null;
+  feedItems: DailyReportFeedItemView[];
+
   status: DailyReportStatus;
+};
+
+export type OperatorFeedContext = {
+  formulaId: string | null;
+  formulaName: string | null;
+  items: DailyReportFeedItemView[];
+
+  source:
+    | "REPORT_SNAPSHOT"
+    | "ACTIVE_FORMULA"
+    | "NONE";
 };
 
 export type OperatorTodayKandang = {
@@ -63,6 +92,8 @@ export type OperatorTodayKandang = {
 
   report: DailyReportView | null;
   status: DailyReportStatus;
+
+  feed: OperatorFeedContext;
 
   isEditable: boolean;
   readOnlyReason: string | null;

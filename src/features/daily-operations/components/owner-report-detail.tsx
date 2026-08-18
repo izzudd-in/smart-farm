@@ -5,6 +5,7 @@ import {
   CalendarDays,
   MessageSquareText,
   UserRound,
+  Wheat,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -55,7 +56,9 @@ function formatAmount(
 ): string {
   return value === null
     ? "—"
-    : `${numberFormatter.format(value)} ${suffix}`;
+    : `${numberFormatter.format(
+        value,
+      )} ${suffix}`;
 }
 
 export function OwnerReportDetail({
@@ -108,7 +111,7 @@ export function OwnerReportDetail({
         </div>
 
         <div className="space-y-5 p-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Metric
               label="Telur Jual"
               value={formatAmount(
@@ -126,14 +129,6 @@ export function OwnerReportDetail({
             />
 
             <Metric
-              label="Pakan Digunakan"
-              value={formatAmount(
-                report.feedUsed,
-                "kg",
-              )}
-            />
-
-            <Metric
               label="Ayam Mati"
               value={
                 report.mortality === null
@@ -144,6 +139,82 @@ export function OwnerReportDetail({
               }
             />
           </div>
+
+          {(report.feedUsed !== null ||
+            report.feedItems.length >
+              0) ? (
+            <div className="rounded-[10px] border border-border p-4">
+              <div className="flex items-center gap-2">
+                <Wheat className="h-4 w-4 text-primary-hover" />
+
+                <h2 className="text-sm font-semibold text-foreground">
+                  Pakan
+                </h2>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted">
+                    Pakan Digunakan
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {formatAmount(
+                      report.feedUsed,
+                      "kg",
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted">
+                    Formula
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {report.feedFormulaName ??
+                      "—"}
+                  </p>
+                </div>
+              </div>
+
+              {report.feedItems.length >
+              0 ? (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="text-xs text-muted">
+                    Komposisi Aktual
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {report.feedItems.map(
+                      (item) => (
+                        <span
+                          key={
+                            item.ingredientId
+                          }
+                          className="rounded-full bg-[#F3F4F6] px-2.5 py-1 text-xs text-foreground"
+                        >
+                          {
+                            item.ingredientName
+                          }{" "}
+                          {Number(
+                            item.percentage,
+                          ).toLocaleString(
+                            "id-ID",
+                            {
+                              maximumFractionDigits:
+                                2,
+                            },
+                          )}
+                          %
+                        </span>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {(report.incidentalExpense ||
             report.incidentNote) ? (

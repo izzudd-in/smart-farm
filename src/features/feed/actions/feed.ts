@@ -66,6 +66,7 @@ function handleActionError(
   ) {
     return {
       success: false,
+
       error: error.message.replace(
         "FEED_RULE:",
         "",
@@ -100,6 +101,7 @@ function handleActionError(
 
   return {
     success: false,
+
     error:
       "Terjadi kesalahan. Silakan coba lagi.",
   };
@@ -129,6 +131,7 @@ async function getPrimaryFarm() {
 async function validateIngredients(
   farmId: string,
   ingredientIds: string[],
+  requireActive = false,
 ): Promise<void> {
   const count =
     await prisma.feedIngredient.count({
@@ -138,6 +141,12 @@ async function validateIngredients(
         id: {
           in: ingredientIds,
         },
+
+        ...(requireActive
+          ? {
+              isActive: true,
+            }
+          : {}),
       },
     });
 
@@ -145,7 +154,9 @@ async function validateIngredients(
     count !== ingredientIds.length
   ) {
     throw ruleError(
-      "Terdapat bahan pakan yang tidak valid.",
+      requireActive
+        ? "Formula aktif hanya boleh menggunakan bahan pakan aktif."
+        : "Terdapat bahan pakan yang tidak valid.",
     );
   }
 }
@@ -183,6 +194,7 @@ export async function createFeedIngredient(
 
     return {
       success: true,
+
       message:
         "Bahan pakan berhasil ditambahkan.",
     };
@@ -209,21 +221,19 @@ export async function updateFeedIngredient(
       );
 
     const ingredient =
-      await prisma.feedIngredient.findFirst(
-        {
-          where: {
-            id: ingredientId,
+      await prisma.feedIngredient.findFirst({
+        where: {
+          id: ingredientId,
 
-            farm: {
-              scope: "PRIMARY",
-            },
-          },
-
-          select: {
-            id: true,
+          farm: {
+            scope: "PRIMARY",
           },
         },
-      );
+
+        select: {
+          id: true,
+        },
+      });
 
     if (!ingredient) {
       throw ruleError(
@@ -248,6 +258,7 @@ export async function updateFeedIngredient(
 
     return {
       success: true,
+
       message:
         "Bahan pakan berhasil diperbarui.",
     };
@@ -269,26 +280,50 @@ export async function setFeedIngredientActive(
     );
 
     const ingredient =
-      await prisma.feedIngredient.findFirst(
-        {
-          where: {
-            id: ingredientId,
+      await prisma.feedIngredient.findFirst({
+        where: {
+          id: ingredientId,
 
-            farm: {
-              scope: "PRIMARY",
-            },
-          },
-
-          select: {
-            id: true,
+          farm: {
+            scope: "PRIMARY",
           },
         },
-      );
+
+        select: {
+          id: true,
+          farmId: true,
+        },
+      });
 
     if (!ingredient) {
       throw ruleError(
         "Bahan pakan tidak ditemukan.",
       );
+    }
+
+    if (!isActive) {
+      const activeFormulaUsage =
+        await prisma.feedFormulaItem.count({
+          where: {
+            ingredientId:
+              ingredient.id,
+
+            formula: {
+              farmId:
+                ingredient.farmId,
+
+              isActive: true,
+            },
+          },
+        });
+
+      if (
+        activeFormulaUsage > 0
+      ) {
+        throw ruleError(
+          "Bahan pakan tidak dapat dinonaktifkan karena masih digunakan oleh formula aktif.",
+        );
+      }
     }
 
     await prisma.feedIngredient.update({
@@ -327,13 +362,16 @@ export async function createFeedFormula(
     );
 
     const parsed =
-      parseFeedFormulaInput(input);
+      parseFeedFormulaInput(
+        input,
+      );
 
     const farm =
       await getPrimaryFarm();
 
     await validateIngredients(
       farm.id,
+
       parsed.items.map(
         (item) =>
           item.ingredientId,
@@ -365,6 +403,7 @@ export async function createFeedFormula(
 
     return {
       success: true,
+
       message:
         "Formula pakan berhasil ditambahkan.",
     };
@@ -386,7 +425,9 @@ export async function updateFeedFormula(
     );
 
     const parsed =
-      parseFeedFormulaInput(input);
+      parseFeedFormulaInput(
+        input,
+      );
 
     const formula =
       await prisma.feedFormula.findFirst({
@@ -419,10 +460,13 @@ export async function updateFeedFormula(
 
     await validateIngredients(
       formula.farmId,
+
       parsed.items.map(
         (item) =>
           item.ingredientId,
       ),
+
+      formula.isActive,
     );
 
     await prisma.$transaction(
@@ -437,32 +481,28 @@ export async function updateFeedFormula(
           },
         });
 
-        await tx.feedFormulaItem.deleteMany(
-          {
-            where: {
-              formulaId:
-                formula.id,
-            },
+        await tx.feedFormulaItem.deleteMany({
+          where: {
+            formulaId:
+              formula.id,
           },
-        );
+        });
 
-        await tx.feedFormulaItem.createMany(
-          {
-            data:
-              parsed.items.map(
-                (item) => ({
-                  formulaId:
-                    formula.id,
+        await tx.feedFormulaItem.createMany({
+          data:
+            parsed.items.map(
+              (item) => ({
+                formulaId:
+                  formula.id,
 
-                  ingredientId:
-                    item.ingredientId,
+                ingredientId:
+                  item.ingredientId,
 
-                  percentage:
-                    item.percentage,
-                }),
-              ),
-          },
-        );
+                percentage:
+                  item.percentage,
+              }),
+            ),
+        });
       },
     );
 
@@ -470,6 +510,7 @@ export async function updateFeedFormula(
 
     return {
       success: true,
+
       message:
         "Formula pakan berhasil diperbarui.",
     };
@@ -505,11 +546,16 @@ export async function setFeedFormulaActive(
             select: {
               id: true,
               farmId: true,
-              isActive: true,
 
               items: {
                 select: {
                   percentage: true,
+
+                  ingredient: {
+                    select: {
+                      isActive: true,
+                    },
+                  },
                 },
               },
             },
@@ -543,6 +589,18 @@ export async function setFeedFormulaActive(
           );
         }
 
+        if (
+          formula.items.some(
+            (item) =>
+              !item.ingredient
+                .isActive,
+          )
+        ) {
+          throw ruleError(
+            "Formula tidak dapat diaktifkan karena terdapat bahan pakan nonaktif.",
+          );
+        }
+
         const totalBasisPoints =
           formula.items.reduce(
             (total, item) =>
@@ -560,6 +618,7 @@ export async function setFeedFormulaActive(
         await tx.feedFormula.updateMany({
           where: {
             farmId: formula.farmId,
+
             isActive: true,
 
             id: {

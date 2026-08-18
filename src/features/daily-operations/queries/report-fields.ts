@@ -10,6 +10,21 @@ export const dailyReportViewSelect = {
   incidentalExpense: true,
   incidentNote: true,
 
+  feedFormulaId: true,
+  feedFormulaNameSnapshot: true,
+
+  feedItems: {
+    orderBy: {
+      ingredientNameSnapshot: "asc",
+    },
+
+    select: {
+      ingredientId: true,
+      ingredientNameSnapshot: true,
+      percentage: true,
+    },
+  },
+
   kandang: {
     select: {
       id: true,
