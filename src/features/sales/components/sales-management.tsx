@@ -14,11 +14,10 @@ import {
   Tags,
 } from "lucide-react";
 
-import {
-  setCustomerActive,
-} from "@/features/sales/actions/sales";
+import { setCustomerActive } from "@/features/sales/actions/sales";
 import type {
   CustomerView,
+  OrderListData,
   SalesPageData,
   SalesTab,
 } from "@/features/sales/types/sales";
@@ -28,18 +27,24 @@ import { Card } from "@/components/ui/card";
 
 import { CustomerFormDialog } from "./customer-form-dialog";
 import { EggPriceFormDialog } from "./egg-price-form-dialog";
+import { OrderFormDialog } from "./order-form-dialog";
+import { OrderList } from "./order-list";
 
 type SalesManagementProps = {
   data: SalesPageData;
+  orders: OrderListData;
   initialTab: SalesTab;
 };
 
 const currencyFormatter =
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 2,
-  });
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 2,
+    },
+  );
 
 function formatDate(
   value: string,
@@ -61,6 +66,7 @@ function formatDate(
 
 export function SalesManagement({
   data,
+  orders,
   initialTab,
 }: SalesManagementProps) {
   const router = useRouter();
@@ -82,20 +88,41 @@ export function SalesManagement({
     setPriceDialog,
   ] = useState(false);
 
-  const [actionError, setActionError] =
-    useState("");
+  const [
+    orderDialog,
+    setOrderDialog,
+  ] = useState(false);
 
-  const [pendingId, setPendingId] =
-    useState<string | null>(null);
+  const [
+    actionError,
+    setActionError,
+  ] = useState("");
 
-  const [isPending, startTransition] =
-    useTransition();
+  const [
+    pendingId,
+    setPendingId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    isPending,
+    startTransition,
+  ] = useTransition();
+
+  const activeCustomers =
+    data.customers.filter(
+      (customer) =>
+        customer.isActive,
+    );
 
   function toggleCustomer(
     customer: CustomerView,
   ) {
     setActionError("");
-    setPendingId(customer.id);
+    setPendingId(
+      customer.id,
+    );
 
     startTransition(async () => {
       const result =
@@ -117,6 +144,22 @@ export function SalesManagement({
     });
   }
 
+  function handlePrimaryAction() {
+    if (tab === "order") {
+      setOrderDialog(true);
+      return;
+    }
+
+    if (tab === "customer") {
+      setCustomerDialog(
+        "create",
+      );
+      return;
+    }
+
+    setPriceDialog(true);
+  }
+
   return (
     <>
       <div className="space-y-6">
@@ -127,28 +170,24 @@ export function SalesManagement({
             </h1>
 
             <p className="mt-1 text-sm text-muted">
-              Kelola customer dan
-              riwayat harga telur.
+              Order, customer, dan riwayat harga telur.
             </p>
           </div>
 
           <Button
             className="w-full sm:w-auto"
-            onClick={() =>
-              tab === "customer"
-                ? setCustomerDialog(
-                    "create",
-                  )
-                : setPriceDialog(
-                    true,
-                  )
+            onClick={
+              handlePrimaryAction
             }
           >
             <Plus className="h-4 w-4" />
 
-            {tab === "customer"
-              ? "Tambah Customer"
-              : "Update Harga"}
+            {tab === "order"
+              ? "Order Baru"
+              : tab ===
+                  "customer"
+                ? "Tambah Customer"
+                : "Update Harga"}
           </Button>
         </div>
 
@@ -161,14 +200,31 @@ export function SalesManagement({
           </div>
         ) : null}
 
-        <div className="flex border-b border-border">
+        <div className="flex overflow-x-auto border-b border-border">
           <button
             type="button"
             onClick={() =>
-              setTab("customer")
+              setTab("order")
             }
             className={[
-              "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              tab === "order"
+                ? "border-primary text-primary-hover"
+                : "border-transparent text-muted hover:text-foreground",
+            ].join(" ")}
+          >
+            Order
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setTab(
+                "customer",
+              )
+            }
+            className={[
+              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
               tab === "customer"
                 ? "border-primary text-primary-hover"
                 : "border-transparent text-muted hover:text-foreground",
@@ -183,7 +239,7 @@ export function SalesManagement({
               setTab("price")
             }
             className={[
-              "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
               tab === "price"
                 ? "border-primary text-primary-hover"
                 : "border-transparent text-muted hover:text-foreground",
@@ -193,7 +249,15 @@ export function SalesManagement({
           </button>
         </div>
 
-        {tab === "customer" ? (
+        {tab === "order" ? (
+          <OrderList
+            data={orders}
+            customers={
+              data.customers
+            }
+          />
+        ) : tab ===
+          "customer" ? (
           data.customers.length ===
           0 ? (
             <Card className="p-8 text-center">
@@ -208,7 +272,9 @@ export function SalesManagement({
               {data.customers.map(
                 (customer) => (
                   <Card
-                    key={customer.id}
+                    key={
+                      customer.id
+                    }
                     className="min-w-0 p-4"
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -367,8 +433,7 @@ export function SalesManagement({
               {data.priceHistory.length ===
               0 ? (
                 <Card className="p-8 text-center text-sm text-muted">
-                  Belum ada riwayat
-                  harga.
+                  Belum ada riwayat harga.
                 </Card>
               ) : (
                 <Card className="divide-y divide-border overflow-hidden">
@@ -412,6 +477,22 @@ export function SalesManagement({
           </div>
         )}
       </div>
+
+      {orderDialog ? (
+        <OrderFormDialog
+          customers={
+            activeCustomers
+          }
+          defaultOrderedAt={
+            data.asOfDate
+          }
+          onClose={() =>
+            setOrderDialog(
+              false,
+            )
+          }
+        />
+      ) : null}
 
       {customerDialog ? (
         <CustomerFormDialog

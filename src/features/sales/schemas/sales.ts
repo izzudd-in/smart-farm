@@ -1,8 +1,14 @@
 import type {
   CustomerInput,
   EggPriceInput,
+  OrderFilters,
+  OrderInput,
+  OrderPricingPreviewInput,
 } from "@/features/sales/types/sales";
-import { parseDateOnly } from "@/features/daily-operations/utils/date";
+import {
+  getJakartaTodayString,
+  parseDateOnly,
+} from "@/features/daily-operations/utils/date";
 
 export class SalesValidationError extends Error {}
 
@@ -106,36 +112,91 @@ function parsePositiveMoney(
   return result;
 }
 
-function parseEffectiveDate(
+function isValidDateString(
   value: string,
-): Date {
+): boolean {
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(
       value,
     )
   ) {
-    throw new SalesValidationError(
-      "Tanggal berlaku tidak valid.",
-    );
+    return false;
   }
 
   const date =
     parseDateOnly(value);
 
-  if (
-    Number.isNaN(
+  return (
+    !Number.isNaN(
       date.getTime(),
-    ) ||
+    ) &&
     date
       .toISOString()
-      .slice(0, 10) !== value
-  ) {
+      .slice(0, 10) === value
+  );
+}
+
+function parseRequiredDate(
+  value: string,
+  label: string,
+): Date {
+  if (!isValidDateString(value)) {
     throw new SalesValidationError(
-      "Tanggal berlaku tidak valid.",
+      `${label} tidak valid.`,
     );
   }
 
-  return date;
+  return parseDateOnly(value);
+}
+
+function normalizeQuantityKg(
+  value: string,
+): string {
+  const normalized =
+    value
+      .trim()
+      .replace(",", ".");
+
+  if (
+    !/^\d+(\.\d{1,3})?$/.test(
+      normalized,
+    ) ||
+    Number(normalized) <= 0
+  ) {
+    throw new SalesValidationError(
+      "Jumlah telur harus lebih dari 0 kg dengan maksimal 3 angka desimal.",
+    );
+  }
+
+  const [
+    whole,
+    fraction = "",
+  ] = normalized.split(".");
+
+  const normalizedFraction =
+    fraction.replace(
+      /0+$/,
+      "",
+    );
+
+  return normalizedFraction
+    ? `${whole}.${normalizedFraction}`
+    : whole;
+}
+
+function getDefaultOrderFromDate(
+  to: string,
+): string {
+  const date =
+    parseDateOnly(to);
+
+  date.setUTCDate(
+    date.getUTCDate() - 29,
+  );
+
+  return date
+    .toISOString()
+    .slice(0, 10);
 }
 
 export function parseCustomerInput(
@@ -180,8 +241,101 @@ export function parseEggPriceInput(
       ),
 
     effectiveAt:
-      parseEffectiveDate(
+      parseRequiredDate(
         input.effectiveAt,
+        "Tanggal berlaku",
       ),
+  };
+}
+
+export function parseOrderInput(
+  input: OrderInput,
+) {
+  const customerId =
+    requiredText(
+      input.customerId,
+      "Customer",
+      100,
+    );
+
+  return {
+    customerId,
+
+    orderedAt:
+      parseRequiredDate(
+        input.orderedAt,
+        "Tanggal order",
+      ),
+
+    orderedAtString:
+      input.orderedAt,
+
+    quantityKg:
+      normalizeQuantityKg(
+        input.quantityKg,
+      ),
+
+    note: optionalText(
+      input.note,
+      "Catatan",
+      1000,
+    ),
+  };
+}
+
+export function parseOrderPricingPreviewInput(
+  input: OrderPricingPreviewInput,
+) {
+  return {
+    customerId:
+      requiredText(
+        input.customerId,
+        "Customer",
+        100,
+      ),
+
+    orderedAt:
+      parseRequiredDate(
+        input.orderedAt,
+        "Tanggal order",
+      ),
+  };
+}
+
+export function parseOrderFilters(
+  input: {
+    from?: string;
+    to?: string;
+    customerId?: string;
+  },
+): OrderFilters {
+  const today =
+    getJakartaTodayString();
+
+  const to =
+    input.to &&
+    isValidDateString(input.to)
+      ? input.to
+      : today;
+
+  let from =
+    input.from &&
+    isValidDateString(input.from)
+      ? input.from
+      : getDefaultOrderFromDate(
+          to,
+        );
+
+  if (from > to) {
+    from = to;
+  }
+
+  return {
+    from,
+    to,
+
+    customerId:
+      input.customerId?.trim() ??
+      "",
   };
 }

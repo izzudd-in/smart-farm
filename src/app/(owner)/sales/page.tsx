@@ -1,10 +1,15 @@
 import { SalesManagement } from "@/features/sales/components/sales-management";
+import { getOrderList } from "@/features/sales/queries/get-order-list";
 import { getSalesPageData } from "@/features/sales/queries/get-sales-page-data";
+import { parseOrderFilters } from "@/features/sales/schemas/sales";
 import type { SalesTab } from "@/features/sales/types/sales";
 
 type SalesPageProps = {
   searchParams: Promise<{
     tab?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    customer?: string | string[];
   }>;
 };
 
@@ -26,19 +31,47 @@ export default async function SalesPage({
     await searchParams;
 
   const requestedTab =
-    firstValue(params.tab);
+    firstValue(
+      params.tab,
+    );
 
   const initialTab: SalesTab =
+    requestedTab ===
+      "customer" ||
     requestedTab === "price"
-      ? "price"
-      : "customer";
+      ? requestedTab
+      : "order";
 
-  const data =
-    await getSalesPageData();
+  const orderFilters =
+    parseOrderFilters({
+      from: firstValue(
+        params.from,
+      ),
+
+      to: firstValue(
+        params.to,
+      ),
+
+      customerId:
+        firstValue(
+          params.customer,
+        ),
+    });
+
+  const [
+    data,
+    orders,
+  ] = await Promise.all([
+    getSalesPageData(),
+    getOrderList(
+      orderFilters,
+    ),
+  ]);
 
   return (
     <SalesManagement
       data={data}
+      orders={orders}
       initialTab={initialTab}
     />
   );

@@ -1,187 +1,134 @@
-import type {
-  CustomerInput,
-  EggPriceInput,
-} from "@/features/sales/types/sales";
-import { parseDateOnly } from "@/features/daily-operations/utils/date";
-
-export class SalesValidationError extends Error {}
-
-function requiredText(
+function decimalToScaledInteger(
   value: string,
-  label: string,
-  maxLength: number,
-): string {
+  scale: number,
+): bigint {
   const normalized =
     value.trim();
 
-  if (!normalized) {
-    throw new SalesValidationError(
-      `${label} wajib diisi.`,
+  const pattern =
+    new RegExp(
+      `^\\d+(\\.\\d{1,${scale}})?$`,
+    );
+
+  if (!pattern.test(normalized)) {
+    throw new Error(
+      "Invalid decimal value.",
     );
   }
 
-  if (
-    normalized.length >
-    maxLength
-  ) {
-    throw new SalesValidationError(
-      `${label} maksimal ${maxLength} karakter.`,
-    );
-  }
+  const [
+    whole,
+    fraction = "",
+  ] = normalized.split(".");
 
-  return normalized;
-}
+  const scaledFraction =
+    fraction
+      .padEnd(scale, "0")
+      .slice(0, scale);
 
-function optionalText(
-  value: string,
-  label: string,
-  maxLength: number,
-): string | null {
-  const normalized =
-    value.trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  if (
-    normalized.length >
-    maxLength
-  ) {
-    throw new SalesValidationError(
-      `${label} maksimal ${maxLength} karakter.`,
-    );
-  }
-
-  return normalized;
-}
-
-function normalizeMoney(
-  value: string,
-): string {
-  return value
-    .trim()
-    .replace(",", ".");
-}
-
-function parseNonNegativeMoney(
-  value: string,
-  label: string,
-): string {
-  const normalized =
-    normalizeMoney(value);
-
-  if (
-    !/^\d+(\.\d{1,2})?$/.test(
-      normalized,
-    ) ||
-    Number(normalized) < 0
-  ) {
-    throw new SalesValidationError(
-      `${label} harus berupa angka 0 atau lebih dengan maksimal 2 desimal.`,
-    );
-  }
-
-  return Number(
-    normalized,
-  ).toFixed(2);
-}
-
-function parsePositiveMoney(
-  value: string,
-  label: string,
-): string {
-  const result =
-    parseNonNegativeMoney(
-      value,
-      label,
-    );
-
-  if (Number(result) <= 0) {
-    throw new SalesValidationError(
-      `${label} harus lebih dari 0.`,
-    );
-  }
-
-  return result;
-}
-
-function parseEffectiveDate(
-  value: string,
-): Date {
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(
-      value,
+  return (
+    BigInt(whole) *
+      BigInt(10) **
+        BigInt(scale) +
+    BigInt(
+      scaledFraction || "0",
     )
-  ) {
-    throw new SalesValidationError(
-      "Tanggal berlaku tidak valid.",
-    );
-  }
+  );
+}
 
-  const date =
-    parseDateOnly(value);
+function scaledIntegerToDecimal(
+  value: bigint,
+  scale: number,
+): string {
+  const divisor =
+    BigInt(10) **
+    BigInt(scale);
+
+  const whole =
+    value / divisor;
+
+  const fraction =
+    value % divisor;
+
+  return `${whole}.${fraction
+    .toString()
+    .padStart(scale, "0")}`;
+}
+
+function moneyToCents(
+  value: string,
+): bigint {
+  return decimalToScaledInteger(
+    value,
+    2,
+  );
+}
+
+function centsToMoney(
+  value: bigint,
+): string {
+  return scaledIntegerToDecimal(
+    value,
+    2,
+  );
+}
+
+export function calculateFinalPricePerKg(
+  basePricePerKg: string,
+  discountPerKg: string,
+): string {
+  const base =
+    moneyToCents(
+      basePricePerKg,
+    );
+
+  const discount =
+    moneyToCents(
+      discountPerKg,
+    );
+
+  return centsToMoney(
+    base > discount
+      ? base - discount
+      : BigInt(0),
+  );
+}
+
+export function calculateOrderTotal(
+  quantityKg: string,
+  finalPricePerKg: string,
+): string {
+  const quantityMilliKg =
+    decimalToScaledInteger(
+      quantityKg,
+      3,
+    );
+
+  const priceCents =
+    moneyToCents(
+      finalPricePerKg,
+    );
+
+  const numerator =
+    quantityMilliKg *
+    priceCents;
+
+  const divisor = BigInt(1000);
+
+  let totalCents =
+    numerator / divisor;
+
+  const remainder =
+    numerator % divisor;
 
   if (
-    Number.isNaN(
-      date.getTime(),
-    ) ||
-    date
-      .toISOString()
-      .slice(0, 10) !== value
+    remainder * BigInt(2) >=
+    divisor
   ) {
-    throw new SalesValidationError(
-      "Tanggal berlaku tidak valid.",
-    );
+    totalCents += BigInt(1);
   }
 
-  return date;
-}
-
-export function parseCustomerInput(
-  input: CustomerInput,
-) {
-  return {
-    name: requiredText(
-      input.name,
-      "Nama customer",
-      100,
-    ),
-
-    phone: optionalText(
-      input.phone,
-      "Nomor telepon",
-      30,
-    ),
-
-    address: optionalText(
-      input.address,
-      "Alamat",
-      500,
-    ),
-
-    discountPerKg:
-      parseNonNegativeMoney(
-        input.discountPerKg ||
-          "0",
-        "Diskon/kg",
-      ),
-  };
-}
-
-export function parseEggPriceInput(
-  input: EggPriceInput,
-) {
-  return {
-    pricePerKg:
-      parsePositiveMoney(
-        input.pricePerKg,
-        "Harga/kg",
-      ),
-
-    effectiveAt:
-      parseEffectiveDate(
-        input.effectiveAt,
-      ),
-  };
+  return centsToMoney(
+    totalCents,
+  );
 }

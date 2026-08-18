@@ -43,6 +43,7 @@ model Farm {
   feedFormulas    FeedFormula[]
   customers       Customer[]
   eggPrices       EggPrice[]
+  orders          Order[]
 }
 
 model Kandang {
@@ -192,22 +193,46 @@ model Customer {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  farm   Farm    @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  orders Order[]
 
   @@index([farmId, isActive])
   @@index([farmId, name])
 }
 
 model EggPrice {
-  id         String   @id @default(cuid())
-  farmId     String
-  pricePerKg Decimal  @db.Decimal(14, 2)
+  id          String   @id @default(cuid())
+  farmId      String
+  pricePerKg  Decimal  @db.Decimal(14, 2)
   effectiveAt DateTime @db.Date
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Restrict)
 
   @@index([farmId, effectiveAt])
+}
+
+model Order {
+  id                   String   @id @default(cuid())
+  farmId               String
+  customerId           String
+  customerNameSnapshot String
+  orderedAt            DateTime @db.Date
+
+  quantityKg      Decimal @db.Decimal(14, 3)
+  basePricePerKg  Decimal @db.Decimal(14, 2)
+  discountPerKg   Decimal @db.Decimal(14, 2)
+  finalPricePerKg Decimal @db.Decimal(14, 2)
+  totalPrice      Decimal @db.Decimal(18, 2)
+
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  farm     Farm     @relation(fields: [farmId], references: [id], onDelete: Restrict)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([farmId, orderedAt])
+  @@index([customerId, orderedAt])
 }
 
 model SystemState {

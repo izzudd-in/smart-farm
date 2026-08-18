@@ -5,6 +5,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { UserRole } from "../src/generated/prisma/enums";
 import { hashPassword } from "../src/lib/auth/password";
+import {
+  calculateFinalPricePerKg,
+  calculateOrderTotal,
+} from "../src/features/sales/utils/pricing";
 
 const databaseUrl =
   process.env.DATABASE_URL;
@@ -20,13 +24,15 @@ const adapter = new PrismaPg({
     databaseUrl,
 });
 
-const prisma = new PrismaClient({
-  adapter,
-});
+const prisma =
+  new PrismaClient({
+    adapter,
+  });
 
 const developmentUsers = [
   {
-    name: "Owner Development",
+    name:
+      "Owner Development",
     email:
       "owner@smartfarm.local",
     password: "owner123",
@@ -37,8 +43,10 @@ const developmentUsers = [
       "Operator Development",
     email:
       "operator@smartfarm.local",
-    password: "operator123",
-    role: UserRole.OPERATOR,
+    password:
+      "operator123",
+    role:
+      UserRole.OPERATOR,
   },
 ];
 
@@ -120,6 +128,47 @@ async function ensureEggPrice(
       effectiveAt,
       pricePerKg,
     },
+
+    select: {
+      id: true,
+    },
+  });
+}
+
+async function ensureOrder(
+  data: {
+    id: string;
+    farmId: string;
+    customerId: string;
+    customerNameSnapshot: string;
+    orderedAt: Date;
+
+    quantityKg: string;
+    basePricePerKg: string;
+    discountPerKg: string;
+    finalPricePerKg: string;
+    totalPrice: string;
+
+    note: string;
+  },
+) {
+  const existing =
+    await prisma.order.findUnique({
+      where: {
+        id: data.id,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.order.create({
+    data,
 
     select: {
       id: true,
@@ -533,31 +582,31 @@ async function main() {
     }),
   ]);
 
-  await ensureCustomer(
-    farm.id,
-    {
-      name: "Toko Berkah",
-      phone:
-        "081234567890",
-      address:
-        "Jember",
-      discountPerKg:
-        "500.00",
-    },
-  );
+  const tokoBerkah =
+    await ensureCustomer(
+      farm.id,
+      {
+        name: "Toko Berkah",
+        phone:
+          "081234567890",
+        address: "Jember",
+        discountPerKg:
+          "500.00",
+      },
+    );
 
-  await ensureCustomer(
-    farm.id,
-    {
-      name: "Warung Maju",
-      phone:
-        "081298765432",
-      address:
-        "Jember",
-      discountPerKg:
-        "0.00",
-    },
-  );
+  const warungMaju =
+    await ensureCustomer(
+      farm.id,
+      {
+        name: "Warung Maju",
+        phone:
+          "081298765432",
+        address: "Jember",
+        discountPerKg:
+          "0.00",
+      },
+    );
 
   await ensureEggPrice(
     farm.id,
@@ -574,6 +623,135 @@ async function main() {
     ),
     "28000.00",
   );
+
+  const historicalFinalPrice =
+    calculateFinalPricePerKg(
+      "27500.00",
+      tokoBerkah.discountPerKg.toString(),
+    );
+
+  await ensureOrder({
+    id:
+      "seed-order-toko-20260815",
+
+    farmId: farm.id,
+
+    customerId:
+      tokoBerkah.id,
+
+    customerNameSnapshot:
+      tokoBerkah.name,
+
+    orderedAt: new Date(
+      "2026-08-15T00:00:00.000Z",
+    ),
+
+    quantityKg: "100",
+
+    basePricePerKg:
+      "27500.00",
+
+    discountPerKg:
+      tokoBerkah.discountPerKg.toString(),
+
+    finalPricePerKg:
+      historicalFinalPrice,
+
+    totalPrice:
+      calculateOrderTotal(
+        "100",
+        historicalFinalPrice,
+      ),
+
+    note:
+      "Seed order harga historis.",
+  });
+
+  const currentDiscountFinalPrice =
+    calculateFinalPricePerKg(
+      "28000.00",
+      tokoBerkah.discountPerKg.toString(),
+    );
+
+  await ensureOrder({
+    id:
+      "seed-order-toko-20260818",
+
+    farmId: farm.id,
+
+    customerId:
+      tokoBerkah.id,
+
+    customerNameSnapshot:
+      tokoBerkah.name,
+
+    orderedAt: new Date(
+      "2026-08-18T00:00:00.000Z",
+    ),
+
+    quantityKg: "100",
+
+    basePricePerKg:
+      "28000.00",
+
+    discountPerKg:
+      tokoBerkah.discountPerKg.toString(),
+
+    finalPricePerKg:
+      currentDiscountFinalPrice,
+
+    totalPrice:
+      calculateOrderTotal(
+        "100",
+        currentDiscountFinalPrice,
+      ),
+
+    note:
+      "Seed order customer diskon.",
+  });
+
+  const warungFinalPrice =
+    calculateFinalPricePerKg(
+      "28000.00",
+      warungMaju.discountPerKg.toString(),
+    );
+
+  await ensureOrder({
+    id:
+      "seed-order-warung-20260818",
+
+    farmId: farm.id,
+
+    customerId:
+      warungMaju.id,
+
+    customerNameSnapshot:
+      warungMaju.name,
+
+    orderedAt: new Date(
+      "2026-08-18T00:00:00.000Z",
+    ),
+
+    quantityKg: "25.5",
+
+    basePricePerKg:
+      "28000.00",
+
+    discountPerKg:
+      warungMaju.discountPerKg.toString(),
+
+    finalPricePerKg:
+      warungFinalPrice,
+
+    totalPrice:
+      calculateOrderTotal(
+        "25.5",
+        warungFinalPrice,
+      ),
+
+    note:
+      "Seed order quantity desimal.",
+  });
 
   const reportA =
     await prisma.dailyReport.upsert({
@@ -743,15 +921,11 @@ async function main() {
   );
 
   console.log(
-    "Farm seed completed.",
+    "Farm + Feed seed completed.",
   );
 
   console.log(
-    "Feed master seed completed.",
-  );
-
-  console.log(
-    "Sales core seed completed.",
+    "Sales core + Order seed completed.",
   );
 
   console.log(

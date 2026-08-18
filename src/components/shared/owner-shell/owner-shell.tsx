@@ -220,6 +220,12 @@ export function OwnerShell({
       "/daily",
     );
 
+  const salesActive =
+    isPathActive(
+      pathname,
+      "/sales",
+    );
+
   const moreSectionActive =
     isPathActive(
       pathname,
@@ -232,10 +238,6 @@ export function OwnerShell({
     isPathActive(
       pathname,
       "/feed",
-    ) ||
-    isPathActive(
-      pathname,
-      "/sales",
     );
 
   const moreItems =
@@ -402,10 +404,26 @@ export function OwnerShell({
           </span>
         </Link>
 
-        <DisabledBottomItem
-          icon={ShoppingCart}
-          label="Order"
-        />
+        <Link
+          href="/sales?tab=order"
+          aria-current={
+            salesActive
+              ? "page"
+              : undefined
+          }
+          className={[
+            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            salesActive
+              ? "text-primary-hover"
+              : "text-muted",
+          ].join(" ")}
+        >
+          <ShoppingCart className="h-5 w-5" />
+
+          <span className="text-[10px] font-medium">
+            Order
+          </span>
+        </Link>
 
         <DisabledBottomItem
           icon={Boxes}
