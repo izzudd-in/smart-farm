@@ -1,19 +1,28 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
 
 import {
   EggStockAdjustmentType,
   UserRole,
 } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/db/prisma";
-import { requireRole } from "@/server/auth/guards";
+
+import {
+  prisma,
+} from "@/lib/db/prisma";
+
+import {
+  requireRole,
+} from "@/server/auth/guards";
 
 import {
   InventoryValidationError,
   parseEggAdjustmentInput,
   parseEggOpeningInput,
 } from "@/features/inventory/schemas/egg-stock";
+
 import type {
   EggAdjustmentInput,
   EggOpeningInput,
@@ -22,6 +31,9 @@ import type {
 
 const INVENTORY_PATH =
   "/inventory";
+
+const DASHBOARD_PATH =
+  "/dashboard";
 
 function ruleError(
   message: string,
@@ -35,10 +47,14 @@ function databaseErrorCode(
   error: unknown,
 ): string | null {
   if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof error.code === "string"
+    typeof error ===
+      "object" &&
+    error !==
+      null &&
+    "code" in
+      error &&
+    typeof error.code ===
+      "string"
   ) {
     return error.code;
   }
@@ -54,8 +70,11 @@ function handleError(
     InventoryValidationError
   ) {
     return {
-      success: false,
-      error: error.message,
+      success:
+        false,
+
+      error:
+        error.message,
     };
   }
 
@@ -66,7 +85,8 @@ function handleError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         error.message.replace(
@@ -81,31 +101,41 @@ function handleError(
     [
       "UNAUTHENTICATED",
       "FORBIDDEN",
-    ].includes(error.message)
+    ].includes(
+      error.message,
+    )
   ) {
     return {
-      success: false,
-      error: "Akses ditolak.",
+      success:
+        false,
+
+      error:
+        "Akses ditolak.",
     };
   }
 
   if (
     databaseErrorCode(
       error,
-    ) === "P2002"
+    ) ===
+    "P2002"
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         "Stok awal untuk farm ini sudah pernah dibuat.",
     };
   }
 
-  console.error(error);
+  console.error(
+    error,
+  );
 
   return {
-    success: false,
+    success:
+      false,
 
     error:
       "Terjadi kesalahan saat menyimpan movement stok.",
@@ -127,16 +157,22 @@ export async function createEggOpeningStock(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
-              scope: "PRIMARY",
+              scope:
+                "PRIMARY",
             },
 
             select: {
-              id: true,
-              isActive: true,
+              id:
+                true,
+
+              isActive:
+                true,
             },
           });
 
@@ -157,11 +193,14 @@ export async function createEggOpeningStock(
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (existing) {
+        if (
+          existing
+        ) {
           throw ruleError(
             "Stok awal sudah pernah dibuat.",
           );
@@ -198,8 +237,13 @@ export async function createEggOpeningStock(
       INVENTORY_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Stok awal berhasil dicatat.",
@@ -228,12 +272,16 @@ export async function createEggStockAdjustment(
     const farm =
       await prisma.farm.findUnique({
         where: {
-          scope: "PRIMARY",
+          scope:
+            "PRIMARY",
         },
 
         select: {
-          id: true,
-          isActive: true,
+          id:
+            true,
+
+          isActive:
+            true,
         },
       });
 
@@ -269,7 +317,8 @@ export async function createEggStockAdjustment(
         createdById:
           user.id,
 
-        openingKey: null,
+        openingKey:
+          null,
       },
     });
 
@@ -277,8 +326,13 @@ export async function createEggStockAdjustment(
       INVENTORY_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Koreksi stok berhasil dicatat.",

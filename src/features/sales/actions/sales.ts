@@ -1,10 +1,20 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
 
-import { UserRole } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/db/prisma";
-import { requireRole } from "@/server/auth/guards";
+import {
+  UserRole,
+} from "@/generated/prisma/enums";
+
+import {
+  prisma,
+} from "@/lib/db/prisma";
+
+import {
+  requireRole,
+} from "@/server/auth/guards";
 
 import {
   parseCustomerInput,
@@ -13,6 +23,7 @@ import {
   parseOrderPricingPreviewInput,
   SalesValidationError,
 } from "@/features/sales/schemas/sales";
+
 import type {
   CreateOrderResult,
   CustomerInput,
@@ -22,13 +33,21 @@ import type {
   OrderPricingPreviewResult,
   SalesActionResult,
 } from "@/features/sales/types/sales";
+
 import {
   calculateFinalPricePerKg,
   calculateOrderTotal,
 } from "@/features/sales/utils/pricing";
-import { getEggPriceForDate } from "@/features/sales/queries/get-egg-price-for-date";
 
-const SALES_PATH = "/sales";
+import {
+  getEggPriceForDate,
+} from "@/features/sales/queries/get-egg-price-for-date";
+
+const SALES_PATH =
+  "/sales";
+
+const DASHBOARD_PATH =
+  "/dashboard";
 
 function ruleError(
   message: string,
@@ -46,8 +65,11 @@ function handleActionError(
     SalesValidationError
   ) {
     return {
-      success: false,
-      error: error.message,
+      success:
+        false,
+
+      error:
+        error.message,
     };
   }
 
@@ -58,7 +80,8 @@ function handleActionError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         error.message.replace(
@@ -73,18 +96,27 @@ function handleActionError(
     [
       "UNAUTHENTICATED",
       "FORBIDDEN",
-    ].includes(error.message)
+    ].includes(
+      error.message,
+    )
   ) {
     return {
-      success: false,
-      error: "Akses ditolak.",
+      success:
+        false,
+
+      error:
+        "Akses ditolak.",
     };
   }
 
-  console.error(error);
+  console.error(
+    error,
+  );
 
   return {
-    success: false,
+    success:
+      false,
+
     error:
       "Terjadi kesalahan. Silakan coba lagi.",
   };
@@ -94,14 +126,20 @@ function handleOrderError(
   error: unknown,
 ): CreateOrderResult {
   const result =
-    handleActionError(error);
+    handleActionError(
+      error,
+    );
 
-  if (!result.success) {
+  if (
+    !result.success
+  ) {
     return result;
   }
 
   return {
-    success: false,
+    success:
+      false,
+
     error:
       "Terjadi kesalahan saat membuat order.",
   };
@@ -111,11 +149,13 @@ async function getPrimaryFarm() {
   const farm =
     await prisma.farm.findUnique({
       where: {
-        scope: "PRIMARY",
+        scope:
+          "PRIMARY",
       },
 
       select: {
-        id: true,
+        id:
+          true,
       },
     });
 
@@ -146,14 +186,23 @@ export async function createCustomer(
 
     await prisma.customer.create({
       data: {
-        farmId: farm.id,
-        name: parsed.name,
-        phone: parsed.phone,
+        farmId:
+          farm.id,
+
+        name:
+          parsed.name,
+
+        phone:
+          parsed.phone,
+
         address:
           parsed.address,
+
         discountPerKg:
           parsed.discountPerKg,
-        isActive: true,
+
+        isActive:
+          true,
       },
     });
 
@@ -162,7 +211,9 @@ export async function createCustomer(
     );
 
     return {
-      success: true,
+      success:
+        true,
+
       message:
         "Customer berhasil ditambahkan.",
     };
@@ -190,15 +241,18 @@ export async function updateCustomer(
     const customer =
       await prisma.customer.findFirst({
         where: {
-          id: customerId,
+          id:
+            customerId,
 
           farm: {
-            scope: "PRIMARY",
+            scope:
+              "PRIMARY",
           },
         },
 
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 
@@ -210,14 +264,20 @@ export async function updateCustomer(
 
     await prisma.customer.update({
       where: {
-        id: customer.id,
+        id:
+          customer.id,
       },
 
       data: {
-        name: parsed.name,
-        phone: parsed.phone,
+        name:
+          parsed.name,
+
+        phone:
+          parsed.phone,
+
         address:
           parsed.address,
+
         discountPerKg:
           parsed.discountPerKg,
       },
@@ -228,7 +288,9 @@ export async function updateCustomer(
     );
 
     return {
-      success: true,
+      success:
+        true,
+
       message:
         "Customer berhasil diperbarui.",
     };
@@ -251,15 +313,18 @@ export async function setCustomerActive(
     const customer =
       await prisma.customer.findFirst({
         where: {
-          id: customerId,
+          id:
+            customerId,
 
           farm: {
-            scope: "PRIMARY",
+            scope:
+              "PRIMARY",
           },
         },
 
         select: {
-          id: true,
+          id:
+            true,
         },
       });
 
@@ -271,7 +336,8 @@ export async function setCustomerActive(
 
     await prisma.customer.update({
       where: {
-        id: customer.id,
+        id:
+          customer.id,
       },
 
       data: {
@@ -284,11 +350,13 @@ export async function setCustomerActive(
     );
 
     return {
-      success: true,
+      success:
+        true,
 
-      message: isActive
-        ? "Customer berhasil diaktifkan."
-        : "Customer berhasil dinonaktifkan.",
+      message:
+        isActive
+          ? "Customer berhasil diaktifkan."
+          : "Customer berhasil dinonaktifkan.",
     };
   } catch (error) {
     return handleActionError(
@@ -315,7 +383,8 @@ export async function createEggPrice(
 
     await prisma.eggPrice.create({
       data: {
-        farmId: farm.id,
+        farmId:
+          farm.id,
 
         pricePerKg:
           parsed.pricePerKg,
@@ -329,8 +398,13 @@ export async function createEggPrice(
       SALES_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Harga telur baru berhasil disimpan.",
@@ -358,23 +432,31 @@ export async function getOrderPricingPreview(
     const customer =
       await prisma.customer.findFirst({
         where: {
-          id: parsed.customerId,
-          isActive: true,
+          id:
+            parsed.customerId,
+
+          isActive:
+            true,
 
           farm: {
-            scope: "PRIMARY",
+            scope:
+              "PRIMARY",
           },
         },
 
         select: {
-          name: true,
-          discountPerKg: true,
+          name:
+            true,
+
+          discountPerKg:
+            true,
         },
       });
 
     if (!customer) {
       return {
-        success: false,
+        success:
+          false,
 
         error:
           "Customer tidak tersedia atau sudah nonaktif.",
@@ -388,7 +470,8 @@ export async function getOrderPricingPreview(
 
     if (!eggPrice) {
       return {
-        success: false,
+        success:
+          false,
 
         error:
           "Belum ada harga telur yang berlaku pada tanggal tersebut.",
@@ -402,7 +485,8 @@ export async function getOrderPricingPreview(
       customer.discountPerKg.toString();
 
     return {
-      success: true,
+      success:
+        true,
 
       customerName:
         customer.name,
@@ -423,8 +507,11 @@ export async function getOrderPricingPreview(
       SalesValidationError
     ) {
       return {
-        success: false,
-        error: error.message,
+        success:
+          false,
+
+        error:
+          error.message,
       };
     }
 
@@ -438,15 +525,21 @@ export async function getOrderPricingPreview(
       )
     ) {
       return {
-        success: false,
-        error: "Akses ditolak.",
+        success:
+          false,
+
+        error:
+          "Akses ditolak.",
       };
     }
 
-    console.error(error);
+    console.error(
+      error,
+    );
 
     return {
-      success: false,
+      success:
+        false,
 
       error:
         "Gagal mengambil preview harga.",
@@ -470,7 +563,9 @@ export async function createOrder(
 
     const order =
       await prisma.$transaction(
-        async (tx) => {
+        async (
+          tx,
+        ) => {
           const owner =
             await tx.user.findFirst({
               where: {
@@ -480,11 +575,13 @@ export async function createOrder(
                 role:
                   UserRole.OWNER,
 
-                isActive: true,
+                isActive:
+                  true,
               },
 
               select: {
-                id: true,
+                id:
+                  true,
               },
             });
 
@@ -497,12 +594,16 @@ export async function createOrder(
           const farm =
             await tx.farm.findUnique({
               where: {
-                scope: "PRIMARY",
+                scope:
+                  "PRIMARY",
               },
 
               select: {
-                id: true,
-                isActive: true,
+                id:
+                  true,
+
+                isActive:
+                  true,
               },
             });
 
@@ -524,13 +625,19 @@ export async function createOrder(
                 farmId:
                   farm.id,
 
-                isActive: true,
+                isActive:
+                  true,
               },
 
               select: {
-                id: true,
-                name: true,
-                discountPerKg: true,
+                id:
+                  true,
+
+                name:
+                  true,
+
+                discountPerKg:
+                  true,
               },
             });
 
@@ -557,6 +664,7 @@ export async function createOrder(
                   effectiveAt:
                     "desc",
                 },
+
                 {
                   createdAt:
                     "desc",
@@ -564,7 +672,8 @@ export async function createOrder(
               ],
 
               select: {
-                pricePerKg: true,
+                pricePerKg:
+                  true,
               },
             });
 
@@ -622,7 +731,8 @@ export async function createOrder(
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
         },
@@ -632,8 +742,13 @@ export async function createOrder(
       SALES_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Order berhasil dibuat.",

@@ -259,9 +259,10 @@ async function getRecentActivities(): Promise<
   DashboardActivity[]
 > {
   /*
-   * Beberapa latest row per source saja.
-   * Tidak membaca seluruh history dan
-   * tidak membuat Activity table.
+   * Hanya beberapa row terbaru per source.
+   * Setelah itu merge + sort + top 6.
+   *
+   * Tidak ada Activity table.
    */
   const [
     dailyReports,
@@ -682,6 +683,15 @@ async function getRecentActivities(): Promise<
         adjustment.quantityKg.toString(),
       );
 
+    const prefix =
+      adjustment.type ===
+      "OPENING"
+        ? ""
+        : adjustment.type ===
+            "INCREASE"
+          ? "+"
+          : "-";
+
     const action =
       adjustment.type ===
       "OPENING"
@@ -702,7 +712,7 @@ async function getRecentActivities(): Promise<
         adjustment.createdAt.toISOString(),
 
       title:
-        `${action} ${adjustment.ingredient.name} ${adjustment.type === "DECREASE" ? "-" : adjustment.type === "INCREASE" ? "+" : ""}${quantity} kg`,
+        `${action} ${adjustment.ingredient.name} ${prefix}${quantity} kg`,
 
       description:
         adjustment.note ??
@@ -749,11 +759,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     UserRole.OWNER,
   );
 
-  /*
-   * Semua boundary "hari ini" dan
-   * "bulan ini" berasal dari business date
-   * Asia/Jakarta.
-   */
   const todayString =
     getJakartaTodayString();
 
@@ -785,14 +790,18 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     );
 
   /*
-   * Semua source independen berjalan paralel.
+   * Today DailyReport hanya satu batch.
    *
-   * Today report hanya diambil satu kali lalu
-   * dipakai untuk:
-   * - KPI production;
-   * - completeness;
-   * - status kandang;
-   * - operational alert.
+   * PENTING:
+   * reportsToday tidak difilter berdasarkan
+   * status Kandang SAAT INI.
+   *
+   * Dengan demikian actual production hari ini
+   * tetap historical fact dan konsisten dengan
+   * module Production.
+   *
+   * Status Kandang hari ini tetap dibangun hanya
+   * dari Kandang aktif + active flock.
    */
   const [
     operationalKandangs,
@@ -851,14 +860,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
           today,
 
         kandang: {
-          isActive:
-            true,
-
-          activeFlockId: {
-            not:
-              null,
-          },
-
           farm: {
             scope:
               "PRIMARY",
@@ -871,6 +872,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
           true,
 
         kandangId:
+          true,
+
+        flockId:
           true,
 
         saleableEgg:
@@ -902,8 +906,8 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     }),
 
     /*
-     * Satu batch query untuk tujuh hari.
-     * Tidak query per tanggal.
+     * Historical actual:
+     * tidak bergantung Kandang.isActive sekarang.
      */
     prisma.dailyReport.findMany({
       where: {
@@ -941,11 +945,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       },
     }),
 
-    /*
-     * Immutable Order snapshot.
-     * Tidak query Customer/EggPrice untuk
-     * merekalkulasi transaksi.
-     */
     prisma.order.aggregate({
       where: {
         orderedAt:
@@ -979,10 +978,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       today,
     ),
 
-    /*
-     * Profit engine tetap satu-satunya
-     * source Profit/HPP MTD.
-     */
     getProfitForPeriod(
       monthStart,
       today,
@@ -994,6 +989,35 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
     getRecentActivities(),
   ]);
+
+  /*
+   * Production Today:
+   * seluruh COMPLETE DailyReport PRIMARY hari ini.
+   *
+   * Ini sengaja terpisah dari current operational
+   * Kandang status.
+   */
+  let productionMilliKg =
+    BigInt(0);
+
+  for (
+    const report
+    of reportsToday
+  ) {
+    if (
+      !isCoreReportComplete(
+        report,
+      )
+    ) {
+      continue;
+    }
+
+    productionMilliKg +=
+      quantityToMilliKg(
+        report.saleableEgg ??
+          0,
+      );
+  }
 
   const reportByKandangId =
     new Map(
@@ -1013,19 +1037,32 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
   let incompleteReports =
     0;
 
-  let productionMilliKg =
-    BigInt(0);
-
   const kandangs:
     DashboardKandangToday[] =
       operationalKandangs.map(
         (
           kandang,
         ) => {
-          const report =
+          const candidate =
             reportByKandangId.get(
               kandang.id,
             );
+
+          /*
+           * Current-status report harus terkait
+           * dengan active flock saat ini.
+           *
+           * Report dari flock lama tetap historical
+           * fact untuk Production, tetapi tidak boleh
+           * membuat active flock baru terlihat COMPLETE.
+           */
+          const report =
+            candidate &&
+            kandang.activeFlock &&
+            candidate.flockId ===
+              kandang.activeFlock.id
+              ? candidate
+              : undefined;
 
           const reportStatus =
             getDailyReportStatus(
@@ -1039,13 +1076,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
           ) {
             completeReports +=
               1;
-
-            productionMilliKg +=
-              quantityToMilliKg(
-                report
-                  ?.saleableEgg ??
-                  0,
-              );
           } else if (
             reportStatus ===
             "INCOMPLETE"
@@ -1062,9 +1092,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
               kandang.name,
 
             flockName:
-              report?.flock.name ??
               kandang.activeFlock
                 ?.name ??
+              report?.flock.name ??
               "Flock aktif",
 
             reportStatus,
@@ -1076,9 +1106,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
             saleableEggKg:
               report?.saleableEgg ===
-              null ||
+                null ||
               report?.saleableEgg ===
-              undefined
+                undefined
                 ? null
                 : normalizeQuantityKg(
                     report.saleableEgg,
@@ -1086,9 +1116,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
             feedUsedKg:
               report?.feedUsed ===
-              null ||
+                null ||
               report?.feedUsed ===
-              undefined
+                undefined
                 ? null
                 : normalizeQuantityKg(
                     report.feedUsed,
@@ -1387,9 +1417,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     "MISSING_COST"
   ) {
     /*
-     * Tidak membuat alert MISSING_COST kedua
-     * bila penyebabnya sudah diwakili oleh
-     * missing Feed Cost di atas.
+     * Generic missing-cost hanya digunakan bila
+     * bukan missing Feed Cost yang sudah memiliki
+     * alert sendiri.
      */
     alerts.push({
       id:
@@ -1450,11 +1480,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         "0",
     );
 
-  const productionToday =
-    milliKgToQuantity(
-      productionMilliKg,
-    );
-
   return {
     today:
       todayString,
@@ -1469,7 +1494,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
     productionToday: {
       saleableEggKg:
-        productionToday,
+        milliKgToQuantity(
+          productionMilliKg,
+        ),
 
       completeReports,
 

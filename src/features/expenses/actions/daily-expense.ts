@@ -29,6 +29,9 @@ import type {
 const EXPENSES_PATH =
   "/expenses";
 
+const DASHBOARD_PATH =
+  "/dashboard";
+
 function ruleError(
   message: string,
 ): Error {
@@ -45,7 +48,9 @@ function handleError(
     DailyExpenseValidationError
   ) {
     return {
-      success: false,
+      success:
+        false,
+
       error:
         error.message,
     };
@@ -58,7 +63,8 @@ function handleError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         error.message.replace(
@@ -78,7 +84,9 @@ function handleError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
+
       error:
         "Akses ditolak.",
     };
@@ -89,7 +97,8 @@ function handleError(
   );
 
   return {
-    success: false,
+    success:
+      false,
 
     error:
       "Terjadi kesalahan saat menyimpan pengeluaran.",
@@ -111,7 +120,9 @@ export async function createDailyExpense(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
@@ -120,7 +131,9 @@ export async function createDailyExpense(
             },
 
             select: {
-              id: true,
+              id:
+                true,
+
               isActive:
                 true,
             },
@@ -163,8 +176,13 @@ export async function createDailyExpense(
       EXPENSES_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Pengeluaran berhasil ditambahkan.",
@@ -200,7 +218,9 @@ export async function updateDailyExpense(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
@@ -209,7 +229,9 @@ export async function updateDailyExpense(
             },
 
             select: {
-              id: true,
+              id:
+                true,
+
               isActive:
                 true,
             },
@@ -228,16 +250,20 @@ export async function updateDailyExpense(
           await tx.dailyExpense.findFirst({
             where: {
               id,
+
               farmId:
                 farm.id,
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (!existing) {
+        if (
+          !existing
+        ) {
           throw ruleError(
             "Pengeluaran tidak ditemukan.",
           );
@@ -270,8 +296,13 @@ export async function updateDailyExpense(
       EXPENSES_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Pengeluaran berhasil diperbarui.",

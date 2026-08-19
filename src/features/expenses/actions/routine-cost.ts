@@ -29,6 +29,9 @@ import type {
 const EXPENSES_PATH =
   "/expenses";
 
+const DASHBOARD_PATH =
+  "/dashboard";
+
 function ruleError(
   message: string,
 ): Error {
@@ -45,7 +48,9 @@ function handleError(
     RoutineCostValidationError
   ) {
     return {
-      success: false,
+      success:
+        false,
+
       error:
         error.message,
     };
@@ -58,7 +63,8 @@ function handleError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         error.message.replace(
@@ -78,7 +84,9 @@ function handleError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
+
       error:
         "Akses ditolak.",
     };
@@ -89,7 +97,8 @@ function handleError(
   );
 
   return {
-    success: false,
+    success:
+      false,
 
     error:
       "Terjadi kesalahan saat menyimpan biaya rutin.",
@@ -111,7 +120,9 @@ export async function createRoutineCost(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
@@ -120,7 +131,9 @@ export async function createRoutineCost(
             },
 
             select: {
-              id: true,
+              id:
+                true,
+
               isActive:
                 true,
             },
@@ -169,8 +182,13 @@ export async function createRoutineCost(
       EXPENSES_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Biaya rutin berhasil ditambahkan.",
@@ -206,7 +224,9 @@ export async function updateRoutineCost(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
@@ -215,7 +235,9 @@ export async function updateRoutineCost(
             },
 
             select: {
-              id: true,
+              id:
+                true,
+
               isActive:
                 true,
             },
@@ -234,16 +256,20 @@ export async function updateRoutineCost(
           await tx.routineCost.findFirst({
             where: {
               id,
+
               farmId:
                 farm.id,
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (!existing) {
+        if (
+          !existing
+        ) {
           throw ruleError(
             "Biaya rutin tidak ditemukan.",
           );
@@ -282,8 +308,13 @@ export async function updateRoutineCost(
       EXPENSES_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Biaya rutin berhasil diperbarui.",

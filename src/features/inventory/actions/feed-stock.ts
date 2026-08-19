@@ -1,13 +1,21 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
 
 import {
   FeedStockAdjustmentType,
   UserRole,
 } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/db/prisma";
-import { requireRole } from "@/server/auth/guards";
+
+import {
+  prisma,
+} from "@/lib/db/prisma";
+
+import {
+  requireRole,
+} from "@/server/auth/guards";
 
 import {
   InventoryValidationError,
@@ -33,6 +41,9 @@ import {
 const INVENTORY_PATH =
   "/inventory";
 
+const DASHBOARD_PATH =
+  "/dashboard";
+
 function ruleError(
   message: string,
 ): Error {
@@ -45,10 +56,14 @@ function databaseErrorCode(
   error: unknown,
 ): string | null {
   if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof error.code === "string"
+    typeof error ===
+      "object" &&
+    error !==
+      null &&
+    "code" in
+      error &&
+    typeof error.code ===
+      "string"
   ) {
     return error.code;
   }
@@ -64,8 +79,11 @@ function handleError(
     InventoryValidationError
   ) {
     return {
-      success: false,
-      error: error.message,
+      success:
+        false,
+
+      error:
+        error.message,
     };
   }
 
@@ -76,7 +94,8 @@ function handleError(
     )
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         error.message.replace(
@@ -91,31 +110,41 @@ function handleError(
     [
       "UNAUTHENTICATED",
       "FORBIDDEN",
-    ].includes(error.message)
+    ].includes(
+      error.message,
+    )
   ) {
     return {
-      success: false,
-      error: "Akses ditolak.",
+      success:
+        false,
+
+      error:
+        "Akses ditolak.",
     };
   }
 
   if (
     databaseErrorCode(
       error,
-    ) === "P2002"
+    ) ===
+    "P2002"
   ) {
     return {
-      success: false,
+      success:
+        false,
 
       error:
         "Stok awal bahan pakan tersebut sudah pernah dibuat.",
     };
   }
 
-  console.error(error);
+  console.error(
+    error,
+  );
 
   return {
-    success: false,
+    success:
+      false,
 
     error:
       "Terjadi kesalahan saat menyimpan Feed Inventory.",
@@ -143,16 +172,22 @@ export async function createFeedPurchase(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
-              scope: "PRIMARY",
+              scope:
+                "PRIMARY",
             },
 
             select: {
-              id: true,
-              isActive: true,
+              id:
+                true,
+
+              isActive:
+                true,
             },
           });
 
@@ -174,15 +209,19 @@ export async function createFeedPurchase(
               farmId:
                 farm.id,
 
-              isActive: true,
+              isActive:
+                true,
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (!ingredient) {
+        if (
+          !ingredient
+        ) {
           throw ruleError(
             "Bahan pakan tidak tersedia, tidak aktif, atau bukan milik farm utama.",
           );
@@ -224,8 +263,13 @@ export async function createFeedPurchase(
       INVENTORY_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Pembelian pakan berhasil dicatat.",
@@ -252,16 +296,22 @@ export async function createFeedOpeningStock(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
-              scope: "PRIMARY",
+              scope:
+                "PRIMARY",
             },
 
             select: {
-              id: true,
-              isActive: true,
+              id:
+                true,
+
+              isActive:
+                true,
             },
           });
 
@@ -285,11 +335,14 @@ export async function createFeedOpeningStock(
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (!ingredient) {
+        if (
+          !ingredient
+        ) {
           throw ruleError(
             "Bahan pakan tidak ditemukan.",
           );
@@ -303,11 +356,14 @@ export async function createFeedOpeningStock(
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (existing) {
+        if (
+          existing
+        ) {
           throw ruleError(
             "Stok awal bahan pakan tersebut sudah pernah dibuat.",
           );
@@ -347,8 +403,13 @@ export async function createFeedOpeningStock(
       INVENTORY_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Stok awal bahan pakan berhasil dicatat.",
@@ -375,16 +436,22 @@ export async function createFeedStockAdjustment(
       );
 
     await prisma.$transaction(
-      async (tx) => {
+      async (
+        tx,
+      ) => {
         const farm =
           await tx.farm.findUnique({
             where: {
-              scope: "PRIMARY",
+              scope:
+                "PRIMARY",
             },
 
             select: {
-              id: true,
-              isActive: true,
+              id:
+                true,
+
+              isActive:
+                true,
             },
           });
 
@@ -408,11 +475,14 @@ export async function createFeedStockAdjustment(
             },
 
             select: {
-              id: true,
+              id:
+                true,
             },
           });
 
-        if (!ingredient) {
+        if (
+          !ingredient
+        ) {
           throw ruleError(
             "Bahan pakan tidak ditemukan.",
           );
@@ -455,8 +525,13 @@ export async function createFeedStockAdjustment(
       INVENTORY_PATH,
     );
 
+    revalidatePath(
+      DASHBOARD_PATH,
+    );
+
     return {
-      success: true,
+      success:
+        true,
 
       message:
         "Koreksi stok pakan berhasil dicatat.",
