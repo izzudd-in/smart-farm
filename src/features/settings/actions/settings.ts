@@ -8,6 +8,10 @@ import {
   UserRole,
 } from "@/generated/prisma/enums";
 
+import type {
+  Prisma,
+} from "@/generated/prisma/client";
+
 import {
   hashPassword,
   verifyPassword,
@@ -23,14 +27,22 @@ import {
 
 import {
   parseChangeOwnerPasswordInput,
+  parseCreateOperatorInput,
   parseOwnerProfileInput,
+  parseResetOperatorPasswordInput,
+  parseSetOperatorActiveInput,
+  parseUpdateOperatorAssignmentsInput,
   SettingsValidationError,
 } from "@/features/settings/schemas/settings";
 
 import type {
   ChangeOwnerPasswordInput,
+  CreateOperatorInput,
   OwnerProfileInput,
+  ResetOperatorPasswordInput,
+  SetOperatorActiveInput,
   SettingsActionResult,
+  UpdateOperatorAssignmentsInput,
 } from "@/features/settings/types/settings";
 
 const SETTINGS_PATH =
@@ -38,6 +50,39 @@ const SETTINGS_PATH =
 
 const DASHBOARD_PATH =
   "/dashboard";
+
+const OWNER_DAILY_PATH =
+  "/daily";
+
+const OPERATOR_TODAY_PATH =
+  "/operator/today";
+
+function ruleError(
+  message: string,
+): Error {
+  return new Error(
+    `SETTINGS_RULE:${message}`,
+  );
+}
+
+function databaseErrorCode(
+  error: unknown,
+): string | null {
+  if (
+    typeof error ===
+      "object" &&
+    error !==
+      null &&
+    "code" in
+      error &&
+    typeof error.code ===
+      "string"
+  ) {
+    return error.code;
+  }
+
+  return null;
+}
 
 function handleSettingsError(
   error: unknown,
@@ -52,6 +97,24 @@ function handleSettingsError(
 
       error:
         error.message,
+    };
+  }
+
+  if (
+    error instanceof Error &&
+    error.message.startsWith(
+      "SETTINGS_RULE:",
+    )
+  ) {
+    return {
+      success:
+        false,
+
+      error:
+        error.message.replace(
+          "SETTINGS_RULE:",
+          "",
+        ),
     };
   }
 
@@ -73,19 +136,38 @@ function handleSettingsError(
     };
   }
 
+  if (
+    databaseErrorCode(
+      error,
+    ) === "P2002"
+  ) {
+    return {
+      success:
+        false,
+
+      error:
+        "Email sudah digunakan.",
+    };
+  }
+
+  /*
+   * Log server-side tanpa password/input
+   * dan tanpa mengirim raw Prisma error
+   * ke browser.
+   */
   console.error(
     "Settings action failed.",
-    error instanceof Error
-      ? {
-          name:
-            error.name,
-          message:
-            error.message,
-        }
-      : {
-          name:
-            "UnknownError",
-        },
+    {
+      name:
+        error instanceof Error
+          ? error.name
+          : "UnknownError",
+
+      code:
+        databaseErrorCode(
+          error,
+        ),
+    },
   );
 
   return {
@@ -95,6 +177,102 @@ function handleSettingsError(
     error:
       "Terjadi kesalahan. Silakan coba lagi.",
   };
+}
+
+function revalidateOperatorManagement() {
+  revalidatePath(
+    SETTINGS_PATH,
+  );
+
+  revalidatePath(
+    OWNER_DAILY_PATH,
+  );
+
+  revalidatePath(
+    OPERATOR_TODAY_PATH,
+  );
+}
+
+async function getActiveAssignmentKandangs(
+  tx: Prisma.TransactionClient,
+  kandangIds: string[],
+): Promise<
+  {
+    id: string;
+  }[]
+> {
+  if (
+    kandangIds.length ===
+    0
+  ) {
+    return [];
+  }
+
+  const kandangs =
+    await tx.kandang.findMany({
+      where: {
+        id: {
+          in:
+            kandangIds,
+        },
+
+        isActive:
+          true,
+
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      select: {
+        id:
+          true,
+      },
+    });
+
+  if (
+    kandangs.length !==
+    kandangIds.length
+  ) {
+    throw ruleError(
+      "Assignment hanya boleh menggunakan kandang aktif milik farm utama.",
+    );
+  }
+
+  return kandangs;
+}
+
+async function assertOperatorTarget(
+  tx: Prisma.TransactionClient,
+  operatorId: string,
+) {
+  const operator =
+    await tx.user.findFirst({
+      where: {
+        id:
+          operatorId,
+
+        role:
+          UserRole.OPERATOR,
+      },
+
+      select: {
+        id:
+          true,
+
+        isActive:
+          true,
+      },
+    });
+
+  if (!operator) {
+    throw ruleError(
+      "Operator tidak ditemukan.",
+    );
+  }
+
+  return operator;
 }
 
 export async function updateOwnerProfile(
@@ -138,16 +316,6 @@ export async function updateOwnerProfile(
       );
     }
 
-    /*
-     * /settings di-refresh sebagai halaman akun.
-     * /dashboard juga direvalidate karena Owner shell
-     * tampil pada area tersebut dan menerima nama
-     * current user dari server.
-     *
-     * Client juga menjalankan router.refresh()
-     * setelah action sukses sehingga shell aktif
-     * memperoleh AuthUser terbaru.
-     */
     revalidatePath(
       SETTINGS_PATH,
     );
@@ -184,11 +352,6 @@ export async function changeOwnerPassword(
         input,
       );
 
-    /*
-     * passwordHash hanya dibaca di action ini.
-     * Nilai tersebut tidak pernah dikirim ke Client
-     * Component atau dimasukkan ke action result.
-     */
     const user =
       await prisma.user.findFirst({
         where: {
@@ -235,12 +398,6 @@ export async function changeOwnerPassword(
       };
     }
 
-    /*
-     * Compare terhadap hash current memastikan
-     * password baru benar-benar berbeda dari password
-     * yang tersimpan, bukan hanya berbeda dari string
-     * currentPassword yang dikirim client.
-     */
     const sameAsCurrent =
       await verifyPassword(
         parsed.newPassword,
@@ -290,11 +447,6 @@ export async function changeOwnerPassword(
       );
     }
 
-    /*
-     * Session registry/revocation sengaja tidak
-     * ditambahkan. Existing signed HttpOnly session
-     * dapat tetap berjalan.
-     */
     revalidatePath(
       SETTINGS_PATH,
     );
@@ -305,6 +457,288 @@ export async function changeOwnerPassword(
 
       message:
         "Password berhasil diperbarui.",
+    };
+  } catch (error) {
+    return handleSettingsError(
+      error,
+    );
+  }
+}
+
+export async function createOperator(
+  input: CreateOperatorInput,
+): Promise<SettingsActionResult> {
+  try {
+    await requireRole(
+      UserRole.OWNER,
+    );
+
+    const parsed =
+      parseCreateOperatorInput(
+        input,
+      );
+
+    const passwordHash =
+      await hashPassword(
+        parsed.password,
+      );
+
+    await prisma.$transaction(
+      async (
+        tx,
+      ) => {
+        const existing =
+          await tx.user.findUnique({
+            where: {
+              email:
+                parsed.email,
+            },
+
+            select: {
+              id:
+                true,
+            },
+          });
+
+        if (
+          existing
+        ) {
+          throw ruleError(
+            "Email sudah digunakan.",
+          );
+        }
+
+        const kandangs =
+          await getActiveAssignmentKandangs(
+            tx,
+            parsed.kandangIds,
+          );
+
+        await tx.user.create({
+          data: {
+            name:
+              parsed.name,
+
+            email:
+              parsed.email,
+
+            passwordHash,
+
+            role:
+              UserRole.OPERATOR,
+
+            isActive:
+              true,
+
+            kandangs:
+              kandangs.length >
+              0
+                ? {
+                    connect:
+                      kandangs,
+                  }
+                : undefined,
+          },
+        });
+      },
+    );
+
+    revalidateOperatorManagement();
+
+    return {
+      success:
+        true,
+
+      message:
+        "Operator berhasil ditambahkan.",
+    };
+  } catch (error) {
+    return handleSettingsError(
+      error,
+    );
+  }
+}
+
+export async function updateOperatorAssignments(
+  input: UpdateOperatorAssignmentsInput,
+): Promise<SettingsActionResult> {
+  try {
+    await requireRole(
+      UserRole.OWNER,
+    );
+
+    const parsed =
+      parseUpdateOperatorAssignmentsInput(
+        input,
+      );
+
+    await prisma.$transaction(
+      async (
+        tx,
+      ) => {
+        const operator =
+          await assertOperatorTarget(
+            tx,
+            parsed.operatorId,
+          );
+
+        const kandangs =
+          await getActiveAssignmentKandangs(
+            tx,
+            parsed.kandangIds,
+          );
+
+        /*
+         * Hanya mengubah current many-to-many
+         * assignment.
+         *
+         * DailyReport.operatorId historical
+         * tidak disentuh.
+         */
+        await tx.user.update({
+          where: {
+            id:
+              operator.id,
+          },
+
+          data: {
+            kandangs: {
+              set:
+                kandangs,
+            },
+          },
+        });
+      },
+    );
+
+    revalidateOperatorManagement();
+
+    return {
+      success:
+        true,
+
+      message:
+        "Assignment kandang berhasil diperbarui.",
+    };
+  } catch (error) {
+    return handleSettingsError(
+      error,
+    );
+  }
+}
+
+export async function setOperatorActive(
+  input: SetOperatorActiveInput,
+): Promise<SettingsActionResult> {
+  try {
+    await requireRole(
+      UserRole.OWNER,
+    );
+
+    const parsed =
+      parseSetOperatorActiveInput(
+        input,
+      );
+
+    const updated =
+      await prisma.user.updateMany({
+        where: {
+          id:
+            parsed.operatorId,
+
+          role:
+            UserRole.OPERATOR,
+        },
+
+        data: {
+          isActive:
+            parsed.isActive,
+        },
+      });
+
+    if (
+      updated.count !==
+      1
+    ) {
+      throw ruleError(
+        "Operator tidak ditemukan.",
+      );
+    }
+
+    /*
+     * Assignment dan DailyReport historical
+     * sengaja tetap dipertahankan.
+     */
+    revalidateOperatorManagement();
+
+    return {
+      success:
+        true,
+
+      message:
+        parsed.isActive
+          ? "Operator berhasil diaktifkan."
+          : "Operator berhasil dinonaktifkan.",
+    };
+  } catch (error) {
+    return handleSettingsError(
+      error,
+    );
+  }
+}
+
+export async function resetOperatorPassword(
+  input: ResetOperatorPasswordInput,
+): Promise<SettingsActionResult> {
+  try {
+    await requireRole(
+      UserRole.OWNER,
+    );
+
+    const parsed =
+      parseResetOperatorPasswordInput(
+        input,
+      );
+
+    const passwordHash =
+      await hashPassword(
+        parsed.newPassword,
+      );
+
+    const updated =
+      await prisma.user.updateMany({
+        where: {
+          id:
+            parsed.operatorId,
+
+          role:
+            UserRole.OPERATOR,
+        },
+
+        data: {
+          passwordHash,
+        },
+      });
+
+    if (
+      updated.count !==
+      1
+    ) {
+      throw ruleError(
+        "Operator tidak ditemukan.",
+      );
+    }
+
+    revalidatePath(
+      SETTINGS_PATH,
+    );
+
+    return {
+      success:
+        true,
+
+      message:
+        "Password Operator berhasil diperbarui.",
     };
   } catch (error) {
     return handleSettingsError(

@@ -1,15 +1,19 @@
 import type {
   ChangeOwnerPasswordInput,
+  CreateOperatorInput,
   OwnerProfileInput,
+  ResetOperatorPasswordInput,
+  SetOperatorActiveInput,
+  UpdateOperatorAssignmentsInput,
 } from "@/features/settings/types/settings";
 
 export class SettingsValidationError extends Error {}
 
-export function parseOwnerProfileInput(
-  input: OwnerProfileInput,
-) {
+function parseName(
+  value: string,
+): string {
   const name =
-    input.name.trim();
+    value.trim();
 
   if (!name) {
     throw new SettingsValidationError(
@@ -17,20 +21,141 @@ export function parseOwnerProfileInput(
     );
   }
 
-  if (name.length < 2) {
+  if (
+    name.length < 2
+  ) {
     throw new SettingsValidationError(
       "Nama minimal 2 karakter.",
     );
   }
 
-  if (name.length > 100) {
+  if (
+    name.length > 100
+  ) {
     throw new SettingsValidationError(
       "Nama maksimal 100 karakter.",
     );
   }
 
+  return name;
+}
+
+function parseEmail(
+  value: string,
+): string {
+  const email =
+    value
+      .trim()
+      .toLowerCase();
+
+  if (!email) {
+    throw new SettingsValidationError(
+      "Email wajib diisi.",
+    );
+  }
+
+  if (
+    email.length > 254
+  ) {
+    throw new SettingsValidationError(
+      "Email terlalu panjang.",
+    );
+  }
+
+  if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      email,
+    )
+  ) {
+    throw new SettingsValidationError(
+      "Format email tidak valid.",
+    );
+  }
+
+  return email;
+}
+
+function parseNewPassword(
+  value: string,
+): string {
+  if (!value) {
+    throw new SettingsValidationError(
+      "Password baru wajib diisi.",
+    );
+  }
+
+  if (
+    value.length < 8
+  ) {
+    throw new SettingsValidationError(
+      "Password minimal 8 karakter.",
+    );
+  }
+
+  if (
+    !value.trim()
+  ) {
+    throw new SettingsValidationError(
+      "Password tidak valid.",
+    );
+  }
+
+  return value;
+}
+
+function parseId(
+  value: string,
+  label: string,
+): string {
+  const id =
+    value.trim();
+
+  if (!id) {
+    throw new SettingsValidationError(
+      `${label} tidak valid.`,
+    );
+  }
+
+  return id;
+}
+
+function parseKandangIds(
+  values: string[],
+): string[] {
+  if (
+    !Array.isArray(
+      values,
+    )
+  ) {
+    throw new SettingsValidationError(
+      "Assignment kandang tidak valid.",
+    );
+  }
+
+  return Array.from(
+    new Set(
+      values
+        .map(
+          (
+            value,
+          ) =>
+            value.trim(),
+        )
+        .filter(
+          Boolean,
+        ),
+    ),
+  );
+}
+
+export function parseOwnerProfileInput(
+  input: OwnerProfileInput,
+) {
   return {
-    name,
+    name:
+      parseName(
+        input.name,
+      ),
   };
 }
 
@@ -40,43 +165,22 @@ export function parseChangeOwnerPasswordInput(
   const currentPassword =
     input.currentPassword;
 
-  const newPassword =
-    input.newPassword;
-
-  const confirmPassword =
-    input.confirmPassword;
-
-  if (!currentPassword) {
+  if (
+    !currentPassword
+  ) {
     throw new SettingsValidationError(
       "Password saat ini wajib diisi.",
     );
   }
 
-  if (!newPassword) {
-    throw new SettingsValidationError(
-      "Password baru wajib diisi.",
+  const newPassword =
+    parseNewPassword(
+      input.newPassword,
     );
-  }
-
-  if (
-    newPassword.length < 8
-  ) {
-    throw new SettingsValidationError(
-      "Password baru minimal 8 karakter.",
-    );
-  }
-
-  if (
-    !newPassword.trim()
-  ) {
-    throw new SettingsValidationError(
-      "Password baru tidak valid.",
-    );
-  }
 
   if (
     newPassword !==
-    confirmPassword
+    input.confirmPassword
   ) {
     throw new SettingsValidationError(
       "Konfirmasi password tidak sama.",
@@ -85,6 +189,101 @@ export function parseChangeOwnerPasswordInput(
 
   return {
     currentPassword,
+    newPassword,
+  };
+}
+
+export function parseCreateOperatorInput(
+  input: CreateOperatorInput,
+) {
+  return {
+    name:
+      parseName(
+        input.name,
+      ),
+
+    email:
+      parseEmail(
+        input.email,
+      ),
+
+    password:
+      parseNewPassword(
+        input.password,
+      ),
+
+    kandangIds:
+      parseKandangIds(
+        input.kandangIds,
+      ),
+  };
+}
+
+export function parseUpdateOperatorAssignmentsInput(
+  input: UpdateOperatorAssignmentsInput,
+) {
+  return {
+    operatorId:
+      parseId(
+        input.operatorId,
+        "Operator",
+      ),
+
+    kandangIds:
+      parseKandangIds(
+        input.kandangIds,
+      ),
+  };
+}
+
+export function parseSetOperatorActiveInput(
+  input: SetOperatorActiveInput,
+) {
+  if (
+    typeof input.isActive !==
+    "boolean"
+  ) {
+    throw new SettingsValidationError(
+      "Status Operator tidak valid.",
+    );
+  }
+
+  return {
+    operatorId:
+      parseId(
+        input.operatorId,
+        "Operator",
+      ),
+
+    isActive:
+      input.isActive,
+  };
+}
+
+export function parseResetOperatorPasswordInput(
+  input: ResetOperatorPasswordInput,
+) {
+  const newPassword =
+    parseNewPassword(
+      input.newPassword,
+    );
+
+  if (
+    newPassword !==
+    input.confirmPassword
+  ) {
+    throw new SettingsValidationError(
+      "Konfirmasi password tidak sama.",
+    );
+  }
+
+  return {
+    operatorId:
+      parseId(
+        input.operatorId,
+        "Operator",
+      ),
+
     newPassword,
   };
 }

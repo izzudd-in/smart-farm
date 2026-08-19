@@ -12,6 +12,7 @@ import {
 
 import {
   BUSINESS_TIMEZONE,
+  type OperatorManagementData,
   type OwnerSettingsData,
 } from "@/features/settings/types/settings";
 
@@ -89,5 +90,109 @@ export async function getOwnerSettingsData(): Promise<OwnerSettingsData> {
 
     timezone:
       BUSINESS_TIMEZONE,
+  };
+}
+
+export async function getOperatorManagementData(): Promise<OperatorManagementData> {
+  await requireRole(
+    UserRole.OWNER,
+  );
+
+  const [
+    operators,
+    activeKandangs,
+  ] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        role:
+          UserRole.OPERATOR,
+      },
+
+      orderBy: [
+        {
+          isActive:
+            "desc",
+        },
+
+        {
+          name:
+            "asc",
+        },
+
+        {
+          email:
+            "asc",
+        },
+      ],
+
+      select: {
+        id:
+          true,
+
+        name:
+          true,
+
+        email:
+          true,
+
+        isActive:
+          true,
+
+        kandangs: {
+          orderBy: {
+            name:
+              "asc",
+          },
+
+          select: {
+            id:
+              true,
+
+            code:
+              true,
+
+            name:
+              true,
+
+            isActive:
+              true,
+          },
+        },
+      },
+    }),
+
+    prisma.kandang.findMany({
+      where: {
+        isActive:
+          true,
+
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      orderBy: {
+        name:
+          "asc",
+      },
+
+      select: {
+        id:
+          true,
+
+        code:
+          true,
+
+        name:
+          true,
+      },
+    }),
+  ]);
+
+  return {
+    operators,
+
+    activeKandangs,
   };
 }
