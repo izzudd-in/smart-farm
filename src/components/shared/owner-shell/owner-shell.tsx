@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   MoreHorizontal,
   Receipt,
+  Settings,
   ShoppingCart,
   User,
   Warehouse,
@@ -57,140 +58,139 @@ type NavigationGroup = {
   items: NavigationItem[];
 };
 
-const navigationGroups: NavigationGroup[] =
-  [
-    {
-      items: [
-        {
-          label:
-            "Dashboard",
+const navigationGroups: NavigationGroup[] = [
+  {
+    items: [
+      {
+        label:
+          "Dashboard",
 
-          icon:
-            LayoutDashboard,
+        icon:
+          LayoutDashboard,
 
-          href:
-            "/dashboard",
-        },
-      ],
-    },
+        href:
+          "/dashboard",
+      },
+    ],
+  },
 
-    {
-      title:
-        "Farm",
+  {
+    title:
+      "Farm",
 
-      items: [
-        {
-          label:
-            "Operasional",
+    items: [
+      {
+        label:
+          "Operasional",
 
-          icon:
-            ClipboardCheck,
+        icon:
+          ClipboardCheck,
 
-          href:
-            "/daily",
-        },
+        href:
+          "/daily",
+      },
 
-        {
-          label:
-            "Kandang",
+      {
+        label:
+          "Kandang",
 
-          icon:
-            Warehouse,
+        icon:
+          Warehouse,
 
-          href:
-            "/farm",
-        },
+        href:
+          "/farm",
+      },
 
-        {
-          label:
-            "Produksi",
+      {
+        label:
+          "Produksi",
 
-          icon:
-            Egg,
+        icon:
+          Egg,
 
-          href:
-            "/production",
-        },
+        href:
+          "/production",
+      },
 
-        {
-          label:
-            "Pakan",
+      {
+        label:
+          "Pakan",
 
-          icon:
-            Wheat,
+        icon:
+          Wheat,
 
-          href:
-            "/feed",
-        },
+        href:
+          "/feed",
+      },
 
-        {
-          label:
-            "Stok",
+      {
+        label:
+          "Stok",
 
-          icon:
-            Boxes,
+        icon:
+          Boxes,
 
-          href:
-            "/inventory",
-        },
-      ],
-    },
+        href:
+          "/inventory",
+      },
+    ],
+  },
 
-    {
-      title:
-        "Bisnis",
+  {
+    title:
+      "Bisnis",
 
-      items: [
-        {
-          label:
-            "Penjualan",
+    items: [
+      {
+        label:
+          "Penjualan",
 
-          icon:
-            ShoppingCart,
+        icon:
+          ShoppingCart,
 
-          href:
-            "/sales",
-        },
+        href:
+          "/sales",
+      },
 
-        {
-          label:
-            "Biaya",
+      {
+        label:
+          "Biaya",
 
-          icon:
-            Receipt,
+        icon:
+          Receipt,
 
-          href:
-            "/expenses",
-        },
+        href:
+          "/expenses",
+      },
 
-        {
-          label:
-            "HPP & Profit",
+      {
+        label:
+          "HPP & Profit",
 
-          icon:
-            Wallet,
+        icon:
+          Wallet,
 
-          href:
-            "/hpp",
-        },
-      ],
-    },
+        href:
+          "/hpp",
+      },
+    ],
+  },
 
-    {
-      items: [
-        {
-          label:
-            "Laporan",
+  {
+    items: [
+      {
+        label:
+          "Laporan",
 
-          icon:
-            FileSpreadsheet,
+        icon:
+          FileSpreadsheet,
 
-          href:
-            "/reports",
-        },
-      ],
-    },
-  ];
+        href:
+          "/reports",
+      },
+    ],
+  },
+];
 
 function isPathActive(
   pathname: string,
@@ -214,9 +214,7 @@ function SidebarItem({
   const Icon =
     item.icon;
 
-  if (
-    !item.href
-  ) {
+  if (!item.href) {
     return (
       <div
         aria-disabled="true"
@@ -303,6 +301,12 @@ export function OwnerShell({
       "/inventory",
     );
 
+  const settingsActive =
+    isPathActive(
+      pathname,
+      "/settings",
+    );
+
   const moreSectionActive =
     isPathActive(
       pathname,
@@ -327,7 +331,8 @@ export function OwnerShell({
     isPathActive(
       pathname,
       "/reports",
-    );
+    ) ||
+    settingsActive;
 
   const moreItems =
     navigationGroups
@@ -418,7 +423,23 @@ export function OwnerShell({
 
         <div className="border-t border-border p-3">
           <div className="flex flex-col items-center gap-1 lg:flex-row lg:gap-2">
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-3 rounded-lg p-1.5 lg:justify-start">
+            <Link
+              href="/settings"
+              title="Pengaturan Akun"
+              aria-current={
+                settingsActive
+                  ? "page"
+                  : undefined
+              }
+              className={[
+                "flex w-full min-w-0 flex-1 items-center justify-center gap-3 rounded-lg p-1.5 transition-colors lg:justify-start",
+                settingsActive
+                  ? "bg-primary-soft text-primary-hover"
+                  : "hover:bg-[#F3F4F6]",
+              ].join(
+                " ",
+              )}
+            >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F3F4F6]">
                 <User className="h-4 w-4 text-[#4B5563]" />
               </div>
@@ -431,12 +452,14 @@ export function OwnerShell({
                 </p>
 
                 <p className="text-xs text-muted">
-                  Pemilik
+                  Pengaturan akun
                 </p>
               </div>
-            </div>
+            </Link>
 
-            <LogoutButton compact />
+            <LogoutButton
+              compact
+            />
           </div>
         </div>
       </aside>
@@ -712,7 +735,41 @@ export function OwnerShell({
               )}
             </div>
 
-            <div className="mt-4 border-t border-border pt-3">
+            <div className="mt-4 space-y-2 border-t border-border pt-3">
+              <Link
+                href="/settings"
+                aria-current={
+                  settingsActive
+                    ? "page"
+                    : undefined
+                }
+                onClick={() =>
+                  setMoreOpen(
+                    false,
+                  )
+                }
+                className={[
+                  "flex min-w-0 items-center gap-3 rounded-[10px] border p-3",
+                  settingsActive
+                    ? "border-[#BBF7D0] bg-primary-soft text-primary-hover"
+                    : "border-border bg-white text-[#4B5563]",
+                ].join(
+                  " ",
+                )}
+              >
+                <Settings className="h-4 w-4 shrink-0" />
+
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    Pengaturan Akun
+                  </p>
+
+                  <p className="mt-0.5 truncate text-xs text-muted">
+                    Profil dan keamanan
+                  </p>
+                </div>
+              </Link>
+
               <LogoutButton />
             </div>
           </div>
