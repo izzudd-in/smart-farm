@@ -1,4 +1,8 @@
 import type {
+  DailyReportStatus,
+} from "@/features/daily-operations/types/daily-report";
+
+import type {
   ProfitStatus,
 } from "@/features/finance/types/profit";
 
@@ -57,6 +61,89 @@ export type DashboardDataQuality = {
     number;
 };
 
+export type DashboardAlertSeverity =
+  | "CRITICAL"
+  | "WARNING"
+  | "INFO";
+
+export type DashboardAlert = {
+  id: string;
+
+  severity:
+    DashboardAlertSeverity;
+
+  title: string;
+  description: string;
+
+  href?: string;
+  actionLabel?: string;
+};
+
+export type DashboardKandangToday = {
+  kandangId: string;
+  kandangName: string;
+  flockName: string;
+
+  reportStatus:
+    DailyReportStatus;
+
+  operatorName:
+    | string
+    | null;
+
+  saleableEggKg:
+    | string
+    | null;
+
+  feedUsedKg:
+    | string
+    | null;
+
+  mortality:
+    | number
+    | null;
+
+  reportId:
+    | string
+    | null;
+};
+
+export type DashboardProductionTrendPoint = {
+  date: string;
+
+  productionKg:
+    | string
+    | null;
+
+  completeReportCount: number;
+  incompleteReportCount: number;
+};
+
+export type DashboardActivityType =
+  | "DAILY_REPORT"
+  | "ORDER"
+  | "FEED_PURCHASE"
+  | "DAILY_EXPENSE"
+  | "EGG_STOCK_ADJUSTMENT"
+  | "FEED_STOCK_ADJUSTMENT";
+
+export type DashboardActivity = {
+  id: string;
+
+  type:
+    DashboardActivityType;
+
+  occurredAt: string;
+
+  title: string;
+
+  description?:
+    | string
+    | null;
+
+  href?: string;
+};
+
 export type DashboardOverview = {
   today: string;
 
@@ -83,4 +170,16 @@ export type DashboardOverview = {
 
   dataQuality:
     DashboardDataQuality;
+
+  alerts:
+    DashboardAlert[];
+
+  kandangs:
+    DashboardKandangToday[];
+
+  productionTrend:
+    DashboardProductionTrendPoint[];
+
+  recentActivities:
+    DashboardActivity[];
 };

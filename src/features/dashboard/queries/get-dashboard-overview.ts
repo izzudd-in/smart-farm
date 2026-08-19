@@ -16,6 +16,7 @@ import {
 } from "@/features/daily-operations/utils/date";
 
 import {
+  getDailyReportStatus,
   isCoreReportComplete,
 } from "@/features/daily-operations/utils/status";
 
@@ -28,6 +29,10 @@ import {
 } from "@/features/inventory/queries/get-egg-stock";
 
 import {
+  getFeedStockAsOfDate,
+} from "@/features/inventory/queries/get-feed-stock";
+
+import {
   milliKgToQuantity,
   quantityToMilliKg,
 } from "@/features/inventory/utils/quantity";
@@ -37,8 +42,707 @@ import {
 } from "@/features/sales/queries/get-egg-price-for-date";
 
 import type {
+  DashboardActivity,
+  DashboardAlert,
+  DashboardAlertSeverity,
+  DashboardKandangToday,
   DashboardOverview,
+  DashboardProductionTrendPoint,
 } from "@/features/dashboard/types/dashboard";
+
+const activityQuantityFormatter =
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      maximumFractionDigits:
+        3,
+    },
+  );
+
+const activityMoneyFormatter =
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      style:
+        "currency",
+
+      currency:
+        "IDR",
+
+      maximumFractionDigits:
+        2,
+    },
+  );
+
+const activityBusinessDateFormatter =
+  new Intl.DateTimeFormat(
+    "id-ID",
+    {
+      day:
+        "2-digit",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
+
+      timeZone:
+        "UTC",
+    },
+  );
+
+function addUtcDays(
+  date: Date,
+  days: number,
+): Date {
+  const result =
+    new Date(
+      date.getTime(),
+    );
+
+  result.setUTCDate(
+    result.getUTCDate() +
+      days,
+  );
+
+  return result;
+}
+
+function toDateOnly(
+  date: Date,
+): string {
+  return date
+    .toISOString()
+    .slice(
+      0,
+      10,
+    );
+}
+
+function normalizeQuantityKg(
+  value:
+    | string
+    | number,
+): string {
+  return milliKgToQuantity(
+    quantityToMilliKg(
+      value,
+    ),
+  );
+}
+
+function formatActivityQuantity(
+  value:
+    | string
+    | number,
+): string {
+  const normalized =
+    normalizeQuantityKg(
+      value,
+    );
+
+  const numeric =
+    Number(
+      normalized,
+    );
+
+  return Number.isFinite(
+    numeric,
+  )
+    ? activityQuantityFormatter.format(
+        numeric,
+      )
+    : normalized;
+}
+
+function formatActivityMoney(
+  value: string,
+): string {
+  const numeric =
+    Number(
+      value,
+    );
+
+  return Number.isFinite(
+    numeric,
+  )
+    ? activityMoneyFormatter.format(
+        numeric,
+      )
+    : value;
+}
+
+function formatActivityBusinessDate(
+  value: Date,
+): string {
+  return activityBusinessDateFormatter.format(
+    value,
+  );
+}
+
+function getAlertPriority(
+  severity:
+    DashboardAlertSeverity,
+): number {
+  switch (
+    severity
+  ) {
+    case "CRITICAL":
+      return 0;
+
+    case "WARNING":
+      return 1;
+
+    default:
+      return 2;
+  }
+}
+
+function sortAlerts(
+  alerts: DashboardAlert[],
+): DashboardAlert[] {
+  return alerts
+    .sort(
+      (
+        left,
+        right,
+      ) => {
+        const severityOrder =
+          getAlertPriority(
+            left.severity,
+          ) -
+          getAlertPriority(
+            right.severity,
+          );
+
+        if (
+          severityOrder !==
+          0
+        ) {
+          return severityOrder;
+        }
+
+        return left.id.localeCompare(
+          right.id,
+        );
+      },
+    )
+    .slice(
+      0,
+      6,
+    );
+}
+
+function createProductionTrendDates(
+  trendStart: Date,
+): string[] {
+  return Array.from(
+    {
+      length:
+        7,
+    },
+    (
+      _,
+      index,
+    ) =>
+      toDateOnly(
+        addUtcDays(
+          trendStart,
+          index,
+        ),
+      ),
+  );
+}
+
+async function getRecentActivities(): Promise<
+  DashboardActivity[]
+> {
+  /*
+   * Beberapa latest row per source saja.
+   * Tidak membaca seluruh history dan
+   * tidak membuat Activity table.
+   */
+  const [
+    dailyReports,
+    orders,
+    feedPurchases,
+    dailyExpenses,
+    eggAdjustments,
+    feedAdjustments,
+  ] = await Promise.all([
+    prisma.dailyReport.findMany({
+      where: {
+        kandang: {
+          farm: {
+            scope:
+              "PRIMARY",
+          },
+        },
+      },
+
+      orderBy: {
+        updatedAt:
+          "desc",
+      },
+
+      take:
+        3,
+
+      select: {
+        id:
+          true,
+
+        date:
+          true,
+
+        saleableEgg:
+          true,
+
+        damagedEgg:
+          true,
+
+        feedUsed:
+          true,
+
+        mortality:
+          true,
+
+        updatedAt:
+          true,
+
+        kandang: {
+          select: {
+            name:
+              true,
+          },
+        },
+      },
+    }),
+
+    prisma.order.findMany({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      orderBy: {
+        createdAt:
+          "desc",
+      },
+
+      take:
+        3,
+
+      select: {
+        id:
+          true,
+
+        orderedAt:
+          true,
+
+        customerNameSnapshot:
+          true,
+
+        quantityKg:
+          true,
+
+        createdAt:
+          true,
+      },
+    }),
+
+    prisma.feedPurchase.findMany({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      orderBy: {
+        createdAt:
+          "desc",
+      },
+
+      take:
+        3,
+
+      select: {
+        id:
+          true,
+
+        purchasedAt:
+          true,
+
+        quantityKg:
+          true,
+
+        createdAt:
+          true,
+
+        ingredient: {
+          select: {
+            name:
+              true,
+          },
+        },
+      },
+    }),
+
+    prisma.dailyExpense.findMany({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      orderBy: {
+        updatedAt:
+          "desc",
+      },
+
+      take:
+        3,
+
+      select: {
+        id:
+          true,
+
+        occurredAt:
+          true,
+
+        amount:
+          true,
+
+        description:
+          true,
+
+        updatedAt:
+          true,
+      },
+    }),
+
+    prisma.eggStockAdjustment.findMany({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      orderBy: {
+        createdAt:
+          "desc",
+      },
+
+      take:
+        3,
+
+      select: {
+        id:
+          true,
+
+        occurredAt:
+          true,
+
+        type:
+          true,
+
+        quantityKg:
+          true,
+
+        note:
+          true,
+
+        createdAt:
+          true,
+      },
+    }),
+
+    prisma.feedStockAdjustment.findMany({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+
+      orderBy: {
+        createdAt:
+          "desc",
+      },
+
+      take:
+        3,
+
+      select: {
+        id:
+          true,
+
+        occurredAt:
+          true,
+
+        type:
+          true,
+
+        quantityKg:
+          true,
+
+        note:
+          true,
+
+        createdAt:
+          true,
+
+        ingredient: {
+          select: {
+            name:
+              true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const activities:
+    DashboardActivity[] = [];
+
+  for (
+    const report
+    of dailyReports
+  ) {
+    const status =
+      getDailyReportStatus(
+        report,
+      );
+
+    activities.push({
+      id:
+        `daily-report:${report.id}`,
+
+      type:
+        "DAILY_REPORT",
+
+      occurredAt:
+        report.updatedAt.toISOString(),
+
+      title:
+        `Laporan ${report.kandang.name} diperbarui`,
+
+      description:
+        `${status === "COMPLETE" ? "Selesai" : "Belum lengkap"} · tanggal operasional ${formatActivityBusinessDate(
+          report.date,
+        )}`,
+
+      href:
+        `/daily?date=${toDateOnly(
+          report.date,
+        )}`,
+    });
+  }
+
+  for (
+    const order
+    of orders
+  ) {
+    activities.push({
+      id:
+        `order:${order.id}`,
+
+      type:
+        "ORDER",
+
+      occurredAt:
+        order.createdAt.toISOString(),
+
+      title:
+        `Order ${formatActivityQuantity(
+          order.quantityKg.toString(),
+        )} kg untuk ${order.customerNameSnapshot}`,
+
+      description:
+        `Tanggal transaksi ${formatActivityBusinessDate(
+          order.orderedAt,
+        )}`,
+
+      href:
+        `/sales/orders/${order.id}`,
+    });
+  }
+
+  for (
+    const purchase
+    of feedPurchases
+  ) {
+    activities.push({
+      id:
+        `feed-purchase:${purchase.id}`,
+
+      type:
+        "FEED_PURCHASE",
+
+      occurredAt:
+        purchase.createdAt.toISOString(),
+
+      title:
+        `Pembelian ${purchase.ingredient.name} ${formatActivityQuantity(
+          purchase.quantityKg.toString(),
+        )} kg`,
+
+      description:
+        `Tanggal pembelian ${formatActivityBusinessDate(
+          purchase.purchasedAt,
+        )}`,
+
+      href:
+        "/inventory?tab=feed",
+    });
+  }
+
+  for (
+    const expense
+    of dailyExpenses
+  ) {
+    activities.push({
+      id:
+        `daily-expense:${expense.id}`,
+
+      type:
+        "DAILY_EXPENSE",
+
+      occurredAt:
+        expense.updatedAt.toISOString(),
+
+      title:
+        `Pengeluaran Owner ${formatActivityMoney(
+          expense.amount.toString(),
+        )}`,
+
+      description:
+        `${expense.description} · ${formatActivityBusinessDate(
+          expense.occurredAt,
+        )}`,
+
+      href:
+        "/expenses?tab=daily",
+    });
+  }
+
+  for (
+    const adjustment
+    of eggAdjustments
+  ) {
+    const quantity =
+      formatActivityQuantity(
+        adjustment.quantityKg.toString(),
+      );
+
+    const title =
+      adjustment.type ===
+      "OPENING"
+        ? `Stok awal telur ${quantity} kg`
+        : adjustment.type ===
+            "INCREASE"
+          ? `Koreksi stok telur +${quantity} kg`
+          : `Koreksi stok telur -${quantity} kg`;
+
+    activities.push({
+      id:
+        `egg-adjustment:${adjustment.id}`,
+
+      type:
+        "EGG_STOCK_ADJUSTMENT",
+
+      occurredAt:
+        adjustment.createdAt.toISOString(),
+
+      title,
+
+      description:
+        adjustment.note ??
+        `Tanggal stok ${formatActivityBusinessDate(
+          adjustment.occurredAt,
+        )}`,
+
+      href:
+        "/inventory?tab=egg",
+    });
+  }
+
+  for (
+    const adjustment
+    of feedAdjustments
+  ) {
+    const quantity =
+      formatActivityQuantity(
+        adjustment.quantityKg.toString(),
+      );
+
+    const action =
+      adjustment.type ===
+      "OPENING"
+        ? "Stok awal"
+        : adjustment.type ===
+            "INCREASE"
+          ? "Koreksi masuk"
+          : "Koreksi keluar";
+
+    activities.push({
+      id:
+        `feed-adjustment:${adjustment.id}`,
+
+      type:
+        "FEED_STOCK_ADJUSTMENT",
+
+      occurredAt:
+        adjustment.createdAt.toISOString(),
+
+      title:
+        `${action} ${adjustment.ingredient.name} ${adjustment.type === "DECREASE" ? "-" : adjustment.type === "INCREASE" ? "+" : ""}${quantity} kg`,
+
+      description:
+        adjustment.note ??
+        `Tanggal stok ${formatActivityBusinessDate(
+          adjustment.occurredAt,
+        )}`,
+
+      href:
+        "/inventory?tab=feed",
+    });
+  }
+
+  return activities
+    .sort(
+      (
+        left,
+        right,
+      ) => {
+        const timestampOrder =
+          right.occurredAt.localeCompare(
+            left.occurredAt,
+          );
+
+        if (
+          timestampOrder !==
+          0
+        ) {
+          return timestampOrder;
+        }
+
+        return left.id.localeCompare(
+          right.id,
+        );
+      },
+    )
+    .slice(
+      0,
+      6,
+    );
+}
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
   await requireRole(
@@ -69,28 +773,38 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       monthStartString,
     );
 
+  const trendStart =
+    addUtcDays(
+      today,
+      -6,
+    );
+
+  const trendDates =
+    createProductionTrendDates(
+      trendStart,
+    );
+
   /*
-   * Semua source independen dijalankan paralel.
+   * Semua source independen berjalan paralel.
    *
-   * Tidak menggunakan Reports query karena
-   * Dashboard hanya membutuhkan current state.
+   * Today report hanya diambil satu kali lalu
+   * dipakai untuk:
+   * - KPI production;
+   * - completeness;
+   * - status kandang;
+   * - operational alert.
    */
   const [
     operationalKandangs,
     reportsToday,
+    trendReports,
     salesToday,
     eggStock,
+    feedStock,
     profitMonthToDate,
     activeEggPrice,
+    recentActivities,
   ] = await Promise.all([
-    /*
-     * Expected report hanya untuk kandang
-     * yang saat ini aktif dan memiliki
-     * active flock.
-     *
-     * Operator assignment tidak ikut
-     * menentukan expected report.
-     */
     prisma.kandang.findMany({
       where: {
         isActive:
@@ -107,16 +821,30 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         },
       },
 
+      orderBy: {
+        name:
+          "asc",
+      },
+
       select: {
         id:
           true,
+
+        name:
+          true,
+
+        activeFlock: {
+          select: {
+            id:
+              true,
+
+            name:
+              true,
+          },
+        },
       },
     }),
 
-    /*
-     * Satu batch report hari ini.
-     * Tidak query per kandang.
-     */
     prisma.dailyReport.findMany({
       where: {
         date:
@@ -139,7 +867,64 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       },
 
       select: {
+        id:
+          true,
+
         kandangId:
+          true,
+
+        saleableEgg:
+          true,
+
+        damagedEgg:
+          true,
+
+        feedUsed:
+          true,
+
+        mortality:
+          true,
+
+        operator: {
+          select: {
+            name:
+              true,
+          },
+        },
+
+        flock: {
+          select: {
+            name:
+              true,
+          },
+        },
+      },
+    }),
+
+    /*
+     * Satu batch query untuk tujuh hari.
+     * Tidak query per tanggal.
+     */
+    prisma.dailyReport.findMany({
+      where: {
+        date: {
+          gte:
+            trendStart,
+
+          lte:
+            today,
+        },
+
+        kandang: {
+          farm: {
+            scope:
+              "PRIMARY",
+          },
+        },
+      },
+
+      select: {
+        date:
           true,
 
         saleableEgg:
@@ -157,8 +942,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     }),
 
     /*
-     * Order merupakan immutable transaction
-     * snapshot. Tidak join Customer/EggPrice.
+     * Immutable Order snapshot.
+     * Tidak query Customer/EggPrice untuk
+     * merekalkulasi transaksi.
      */
     prisma.order.aggregate({
       where: {
@@ -189,10 +975,13 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       today,
     ),
 
+    getFeedStockAsOfDate(
+      today,
+    ),
+
     /*
-     * Profit engine menjadi satu-satunya
-     * source Profit/HPP bulan berjalan.
-     * Dashboard tidak memanggil HPP lagi.
+     * Profit engine tetap satu-satunya
+     * source Profit/HPP MTD.
      */
     getProfitForPeriod(
       monthStart,
@@ -202,10 +991,21 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     getEggPriceForDate(
       today,
     ),
+
+    getRecentActivities(),
   ]);
 
-  const expectedReports =
-    operationalKandangs.length;
+  const reportByKandangId =
+    new Map(
+      reportsToday.map(
+        (
+          report,
+        ) => [
+          report.kandangId,
+          report,
+        ],
+      ),
+    );
 
   let completeReports =
     0;
@@ -216,26 +1016,162 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
   let productionMilliKg =
     BigInt(0);
 
-  const reportedKandangIds =
-    new Set<string>();
+  const kandangs:
+    DashboardKandangToday[] =
+      operationalKandangs.map(
+        (
+          kandang,
+        ) => {
+          const report =
+            reportByKandangId.get(
+              kandang.id,
+            );
+
+          const reportStatus =
+            getDailyReportStatus(
+              report ??
+                null,
+            );
+
+          if (
+            reportStatus ===
+            "COMPLETE"
+          ) {
+            completeReports +=
+              1;
+
+            productionMilliKg +=
+              quantityToMilliKg(
+                report
+                  ?.saleableEgg ??
+                  0,
+              );
+          } else if (
+            reportStatus ===
+            "INCOMPLETE"
+          ) {
+            incompleteReports +=
+              1;
+          }
+
+          return {
+            kandangId:
+              kandang.id,
+
+            kandangName:
+              kandang.name,
+
+            flockName:
+              report?.flock.name ??
+              kandang.activeFlock
+                ?.name ??
+              "Flock aktif",
+
+            reportStatus,
+
+            operatorName:
+              report
+                ?.operator.name ??
+              null,
+
+            saleableEggKg:
+              report?.saleableEgg ===
+              null ||
+              report?.saleableEgg ===
+              undefined
+                ? null
+                : normalizeQuantityKg(
+                    report.saleableEgg,
+                  ),
+
+            feedUsedKg:
+              report?.feedUsed ===
+              null ||
+              report?.feedUsed ===
+              undefined
+                ? null
+                : normalizeQuantityKg(
+                    report.feedUsed,
+                  ),
+
+            mortality:
+              report?.mortality ??
+              null,
+
+            reportId:
+              report?.id ??
+              null,
+          };
+        },
+      );
+
+  const expectedReports =
+    kandangs.length;
+
+  const notStartedReports =
+    kandangs.filter(
+      (
+        kandang,
+      ) =>
+        kandang.reportStatus ===
+        "NOT_STARTED",
+    ).length;
+
+  const trendAccumulator =
+    new Map<
+      string,
+      {
+        productionMilliKg: bigint;
+        completeReportCount: number;
+        incompleteReportCount: number;
+      }
+    >(
+      trendDates.map(
+        (
+          date,
+        ) => [
+          date,
+          {
+            productionMilliKg:
+              BigInt(0),
+
+            completeReportCount:
+              0,
+
+            incompleteReportCount:
+              0,
+          },
+        ],
+      ),
+    );
 
   for (
     const report
-    of reportsToday
+    of trendReports
   ) {
-    reportedKandangIds.add(
-      report.kandangId,
-    );
+    const date =
+      toDateOnly(
+        report.date,
+      );
+
+    const day =
+      trendAccumulator.get(
+        date,
+      );
+
+    if (!day) {
+      continue;
+    }
 
     if (
       isCoreReportComplete(
         report,
       )
     ) {
-      completeReports +=
+      day.completeReportCount +=
         1;
 
-      productionMilliKg +=
+      day.productionMilliKg +=
         quantityToMilliKg(
           report.saleableEgg ??
             0,
@@ -244,23 +1180,261 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       continue;
     }
 
-    incompleteReports +=
+    day.incompleteReportCount +=
       1;
   }
 
-  const notStartedReports =
-    operationalKandangs.reduce(
+  const productionTrend:
+    DashboardProductionTrendPoint[] =
+      trendDates.map(
+        (
+          date,
+        ) => {
+          const day =
+            trendAccumulator.get(
+              date,
+            );
+
+          if (
+            !day ||
+            day.completeReportCount ===
+              0
+          ) {
+            return {
+              date,
+
+              productionKg:
+                null,
+
+              completeReportCount:
+                0,
+
+              incompleteReportCount:
+                day
+                  ?.incompleteReportCount ??
+                0,
+            };
+          }
+
+          return {
+            date,
+
+            productionKg:
+              milliKgToQuantity(
+                day.productionMilliKg,
+              ),
+
+            completeReportCount:
+              day.completeReportCount,
+
+            incompleteReportCount:
+              day.incompleteReportCount,
+          };
+        },
+      );
+
+  const alerts:
+    DashboardAlert[] = [];
+
+  if (
+    eggStock.isNegative
+  ) {
+    alerts.push({
+      id:
+        "egg-stock-negative",
+
+      severity:
+        "CRITICAL",
+
+      title:
+        "Stok telur negatif",
+
+      description:
+        `Posisi stok telur saat ini ${formatActivityQuantity(
+          eggStock.currentStockKg,
+        )} kg.`,
+
+      href:
+        "/inventory?tab=egg",
+
+      actionLabel:
+        "Periksa stok",
+    });
+  }
+
+  for (
+    const ingredient
+    of feedStock.ingredients
+  ) {
+    if (
+      !ingredient.isNegative
+    ) {
+      continue;
+    }
+
+    alerts.push({
+      id:
+        `feed-stock-negative:${ingredient.ingredientId}`,
+
+      severity:
+        "CRITICAL",
+
+      title:
+        `Stok ${ingredient.ingredientName} negatif`,
+
+      description:
+        `Posisi stok ${ingredient.ingredientName} saat ini ${formatActivityQuantity(
+          ingredient.currentStockKg,
+        )} kg.`,
+
+      href:
+        "/inventory?tab=feed",
+
+      actionLabel:
+        "Periksa stok",
+    });
+  }
+
+  const unfinishedKandangs =
+    kandangs.filter(
       (
-        total,
         kandang,
       ) =>
-        reportedKandangIds.has(
-          kandang.id,
-        )
-          ? total
-          : total + 1,
-      0,
+        kandang.reportStatus !==
+        "COMPLETE",
     );
+
+  if (
+    unfinishedKandangs.length >
+    0
+  ) {
+    const descriptionParts:
+      string[] = [];
+
+    if (
+      notStartedReports >
+      0
+    ) {
+      descriptionParts.push(
+        `${notStartedReports} belum diisi`,
+      );
+    }
+
+    if (
+      incompleteReports >
+      0
+    ) {
+      descriptionParts.push(
+        `${incompleteReports} belum lengkap`,
+      );
+    }
+
+    alerts.push({
+      id:
+        "operations-unfinished",
+
+      severity:
+        "WARNING",
+
+      title:
+        `${unfinishedKandangs.length} kandang belum menyelesaikan laporan hari ini`,
+
+      description:
+        descriptionParts.length >
+        0
+          ? descriptionParts.join(
+              " · ",
+            )
+          : "Data operasional hari ini belum final.",
+
+      href:
+        `/daily?date=${todayString}`,
+
+      actionLabel:
+        "Lihat operasional",
+    });
+  }
+
+  const missingFeedCostReports =
+    profitMonthToDate.hpp
+      .missingFeedCostReportCount;
+
+  if (
+    missingFeedCostReports >
+    0
+  ) {
+    alerts.push({
+      id:
+        "missing-feed-cost",
+
+      severity:
+        "WARNING",
+
+      title:
+        "Biaya pakan historis belum lengkap",
+
+      description:
+        `${missingFeedCostReports} laporan COMPLETE bulan ini belum memiliki snapshot biaya pakan yang lengkap.`,
+
+      href:
+        "/hpp",
+
+      actionLabel:
+        "Periksa HPP",
+    });
+  } else if (
+    profitMonthToDate.status ===
+    "MISSING_COST"
+  ) {
+    /*
+     * Tidak membuat alert MISSING_COST kedua
+     * bila penyebabnya sudah diwakili oleh
+     * missing Feed Cost di atas.
+     */
+    alerts.push({
+      id:
+        "profit-missing-cost",
+
+      severity:
+        "WARNING",
+
+      title:
+        "Estimasi Profit belum dapat dihitung",
+
+      description:
+        "Source biaya bulan berjalan belum lengkap.",
+
+      href:
+        "/hpp",
+
+      actionLabel:
+        "Periksa HPP",
+    });
+  }
+
+  if (
+    !activeEggPrice
+  ) {
+    alerts.push({
+      id:
+        "no-active-egg-price",
+
+      severity:
+        "WARNING",
+
+      title:
+        "Belum ada harga telur aktif",
+
+      description:
+        "Belum ada Egg Price dengan tanggal efektif sampai hari ini.",
+
+      href:
+        "/sales",
+
+      actionLabel:
+        "Kelola harga",
+    });
+  }
 
   const revenueToday =
     salesToday._sum
@@ -269,13 +1443,11 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     "0.00";
 
   const soldKgToday =
-    milliKgToQuantity(
-      quantityToMilliKg(
-        salesToday._sum
-          .quantityKg
-          ?.toString() ??
-          "0",
-      ),
+    normalizeQuantityKg(
+      salesToday._sum
+        .quantityKg
+        ?.toString() ??
+        "0",
     );
 
   const productionToday =
@@ -360,13 +1532,10 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
                 .toString(),
 
             effectiveAt:
-              activeEggPrice
-                .effectiveAt
-                .toISOString()
-                .slice(
-                  0,
-                  10,
-                ),
+              toDateOnly(
+                activeEggPrice
+                  .effectiveAt,
+              ),
           }
         : null,
 
@@ -387,8 +1556,18 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         profitMonthToDate.status,
 
       missingFeedCostReportsMonthToDate:
-        profitMonthToDate.hpp
-          .missingFeedCostReportCount,
+        missingFeedCostReports,
     },
+
+    alerts:
+      sortAlerts(
+        alerts,
+      ),
+
+    kandangs,
+
+    productionTrend,
+
+    recentActivities,
   };
 }
