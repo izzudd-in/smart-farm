@@ -1,9 +1,18 @@
-export default function DashboardPage() {
+import {
+  OwnerDashboard,
+} from "@/features/dashboard/components/owner-dashboard";
+
+import {
+  getDashboardOverview,
+} from "@/features/dashboard/queries/get-dashboard-overview";
+
+export default async function DashboardPage() {
+  const data =
+    await getDashboardOverview();
+
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        Dashboard
-      </h1>
-    </div>
+    <OwnerDashboard
+      data={data}
+    />
   );
 }
