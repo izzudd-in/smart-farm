@@ -4,7 +4,7 @@ type NodeEnvironment =
   | "production";
 
 function requireEnvironmentVariable(
-  name: "DATABASE_URL" | "AUTH_SECRET",
+  name: "DATABASE_URL" | "AUTH_SECRET" | "APP_URL",
 ): string {
   const value =
     process.env[name]?.trim();
@@ -39,6 +39,51 @@ function resolveNodeEnvironment(): NodeEnvironment {
   );
 }
 
+function parseAppUrl(
+  value: string,
+): URL {
+  let parsed: URL;
+
+  try {
+    parsed =
+      new URL(value);
+  } catch {
+    throw new Error(
+      "APP_URL must be an absolute http:// or https:// URL.",
+    );
+  }
+
+  if (
+    parsed.protocol !== "http:" &&
+    parsed.protocol !== "https:"
+  ) {
+    throw new Error(
+      "APP_URL must use http:// or https://.",
+    );
+  }
+
+  if (
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new Error(
+      "APP_URL must not contain credentials.",
+    );
+  }
+
+  if (
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(
+      "APP_URL must be the application origin without a path, query, or hash.",
+    );
+  }
+
+  return parsed;
+}
+
 const databaseUrl =
   requireEnvironmentVariable(
     "DATABASE_URL",
@@ -57,6 +102,13 @@ if (
   );
 }
 
+const appUrl =
+  parseAppUrl(
+    requireEnvironmentVariable(
+      "APP_URL",
+    ),
+  );
+
 const nodeEnv =
   resolveNodeEnvironment();
 
@@ -66,6 +118,12 @@ export const env = Object.freeze({
 
   AUTH_SECRET:
     authSecret,
+
+  APP_URL:
+    appUrl.origin,
+
+  IS_HTTPS:
+    appUrl.protocol === "https:",
 
   NODE_ENV:
     nodeEnv,

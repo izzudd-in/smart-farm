@@ -29,7 +29,7 @@ function getCookieSecurityOptions() {
       true,
 
     secure:
-      env.IS_PRODUCTION,
+      env.IS_HTTPS,
 
     sameSite:
       "lax" as const,
@@ -116,11 +116,6 @@ export async function clearSession(): Promise<void> {
   const cookieStore =
     await cookies();
 
-  /*
-   * Gunakan atribut security/path yang sama
-   * agar penghapusan cookie konsisten dengan
-   * cookie saat dibuat.
-   */
   cookieStore.set(
     SESSION_COOKIE_NAME,
     "",
