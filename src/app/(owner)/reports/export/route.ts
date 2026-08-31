@@ -160,6 +160,18 @@ export async function GET(
       );
     }
 
+    const diffDays = Math.round(
+      (to.date.getTime() - from.date.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+
+    if (diffDays > 366) {
+      return errorResponse(
+        "Rentang tanggal export maksimal 1 tahun (366 hari) per unduhan untuk mencegah timeout sistem.",
+        400,
+      );
+    }
+
     const data =
       await getReportExportDataForPeriod(
         from.date,

@@ -181,6 +181,9 @@ async function saveReport(
 
                     startDate:
                       true,
+
+                    initialPopulation:
+                      true,
                   },
                 },
               },
@@ -677,6 +680,41 @@ async function saveReport(
             throw ruleError(
               "Pakan Digunakan sudah diisi, tetapi belum ada formula pakan aktif. Hubungi Owner untuk mengaktifkan formula.",
             );
+          }
+
+          // Validasi mortality tidak boleh melebihi sisa populasi aktif (REL-011 / DT-008 / BUG-006)
+          if (
+            parsed.mortality !== null &&
+            parsed.mortality > 0
+          ) {
+            const priorMortalityAgg =
+              await tx.dailyReport.aggregate({
+                where: {
+                  flockId:
+                    kandang.activeFlock.id,
+                  date: {
+                    lt: reportDate,
+                  },
+                  mortality: {
+                    not: null,
+                  },
+                },
+                _sum: {
+                  mortality: true,
+                },
+              });
+
+            const priorMortality =
+              priorMortalityAgg._sum.mortality ?? 0;
+            const remainingPopulation =
+              kandang.activeFlock.initialPopulation -
+              priorMortality;
+
+            if (parsed.mortality > remainingPopulation) {
+              throw ruleError(
+                `Jumlah kematian (${parsed.mortality} ekor) tidak boleh melebihi sisa populasi aktif (${remainingPopulation} ekor).`,
+              );
+            }
           }
 
           const report =

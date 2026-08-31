@@ -689,11 +689,76 @@ export async function createOrder(
           const discountPerKg =
             customer.discountPerKg.toString();
 
+          if (Number(discountPerKg) >= Number(basePricePerKg)) {
+            throw ruleError(
+              "Diskon customer tidak boleh melebihi atau sama dengan harga dasar telur.",
+            );
+          }
+
           const finalPricePerKg =
             calculateFinalPricePerKg(
               basePricePerKg,
               discountPerKg,
             );
+
+          if (Number(finalPricePerKg) <= 0) {
+            throw ruleError(
+              "Harga akhir per kg harus lebih dari 0.",
+            );
+          }
+
+          // Validasi stok telur mencukupi sebelum membuat order (REL-009 / FT-052)
+          const [productionAgg, salesAgg, adjustmentsAgg] = await Promise.all([
+            tx.dailyReport.aggregate({
+              where: {
+                date: { lte: parsed.orderedAt },
+                kandang: { farmId: farm.id },
+                saleableEgg: { not: null },
+                damagedEgg: { not: null },
+                feedUsed: { not: null },
+                mortality: { not: null },
+              },
+              _sum: { saleableEgg: true },
+            }),
+            tx.order.aggregate({
+              where: {
+                orderedAt: { lte: parsed.orderedAt },
+                farmId: farm.id,
+              },
+              _sum: { quantityKg: true },
+            }),
+            tx.eggStockAdjustment.groupBy({
+              by: ["type"],
+              where: {
+                occurredAt: { lte: parsed.orderedAt },
+                farmId: farm.id,
+              },
+              _sum: { quantityKg: true },
+            }),
+          ]);
+
+          const prodMilliKg = BigInt(Math.round((productionAgg._sum.saleableEgg ?? 0) * 1000));
+          const soldMilliKg = BigInt(Math.round(Number(salesAgg._sum.quantityKg ?? 0) * 1000));
+
+          let adjMilliKg = BigInt(0);
+          for (const adj of adjustmentsAgg) {
+            const qtyMilliKg = BigInt(Math.round(Number(adj._sum.quantityKg ?? 0) * 1000));
+            if (adj.type === "OPENING" || adj.type === "INCREASE") {
+              adjMilliKg += qtyMilliKg;
+            } else if (adj.type === "DECREASE") {
+              adjMilliKg -= qtyMilliKg;
+            }
+          }
+
+          const availableStockMilliKg = prodMilliKg + adjMilliKg - soldMilliKg;
+          const orderQtyMilliKg = BigInt(Math.round(Number(parsed.quantityKg) * 1000));
+
+          if (orderQtyMilliKg > availableStockMilliKg) {
+            const availableKg = Number(availableStockMilliKg > BigInt(0) ? availableStockMilliKg : BigInt(0)) / 1000;
+            throw ruleError(
+              `Stok telur tidak mencukupi. Stok tersedia: ${availableKg} kg, jumlah order: ${parsed.quantityKg} kg.`,
+            );
+          }
 
           const totalPrice =
             calculateOrderTotal(

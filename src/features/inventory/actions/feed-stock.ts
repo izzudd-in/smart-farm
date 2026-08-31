@@ -488,6 +488,165 @@ export async function createFeedStockAdjustment(
           );
         }
 
+        // Validasi pencegahan stok pakan negatif (REL-023 / DT-007 / BUG-007)
+        if (parsed.type === "DECREASE") {
+          const [purchaseAgg, adjustmentAgg, usageReports] =
+            await Promise.all([
+              tx.feedPurchase.aggregate({
+                where: {
+                  ingredientId: ingredient.id,
+                  purchasedAt: {
+                    lte: parsed.occurredAt,
+                  },
+                  farmId: farm.id,
+                },
+                _sum: {
+                  quantityKg: true,
+                },
+              }),
+              tx.feedStockAdjustment.groupBy({
+                by: ["type"],
+                where: {
+                  ingredientId: ingredient.id,
+                  occurredAt: {
+                    lte: parsed.occurredAt,
+                  },
+                  farmId: farm.id,
+                },
+                _sum: {
+                  quantityKg: true,
+                },
+              }),
+              tx.dailyReport.findMany({
+                where: {
+                  date: {
+                    lte: parsed.occurredAt,
+                  },
+                  kandang: {
+                    farmId: farm.id,
+                  },
+                  saleableEgg: {
+                    not: null,
+                  },
+                  damagedEgg: {
+                    not: null,
+                  },
+                  feedUsed: {
+                    not: null,
+                  },
+                  mortality: {
+                    not: null,
+                  },
+                  feedItems: {
+                    some: {
+                      ingredientId:
+                        ingredient.id,
+                    },
+                  },
+                },
+                select: {
+                  feedUsed: true,
+                  feedItems: {
+                    where: {
+                      ingredientId:
+                        ingredient.id,
+                    },
+                    select: {
+                      percentage:
+                        true,
+                    },
+                  },
+                },
+              }),
+            ]);
+
+          let availableMilliKg = BigInt(
+            Math.round(
+              Number(
+                purchaseAgg._sum
+                  .quantityKg ?? 0,
+              ) * 1000,
+            ),
+          );
+
+          for (const adj of adjustmentAgg) {
+            const qtyMilliKg = BigInt(
+              Math.round(
+                Number(
+                  adj._sum
+                    .quantityKg ?? 0,
+                ) * 1000,
+              ),
+            );
+            if (
+              adj.type ===
+                FeedStockAdjustmentType.OPENING ||
+              adj.type ===
+                FeedStockAdjustmentType.INCREASE
+            ) {
+              availableMilliKg +=
+                qtyMilliKg;
+            } else if (
+              adj.type ===
+              FeedStockAdjustmentType.DECREASE
+            ) {
+              availableMilliKg -=
+                qtyMilliKg;
+            }
+          }
+
+          for (const rep of usageReports) {
+            if (
+              rep.feedUsed &&
+              rep.feedItems[0]?.percentage
+            ) {
+              const feedMilliKg = BigInt(
+                Math.round(
+                  rep.feedUsed *
+                    1000,
+                ),
+              );
+              const basisPoints = BigInt(
+                Math.round(
+                  Number(
+                    rep.feedItems[0]
+                      .percentage,
+                  ) * 100,
+                ),
+              );
+              const usageMilliKg =
+                (feedMilliKg *
+                  basisPoints) /
+                BigInt(10000);
+              availableMilliKg -=
+                usageMilliKg;
+            }
+          }
+
+          const decrMilliKg = BigInt(
+            Math.round(
+              Number(
+                parsed.quantityKg,
+              ) * 1000,
+            ),
+          );
+
+          if (
+            decrMilliKg > availableMilliKg
+          ) {
+            const availableKg =
+              Number(
+                availableMilliKg >
+                  BigInt(0)
+                  ? availableMilliKg
+                  : BigInt(0),
+              ) / 1000;
+            throw ruleError(
+              `Stok pakan tidak mencukupi untuk koreksi pengurangan. Stok saat ini: ${availableKg} kg, pengurangan diminta: ${parsed.quantityKg} kg.`,
+            );
+          }
+        }
+
         await tx.feedStockAdjustment.create({
           data: {
             farmId:
