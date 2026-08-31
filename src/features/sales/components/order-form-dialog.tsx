@@ -291,7 +291,7 @@ export function OrderFormDialog({
     >
       <form
         onSubmit={handleSubmit}
-        className="space-y-5 p-5"
+        className="space-y-4 p-4 sm:p-5"
       >
         {error ? (
           <div
@@ -326,14 +326,12 @@ export function OrderFormDialog({
 
         {/* Customer Field & Quick Selector Chips (HE-009) */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="order-customer"
-              className="text-[13px] font-medium text-foreground"
-            >
-              Customer
-            </label>
-          </div>
+          <label
+            htmlFor="order-customer"
+            className="text-[13px] font-medium text-foreground"
+          >
+            Customer
+          </label>
 
           <select
             id="order-customer"
@@ -373,7 +371,7 @@ export function OrderFormDialog({
 
           {/* Quick Customer Chips */}
           {customers.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               <span className="flex items-center gap-1 text-[11px] font-medium text-muted mr-0.5">
                 <Zap className="h-3 w-3 text-primary" />
                 Cepat:
@@ -411,68 +409,71 @@ export function OrderFormDialog({
           ) : null}
         </div>
 
-        <DatePicker
-          id="order-date"
-          label="Tanggal Order"
-          value={orderedAt}
-          disabled={isPending}
-          onChange={(val) => {
-            setOrderedAt(val);
-            if (error) setError("");
-            void fetchPreview(
-              customerId,
-              val,
-            );
-          }}
-        />
-
-        {/* Quantity Field & Quick Presets (HE-009) */}
-        <div className="space-y-1.5">
-          <Input
-            id="order-quantity"
-            type="number"
-            inputMode="decimal"
-            min="0.001"
-            step="0.001"
-            label="Jumlah Telur (kg)"
-            placeholder="Contoh: 50"
-            value={quantityKg}
+        {/* Responsive Grid: Tanggal Order & Jumlah Telur (RSP-004) */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <DatePicker
+            id="order-date"
+            label="Tanggal Order"
+            value={orderedAt}
             disabled={isPending}
-            onChange={(event) => {
-              setQuantityKg(
-                event.target.value,
-              );
+            onChange={(val) => {
+              setOrderedAt(val);
               if (error) setError("");
+              void fetchPreview(
+                customerId,
+                val,
+              );
             }}
           />
 
-          {/* Quick Quantity Presets */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            <span className="text-[11px] font-medium text-muted mr-0.5">
-              Preset:
-            </span>
-            {QUANTITY_PRESETS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  setQuantityKg(preset);
-                  if (error) setError("");
-                }}
-                className={[
-                  "rounded-md px-2 py-0.5 text-xs font-medium transition-all",
-                  quantityKg === preset
-                    ? "bg-primary text-white shadow-xs"
-                    : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
-                ].join(" ")}
-              >
-                {preset} kg
-              </button>
-            ))}
+          <div className="space-y-1">
+            <Input
+              id="order-quantity"
+              type="number"
+              inputMode="decimal"
+              min="0.001"
+              step="0.001"
+              label="Jumlah Telur (kg)"
+              placeholder="Contoh: 50"
+              value={quantityKg}
+              disabled={isPending}
+              onChange={(event) => {
+                setQuantityKg(
+                  event.target.value,
+                );
+                if (error) setError("");
+              }}
+            />
+
+            {/* Quick Quantity Presets */}
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              <span className="text-[11px] font-medium text-muted mr-0.5">
+                Preset:
+              </span>
+              {QUANTITY_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    setQuantityKg(preset);
+                    if (error) setError("");
+                  }}
+                  className={[
+                    "rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-all",
+                    quantityKg === preset
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
+                  ].join(" ")}
+                >
+                  {preset}kg
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* Catatan Field */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="order-note"
@@ -487,7 +488,7 @@ export function OrderFormDialog({
             maxLength={1000}
             value={note}
             disabled={isPending}
-            placeholder="Opsional"
+            placeholder="Catatan tambahan (opsional)"
             onChange={(event) => {
               setNote(
                 event.target.value,
@@ -498,24 +499,25 @@ export function OrderFormDialog({
           />
         </div>
 
+        {/* Pricing Preview Box */}
         {customerId &&
         orderedAt ? (
-          <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-4">
+          <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-3.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted">
               Preview Harga & Stok
             </p>
 
             {isPreviewLoading ? (
-              <p className="mt-3 text-sm text-muted">
+              <p className="mt-2.5 text-sm text-muted">
                 Memuat preview harga & stok...
               </p>
             ) : previewError ? (
-              <p className="mt-3 text-sm text-danger">
+              <p className="mt-2.5 text-sm text-danger">
                 {previewError}
               </p>
             ) : preview ? (
-              <div className="mt-3 space-y-2.5 text-sm">
-                <div className="flex justify-between gap-4">
+              <div className="mt-2.5 space-y-2 text-sm">
+                <div className="flex justify-between gap-4 text-xs">
                   <span className="text-muted">
                     Harga dasar
                   </span>
@@ -528,7 +530,7 @@ export function OrderFormDialog({
                   </span>
                 </div>
 
-                <div className="flex justify-between gap-4">
+                <div className="flex justify-between gap-4 text-xs">
                   <span className="text-muted">
                     Diskon
                   </span>
@@ -541,8 +543,8 @@ export function OrderFormDialog({
                   </span>
                 </div>
 
-                <div className="flex justify-between gap-4 border-t border-border pt-2">
-                  <span className="text-muted">
+                <div className="flex justify-between gap-4 border-t border-border pt-1.5">
+                  <span className="text-xs text-muted">
                     Harga final
                   </span>
 
@@ -555,7 +557,7 @@ export function OrderFormDialog({
                 </div>
 
                 {preview.availableStockKg !== undefined ? (
-                  <div className="flex justify-between gap-4 border-t border-border pt-2 text-xs">
+                  <div className="flex justify-between gap-4 border-t border-border pt-1.5 text-xs">
                     <span className="text-muted">
                       Stok telur tersedia
                     </span>
@@ -573,8 +575,8 @@ export function OrderFormDialog({
                 ) : null}
 
                 {isQtyValid ? (
-                  <div className="flex justify-between gap-4 border-t border-dashed border-border pt-2">
-                    <span className="font-medium text-foreground">
+                  <div className="flex justify-between gap-4 border-t border-dashed border-border pt-1.5">
+                    <span className="text-xs font-medium text-foreground">
                       Estimasi Total (
                       {normalizedQty} kg)
                     </span>
@@ -604,7 +606,8 @@ export function OrderFormDialog({
           </div>
         ) : null}
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        {/* Modal Action Buttons */}
+        <div className="flex justify-end gap-2 border-t border-border pt-3">
           <Button
             type="button"
             variant="secondary"
