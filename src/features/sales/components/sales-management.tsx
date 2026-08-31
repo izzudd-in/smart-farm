@@ -783,6 +783,11 @@ export function SalesManagement({
 
       {priceDialog ? (
         <EggPriceFormDialog
+          activePrice={data.activePrice}
+          latestPrice={
+            data.priceHistory[0] ??
+            data.activePrice
+          }
           onSuccess={(message) => {
             setFeedback({
               type: "success",

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import {
   createOrder,
@@ -294,15 +295,12 @@ export function OrderFormDialog({
           ) : null}
         </div>
 
-        <Input
+        <DatePicker
           id="order-date"
-          type="date"
           label="Tanggal Order"
           value={orderedAt}
           disabled={isPending}
-          onChange={(event) => {
-            const val =
-              event.target.value;
+          onChange={(val) => {
             setOrderedAt(val);
             if (error) setError("");
             void fetchPreview(

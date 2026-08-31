@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   ChevronRight,
+  FileText,
+  Package,
   ShoppingCart,
 } from "lucide-react";
 
@@ -256,123 +258,146 @@ export function OrderList({
         </Card>
       ) : (
         <>
-          <div className="space-y-2 md:hidden">
+          {/* Mobile Card Layout (UX-016: Card layout for mobile screens) */}
+          <div className="space-y-3 md:hidden">
             {data.orders.map(
-              (order) => (
-                <Card
-                  key={order.id}
-                  className="min-w-0 p-4"
-                >
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-foreground">
-                        {order.customerName}
-                      </p>
+              (order) => {
+                const discountNum = Number(order.discountPerKg);
+                return (
+                  <Card
+                    key={order.id}
+                    className="min-w-0 p-4 transition-all hover:border-primary/30"
+                  >
+                    {/* Header: Customer Name & Date */}
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground text-sm">
+                          {order.customerName}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {formatDate(order.orderedAt)}
+                        </p>
+                      </div>
 
-                      <p className="mt-1 text-xs text-muted">
-                        {formatDate(
-                          order.orderedAt,
-                        )}
-                      </p>
+                      <Link
+                        href={`/sales/orders/${order.id}`}
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-primary-soft px-2.5 text-xs font-medium text-primary hover:bg-primary/15 transition-colors"
+                      >
+                        Detail
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
 
-                    <Link
-                      href={`/sales/orders/${order.id}`}
-                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary-hover hover:bg-primary-soft"
-                    >
-                      Detail
+                    {/* Order Metrics Grid */}
+                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-[#F9FAFB] p-2.5 text-xs">
+                      <div>
+                        <span className="text-muted block text-[11px]">Jumlah:</span>
+                        <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
+                          <Package className="h-3 w-3 text-primary shrink-0" />
+                          {quantityFormatter.format(Number(order.quantityKg))} kg
+                        </span>
+                      </div>
 
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
+                      <div>
+                        <span className="text-muted block text-[11px]">Harga / kg:</span>
+                        <span className="font-medium text-foreground block mt-0.5">
+                          {currencyFormatter.format(Number(order.finalPricePerKg))}
+                        </span>
+                        {discountNum > 0 ? (
+                          <span className="text-[10px] text-[#059669]">
+                            (Disc: {currencyFormatter.format(discountNum)})
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
 
-                  <div className="mt-4 flex min-w-0 items-end justify-between gap-3 border-t border-border pt-3">
-                    <p className="shrink-0 text-sm font-medium text-muted">
-                      {quantityFormatter.format(
-                        Number(
-                          order.quantityKg,
-                        ),
-                      )}{" "}
-                      kg
-                    </p>
+                    {/* Note if available */}
+                    {order.note ? (
+                      <div className="mt-2.5 flex items-start gap-1.5 text-[11px] text-muted">
+                        <FileText className="h-3 w-3 shrink-0 mt-0.5 text-muted-light" />
+                        <p className="line-clamp-1 italic">{order.note}</p>
+                      </div>
+                    ) : null}
 
-                    <p className="min-w-0 truncate text-right text-base font-semibold text-foreground">
-                      {currencyFormatter.format(
-                        Number(
-                          order.totalPrice,
-                        ),
-                      )}
-                    </p>
-                  </div>
-                </Card>
-              ),
+                    {/* Footer: Total Price */}
+                    <div className="mt-3 flex min-w-0 items-center justify-between border-t border-border pt-2.5">
+                      <span className="text-xs font-medium text-muted">Total Transaksi:</span>
+                      <span className="text-base font-bold text-primary">
+                        {currencyFormatter.format(Number(order.totalPrice))}
+                      </span>
+                    </div>
+                  </Card>
+                );
+              },
             )}
           </div>
 
+          {/* Desktop Table Layout (UX-016: Structured table for desktop) */}
           <Card className="hidden overflow-hidden md:block">
-            <div className="grid grid-cols-[minmax(0,1fr)_140px_130px_180px_80px] items-center gap-4 border-b border-border bg-[#F9FAFB] px-4 py-2.5 text-xs font-medium text-muted">
-              <span>
-                Customer
-              </span>
-
-              <span>
-                Tanggal
-              </span>
-
-              <span className="text-right">
-                Jumlah
-              </span>
-
-              <span className="text-right">
-                Total
-              </span>
-
-              <span />
+            <div className="grid grid-cols-[minmax(0,1.2fr)_130px_110px_140px_160px_80px] items-center gap-4 border-b border-border bg-[#F9FAFB] px-4 py-3 text-xs font-semibold text-muted">
+              <span>Customer</span>
+              <span>Tanggal</span>
+              <span className="text-right">Jumlah</span>
+              <span className="text-right">Harga / kg</span>
+              <span className="text-right">Total Transaksi</span>
+              <span className="text-right">Aksi</span>
             </div>
 
             <div className="divide-y divide-border">
               {data.orders.map(
-                (order) => (
-                  <div
-                    key={order.id}
-                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_140px_130px_180px_80px] items-center gap-4 px-4 py-3"
-                  >
-                    <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                      {order.customerName}
-                    </p>
-
-                    <p className="text-sm text-muted">
-                      {formatDate(
-                        order.orderedAt,
-                      )}
-                    </p>
-
-                    <p className="text-right text-sm text-foreground">
-                      {quantityFormatter.format(
-                        Number(
-                          order.quantityKg,
-                        ),
-                      )}{" "}
-                      kg
-                    </p>
-
-                    <p className="text-right text-sm font-semibold text-foreground">
-                      {currencyFormatter.format(
-                        Number(
-                          order.totalPrice,
-                        ),
-                      )}
-                    </p>
-
-                    <Link
-                      href={`/sales/orders/${order.id}`}
-                      className="inline-flex h-8 items-center justify-end gap-1 text-xs font-medium text-primary-hover hover:underline"
+                (order) => {
+                  const discountNum = Number(order.discountPerKg);
+                  return (
+                    <div
+                      key={order.id}
+                      className="grid min-w-0 grid-cols-[minmax(0,1.2fr)_130px_110px_140px_160px_80px] items-center gap-4 px-4 py-3 hover:bg-[#F9FAFB]/60 transition-colors"
                     >
-                      Detail
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                ),
+                      <div className="min-w-0">
+                        <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                          {order.customerName}
+                        </p>
+                        {order.note ? (
+                          <p className="truncate text-xs text-muted-light mt-0.5">
+                            {order.note}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <p className="text-sm text-muted">
+                        {formatDate(order.orderedAt)}
+                      </p>
+
+                      <p className="text-right text-sm font-medium text-foreground">
+                        {quantityFormatter.format(Number(order.quantityKg))} kg
+                      </p>
+
+                      <div className="text-right text-sm">
+                        <p className="font-medium text-foreground">
+                          {currencyFormatter.format(Number(order.finalPricePerKg))}
+                        </p>
+                        {discountNum > 0 ? (
+                          <p className="text-[10px] text-[#059669]">
+                            Disc: {currencyFormatter.format(discountNum)}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <p className="text-right text-sm font-bold text-foreground">
+                        {currencyFormatter.format(Number(order.totalPrice))}
+                      </p>
+
+                      <div className="flex justify-end">
+                        <Link
+                          href={`/sales/orders/${order.id}`}
+                          className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary-soft transition-colors"
+                        >
+                          Detail
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                },
               )}
             </div>
           </Card>
