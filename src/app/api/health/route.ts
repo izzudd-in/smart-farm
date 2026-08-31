@@ -1,6 +1,7 @@
 import {
   prisma,
 } from "@/lib/db/prisma";
+import { logger } from "@/lib/logger";
 
 export const runtime =
   "nodejs";
@@ -34,15 +35,18 @@ export async function GET() {
           NO_STORE_HEADERS,
       },
     );
-  } catch {
+  } catch (error) {
     /*
      * Tidak mengembalikan Prisma error,
      * connection string, SQL detail,
-     * maupun stack trace.
+     * maupun stack trace ke client.
      */
-    console.error(
-      "Health check failed.",
-    );
+    logger.error("Health check failed.", {
+      action: "healthCheck",
+      metadata: {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
 
     return Response.json(
       {

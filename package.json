@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:check": "tsx scripts/check-db.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
     "db:studio": "prisma studio",
     "prebuild": "prisma generate"
   },
