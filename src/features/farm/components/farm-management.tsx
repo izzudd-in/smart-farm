@@ -24,6 +24,7 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import { FlockFormDialog } from "./flock-form-dialog";
 import { KandangFormDialog } from "./kandang-form-dialog";
@@ -77,6 +78,11 @@ export function FarmManagement({
     flockDialog,
     setFlockDialog,
   ] = useState<FlockDialogState>(null);
+
+  const [
+    confirmDeactivateKandang,
+    setConfirmDeactivateKandang,
+  ] = useState<KandangSummary | null>(null);
 
   const [actionError, setActionError] =
     useState("");
@@ -393,11 +399,13 @@ export function FarmManagement({
                           pendingKandangId ===
                             kandang.id
                         }
-                        onClick={() =>
-                          toggleKandang(
-                            kandang,
-                          )
-                        }
+                        onClick={() => {
+                          if (kandang.isActive) {
+                            setConfirmDeactivateKandang(kandang);
+                          } else {
+                            toggleKandang(kandang);
+                          }
+                        }}
                       >
                         {kandang.isActive ? (
                           <PowerOff className="h-3.5 w-3.5" />
@@ -447,6 +455,73 @@ export function FarmManagement({
           }
           onClose={() =>
             setFlockDialog(null)
+          }
+        />
+      ) : null}
+
+      {confirmDeactivateKandang ? (
+        <ConfirmDialog
+          title="Konfirmasi Nonaktifkan Kandang"
+          confirmText="Ya, Nonaktifkan"
+          cancelText="Batal"
+          variant="destructive"
+          isLoading={
+            isPending &&
+            pendingKandangId ===
+              confirmDeactivateKandang.id
+          }
+          onConfirm={() => {
+            const target = confirmDeactivateKandang;
+            setConfirmDeactivateKandang(null);
+            toggleKandang(target);
+          }}
+          onClose={() =>
+            setConfirmDeactivateKandang(null)
+          }
+          description={
+            confirmDeactivateKandang.activeFlock ? (
+              <div className="space-y-3">
+                <p className="text-foreground font-medium">
+                  Apakah Anda yakin ingin menonaktifkan kandang{" "}
+                  <strong>
+                    {confirmDeactivateKandang.name} (
+                    {confirmDeactivateKandang.code})
+                  </strong>
+                  ?
+                </p>
+
+                <div className="rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-xs text-danger leading-relaxed">
+                  <p className="font-semibold">
+                    ⚠️ Peringatan Tindakan Destruktif:
+                  </p>
+                  <p className="mt-1">
+                    Kandang ini memiliki flock aktif{" "}
+                    <strong>
+                      {confirmDeactivateKandang.activeFlock.name}
+                    </strong>
+                    . Menonaktifkan kandang akan{" "}
+                    <strong>otomatis mengakhiri masa flock aktif</strong> hari
+                    ini dan menonaktifkan pencatatan operasional harian pada
+                    kandang ini.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-foreground">
+                  Apakah Anda yakin ingin menonaktifkan kandang{" "}
+                  <strong>
+                    {confirmDeactivateKandang.name} (
+                    {confirmDeactivateKandang.code})
+                  </strong>
+                  ?
+                </p>
+                <p className="text-xs text-muted">
+                  Kandang yang dinonaktifkan tidak dapat digunakan untuk
+                  pencatatan operasional harian hingga diaktifkan kembali.
+                </p>
+              </div>
+            )
           }
         />
       ) : null}

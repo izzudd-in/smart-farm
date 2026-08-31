@@ -808,6 +808,9 @@ export function OperatorManagement({
               )
             }
           />
+          <p className="text-xs text-muted">
+            Minimal 8 karakter dengan kombinasi huruf besar, kecil, dan angka.
+          </p>
 
           <div className="space-y-2">
             <p className="text-[13px] font-medium text-foreground">
@@ -1115,6 +1118,10 @@ export function OperatorManagement({
                         )
                       }
                     />
+
+                    <p className="text-xs text-muted">
+                      Minimal 8 karakter dengan kombinasi huruf besar, kecil, dan angka.
+                    </p>
 
                     <div className="flex justify-end">
                       <Button

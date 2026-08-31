@@ -11,10 +11,12 @@ import {
   env,
 } from "@/lib/env";
 
-const SESSION_COOKIE_NAME =
+import type { UserRole } from "@/generated/prisma/enums";
+
+export const SESSION_COOKIE_NAME =
   "smart_farm_session";
 
-const SESSION_DURATION_SECONDS =
+export const SESSION_DURATION_SECONDS =
   60 * 60 * 24 * 7;
 
 function getSessionSecret(): Uint8Array {
@@ -23,7 +25,7 @@ function getSessionSecret(): Uint8Array {
   );
 }
 
-function getCookieSecurityOptions() {
+export function getCookieSecurityOptions() {
   return {
     httpOnly:
       true,
@@ -36,28 +38,93 @@ function getCookieSecurityOptions() {
 
     path:
       "/",
+
+    maxAge:
+      SESSION_DURATION_SECONDS,
   };
+}
+
+export type SessionPayload = {
+  userId: string;
+  role?: UserRole;
+  exp?: number;
+  iat?: number;
+};
+
+export function shouldRefreshSession(
+  session: SessionPayload,
+): boolean {
+  if (!session.exp || !session.iat) {
+    return false;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const age = now - session.iat;
+  const remaining = session.exp - now;
+
+  // Refresh jika token sudah berusia > 1 hari atau sisa waktu <= 3 hari
+  return (
+    age >= 24 * 60 * 60 ||
+    remaining <= 3 * 24 * 60 * 60
+  );
+}
+
+export async function signSessionToken(
+  userId: string,
+  role?: UserRole,
+): Promise<string> {
+  return new SignJWT(role ? { role } : {})
+    .setProtectedHeader({
+      alg:
+        "HS256",
+    })
+    .setSubject(
+      userId,
+    )
+    .setIssuedAt()
+    .setExpirationTime(
+      "7d",
+    )
+    .sign(
+      getSessionSecret(),
+    );
+}
+
+export async function verifySessionToken(
+  token: string,
+): Promise<SessionPayload | null> {
+  try {
+    const { payload } = await jwtVerify(
+      token,
+      getSessionSecret(),
+      {
+        algorithms: ["HS256"],
+      },
+    );
+
+    if (typeof payload.sub !== "string") {
+      return null;
+    }
+
+    return {
+      userId: payload.sub,
+      role: (payload.role as UserRole) ?? undefined,
+      exp: payload.exp,
+      iat: payload.iat,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function createSession(
   userId: string,
+  role?: UserRole,
 ): Promise<void> {
-  const token =
-    await new SignJWT({})
-      .setProtectedHeader({
-        alg:
-          "HS256",
-      })
-      .setSubject(
-        userId,
-      )
-      .setIssuedAt()
-      .setExpirationTime(
-        "7d",
-      )
-      .sign(
-        getSessionSecret(),
-      );
+  const token = await signSessionToken(
+    userId,
+    role,
+  );
 
   const cookieStore =
     await cookies();
@@ -65,17 +132,12 @@ export async function createSession(
   cookieStore.set(
     SESSION_COOKIE_NAME,
     token,
-    {
-      ...getCookieSecurityOptions(),
-
-      maxAge:
-        SESSION_DURATION_SECONDS,
-    },
+    getCookieSecurityOptions(),
   );
 }
 
-export async function getSessionUserId(): Promise<
-  string | null
+export async function getSessionPayload(): Promise<
+  SessionPayload | null
 > {
   const cookieStore =
     await cookies();
@@ -89,27 +151,16 @@ export async function getSessionUserId(): Promise<
     return null;
   }
 
-  try {
-    const {
-      payload,
-    } =
-      await jwtVerify(
-        token,
-        getSessionSecret(),
-        {
-          algorithms: [
-            "HS256",
-          ],
-        },
-      );
+  return verifySessionToken(token);
+}
 
-    return typeof payload.sub ===
-      "string"
-      ? payload.sub
-      : null;
-  } catch {
-    return null;
-  }
+export async function getSessionUserId(): Promise<
+  string | null
+> {
+  const session =
+    await getSessionPayload();
+
+  return session?.userId ?? null;
 }
 
 export async function clearSession(): Promise<void> {

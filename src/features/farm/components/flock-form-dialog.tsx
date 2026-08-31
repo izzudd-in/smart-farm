@@ -51,6 +51,11 @@ export function FlockFormDialog({
       "",
   );
 
+  const [
+    confirmEndActiveFlock,
+    setConfirmEndActiveFlock,
+  ] = useState(false);
+
   const [error, setError] = useState("");
   const [isPending, startTransition] =
     useTransition();
@@ -61,6 +66,13 @@ export function FlockFormDialog({
     event.preventDefault();
 
     setError("");
+
+    if (!isEditing && kandang.activeFlock && !confirmEndActiveFlock) {
+      setError(
+        "Silakan centang konfirmasi pengakhiran flock aktif terlebih dahulu.",
+      );
+      return;
+    }
 
     startTransition(async () => {
       const input = {
@@ -116,11 +128,31 @@ export function FlockFormDialog({
 
         {!isEditing &&
         kandang.activeFlock ? (
-          <div className="rounded-[10px] border border-[#FDE68A] bg-[#FFFBEB] p-3 text-sm text-[#92400E]">
-            Memulai flock baru akan
-            mengakhiri flock aktif saat
-            ini pada tanggal mulai flock
-            baru.
+          <div className="space-y-2.5">
+            <div className="rounded-[10px] border border-[#FDE68A] bg-[#FFFBEB] p-3 text-xs text-[#92400E]">
+              <p className="font-medium">⚠️ Perhatian Pengakhiran Flock Aktif:</p>
+              <p className="mt-1">
+                Kandang ini memiliki flock aktif <strong>{kandang.activeFlock.name}</strong>. Memulai flock baru akan <strong>otomatis mengakhiri masa flock aktif saat ini</strong> pada tanggal mulai flock baru.
+              </p>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-xs text-danger">
+              <input
+                type="checkbox"
+                checked={confirmEndActiveFlock}
+                disabled={isPending}
+                onChange={(event) =>
+                  setConfirmEndActiveFlock(
+                    event.target.checked,
+                  )
+                }
+                className="mt-0.5 h-4 w-4 shrink-0 accent-danger"
+              />
+              <span>
+                Saya mengonfirmasi untuk mengakhiri flock aktif (
+                <strong>{kandang.activeFlock.name}</strong>) dan memulai batch baru.
+              </span>
+            </label>
           </div>
         ) : null}
 
@@ -174,7 +206,12 @@ export function FlockFormDialog({
 
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={
+              isPending ||
+              (!isEditing &&
+                Boolean(kandang.activeFlock) &&
+                !confirmEndActiveFlock)
+            }
           >
             {isPending
               ? "Menyimpan..."

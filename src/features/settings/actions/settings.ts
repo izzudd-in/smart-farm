@@ -17,6 +17,8 @@ import {
   verifyPassword,
 } from "@/lib/auth/password";
 
+import { createSession } from "@/lib/auth/session";
+
 import {
   prisma,
 } from "@/lib/db/prisma";
@@ -289,52 +291,26 @@ export async function updateOwnerProfile(
         input,
       );
 
-    const updated =
-      await prisma.user.updateMany({
-        where: {
-          id:
-            user.id,
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        name: parsed.name,
+      },
+    });
 
-          role:
-            UserRole.OWNER,
+    await createSession(user.id, UserRole.OWNER);
 
-          isActive:
-            true,
-        },
-
-        data: {
-          name:
-            parsed.name,
-        },
-      });
-
-    if (
-      updated.count !== 1
-    ) {
-      throw new Error(
-        "FORBIDDEN",
-      );
-    }
-
-    revalidatePath(
-      SETTINGS_PATH,
-    );
-
-    revalidatePath(
-      DASHBOARD_PATH,
-    );
+    revalidatePath(SETTINGS_PATH);
+    revalidatePath(DASHBOARD_PATH);
 
     return {
-      success:
-        true,
-
-      message:
-        "Profil berhasil diperbarui.",
+      success: true,
+      message: "Profil berhasil diperbarui.",
     };
   } catch (error) {
-    return handleSettingsError(
-      error,
-    );
+    return handleSettingsError(error);
   }
 }
 
@@ -342,121 +318,68 @@ export async function changeOwnerPassword(
   input: ChangeOwnerPasswordInput,
 ): Promise<SettingsActionResult> {
   try {
-    const sessionUser =
-      await requireRole(
-        UserRole.OWNER,
-      );
+    const sessionUser = await requireRole(UserRole.OWNER);
+    const parsed = parseChangeOwnerPasswordInput(input);
 
-    const parsed =
-      parseChangeOwnerPasswordInput(
-        input,
-      );
-
-    const user =
-      await prisma.user.findFirst({
-        where: {
-          id:
-            sessionUser.id,
-
-          role:
-            UserRole.OWNER,
-
-          isActive:
-            true,
-        },
-
-        select: {
-          id:
-            true,
-
-          passwordHash:
-            true,
-        },
-      });
+    const user = await prisma.user.findFirst({
+      where: {
+        id: sessionUser.id,
+        role: UserRole.OWNER,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        passwordHash: true,
+      },
+    });
 
     if (!user) {
-      throw new Error(
-        "FORBIDDEN",
-      );
+      throw new Error("FORBIDDEN");
     }
 
-    const currentPasswordValid =
-      await verifyPassword(
-        parsed.currentPassword,
-        user.passwordHash,
-      );
-
-    if (
-      !currentPasswordValid
-    ) {
-      return {
-        success:
-          false,
-
-        error:
-          "Password saat ini tidak sesuai.",
-      };
-    }
-
-    const sameAsCurrent =
-      await verifyPassword(
-        parsed.newPassword,
-        user.passwordHash,
-      );
-
-    if (
-      sameAsCurrent
-    ) {
-      return {
-        success:
-          false,
-
-        error:
-          "Password baru harus berbeda dari password saat ini.",
-      };
-    }
-
-    const passwordHash =
-      await hashPassword(
-        parsed.newPassword,
-      );
-
-    const updated =
-      await prisma.user.updateMany({
-        where: {
-          id:
-            user.id,
-
-          role:
-            UserRole.OWNER,
-
-          isActive:
-            true,
-        },
-
-        data: {
-          passwordHash,
-        },
-      });
-
-    if (
-      updated.count !== 1
-    ) {
-      throw new Error(
-        "FORBIDDEN",
-      );
-    }
-
-    revalidatePath(
-      SETTINGS_PATH,
+    const currentPasswordValid = await verifyPassword(
+      parsed.currentPassword,
+      user.passwordHash,
     );
 
-    return {
-      success:
-        true,
+    if (!currentPasswordValid) {
+      return {
+        success: false,
+        error: "Password saat ini tidak sesuai.",
+      };
+    }
 
-      message:
-        "Password berhasil diperbarui.",
+    const sameAsCurrent = await verifyPassword(
+      parsed.newPassword,
+      user.passwordHash,
+    );
+
+    if (sameAsCurrent) {
+      return {
+        success: false,
+        error: "Password baru harus berbeda dari password saat ini.",
+      };
+    }
+
+    const passwordHash = await hashPassword(parsed.newPassword);
+
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        passwordHash,
+      },
+    });
+
+    // Re-issue fresh session for the current client, invalidating all other sessions
+    await createSession(user.id, UserRole.OWNER);
+
+    revalidatePath(SETTINGS_PATH);
+
+    return {
+      success: true,
+      message: "Password berhasil diperbarui.",
     };
   } catch (error) {
     return handleSettingsError(
@@ -640,30 +563,14 @@ export async function setOperatorActive(
         input,
       );
 
-    const updated =
-      await prisma.user.updateMany({
-        where: {
-          id:
-            parsed.operatorId,
-
-          role:
-            UserRole.OPERATOR,
-        },
-
-        data: {
-          isActive:
-            parsed.isActive,
-        },
-      });
-
-    if (
-      updated.count !==
-      1
-    ) {
-      throw ruleError(
-        "Operator tidak ditemukan.",
-      );
-    }
+    await prisma.user.update({
+      where: {
+        id: parsed.operatorId,
+      },
+      data: {
+        isActive: parsed.isActive,
+      },
+    });
 
     /*
      * Assignment dan DailyReport historical
@@ -672,18 +579,13 @@ export async function setOperatorActive(
     revalidateOperatorManagement();
 
     return {
-      success:
-        true,
-
-      message:
-        parsed.isActive
-          ? "Operator berhasil diaktifkan."
-          : "Operator berhasil dinonaktifkan.",
+      success: true,
+      message: parsed.isActive
+        ? "Operator berhasil diaktifkan."
+        : "Operator berhasil dinonaktifkan.",
     };
   } catch (error) {
-    return handleSettingsError(
-      error,
-    );
+    return handleSettingsError(error);
   }
 }
 
@@ -691,58 +593,27 @@ export async function resetOperatorPassword(
   input: ResetOperatorPasswordInput,
 ): Promise<SettingsActionResult> {
   try {
-    await requireRole(
-      UserRole.OWNER,
-    );
+    await requireRole(UserRole.OWNER);
 
-    const parsed =
-      parseResetOperatorPasswordInput(
-        input,
-      );
+    const parsed = parseResetOperatorPasswordInput(input);
+    const passwordHash = await hashPassword(parsed.newPassword);
 
-    const passwordHash =
-      await hashPassword(
-        parsed.newPassword,
-      );
+    await prisma.user.update({
+      where: {
+        id: parsed.operatorId,
+      },
+      data: {
+        passwordHash,
+      },
+    });
 
-    const updated =
-      await prisma.user.updateMany({
-        where: {
-          id:
-            parsed.operatorId,
-
-          role:
-            UserRole.OPERATOR,
-        },
-
-        data: {
-          passwordHash,
-        },
-      });
-
-    if (
-      updated.count !==
-      1
-    ) {
-      throw ruleError(
-        "Operator tidak ditemukan.",
-      );
-    }
-
-    revalidatePath(
-      SETTINGS_PATH,
-    );
+    revalidatePath(SETTINGS_PATH);
 
     return {
-      success:
-        true,
-
-      message:
-        "Password Operator berhasil diperbarui.",
+      success: true,
+      message: "Password Operator berhasil diperbarui.",
     };
   } catch (error) {
-    return handleSettingsError(
-      error,
-    );
+    return handleSettingsError(error);
   }
 }

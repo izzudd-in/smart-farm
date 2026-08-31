@@ -92,6 +92,24 @@ function parseNewPassword(
     );
   }
 
+  if (!/[A-Z]/.test(value)) {
+    throw new SettingsValidationError(
+      "Password harus mengandung minimal 1 huruf besar (A-Z).",
+    );
+  }
+
+  if (!/[a-z]/.test(value)) {
+    throw new SettingsValidationError(
+      "Password harus mengandung minimal 1 huruf kecil (a-z).",
+    );
+  }
+
+  if (!/[0-9]/.test(value)) {
+    throw new SettingsValidationError(
+      "Password harus mengandung minimal 1 angka (0-9).",
+    );
+  }
+
   if (
     !value.trim()
   ) {

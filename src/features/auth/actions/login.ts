@@ -54,7 +54,7 @@ export async function login(
 
   resetRateLimit(rateLimitKey);
 
-  await createSession(user.id);
+  await createSession(user.id, user.role);
 
   return {
     success: true,

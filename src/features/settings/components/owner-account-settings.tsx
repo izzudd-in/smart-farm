@@ -607,7 +607,7 @@ export function OwnerAccountSettings({
           />
 
           <p className="text-xs leading-5 text-muted">
-            Password baru minimal 8 karakter dan harus berbeda dari password saat ini.
+            Password baru minimal 8 karakter (harus mengandung huruf besar, huruf kecil, dan angka) serta berbeda dari password saat ini.
           </p>
 
           <div className="flex justify-end">
