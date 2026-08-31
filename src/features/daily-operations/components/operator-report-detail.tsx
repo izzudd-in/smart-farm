@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import {
   ArrowLeft,
+  Calendar,
   CalendarDays,
+  ChevronRight,
   UserRound,
   Wheat,
 } from "lucide-react";
@@ -76,13 +78,48 @@ export function OperatorReportDetail({
 }: OperatorReportDetailProps) {
   return (
     <div className="space-y-4">
-      <Link
-        href="/operator/history"
-        className="inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Riwayat
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-1.5 text-xs text-muted"
+        >
+          <Link
+            href="/operator/today"
+            className="hover:text-foreground transition-colors"
+          >
+            Hari Ini
+          </Link>
+          <ChevronRight className="h-3 w-3 text-muted-light" />
+          <Link
+            href="/operator/history"
+            className="hover:text-foreground transition-colors"
+          >
+            Riwayat
+          </Link>
+          <ChevronRight className="h-3 w-3 text-muted-light" />
+          <span className="font-medium text-foreground truncate max-w-[200px]">
+            {report.kandangCode} ({formatReportDate(report.date)})
+          </span>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/operator/history"
+            className="inline-flex items-center gap-1.5 rounded-[8px] border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted shadow-sm transition-colors hover:text-foreground hover:bg-[#F9FAFB]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Daftar Riwayat
+          </Link>
+
+          <Link
+            href="/operator/today"
+            className="inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Kembali ke Hari Ini
+          </Link>
+        </div>
+      </div>
 
       <Card className="overflow-hidden">
         <div className="border-b border-border p-4">

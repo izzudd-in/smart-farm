@@ -98,8 +98,25 @@ export function FarmManagement({
   const [pendingKandangId, setPendingKandangId] =
     useState<string | null>(null);
 
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
+
   const [isPending, startTransition] =
     useTransition();
+
+  const activeKandangs = data.kandangs.filter(
+    (k) => k.isActive,
+  );
+  const inactiveKandangs = data.kandangs.filter(
+    (k) => !k.isActive,
+  );
+  const displayedKandangs =
+    statusFilter === "active"
+      ? activeKandangs
+      : statusFilter === "inactive"
+        ? inactiveKandangs
+        : data.kandangs;
 
   function toggleKandang(
     kandang: KandangSummary,
@@ -222,6 +239,71 @@ export function FarmManagement({
           </Badge>
         </Card>
 
+        {/* Status Filter Tabs */}
+        {data.kandangs.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 rounded-[12px] border border-border bg-[#F9FAFB] p-1 text-sm font-medium">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={[
+                  "flex items-center gap-2 rounded-[8px] px-3 py-1.5 transition-colors",
+                  statusFilter === "all"
+                    ? "bg-white text-foreground shadow-sm font-semibold"
+                    : "text-muted hover:text-foreground",
+                ].join(" ")}
+              >
+                <span>Semua</span>
+                <span className="rounded-full bg-[#F3F4F6] px-2 py-0.5 text-xs text-muted">
+                  {data.kandangs.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter("active")}
+                className={[
+                  "flex items-center gap-2 rounded-[8px] px-3 py-1.5 transition-colors",
+                  statusFilter === "active"
+                    ? "bg-white text-foreground shadow-sm font-semibold"
+                    : "text-muted hover:text-foreground",
+                ].join(" ")}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                  Kandang Aktif
+                </span>
+                <span className="rounded-full bg-[#ECFDF5] px-2 py-0.5 text-xs font-semibold text-[#065F46]">
+                  {activeKandangs.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter("inactive")}
+                className={[
+                  "flex items-center gap-2 rounded-[8px] px-3 py-1.5 transition-colors",
+                  statusFilter === "inactive"
+                    ? "bg-white text-foreground shadow-sm font-semibold"
+                    : "text-muted hover:text-foreground",
+                ].join(" ")}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#EF4444]" />
+                  Kandang Nonaktif
+                </span>
+                <span className="rounded-full bg-[#FEF2F2] px-2 py-0.5 text-xs font-semibold text-[#991B1B]">
+                  {inactiveKandangs.length}
+                </span>
+              </button>
+            </div>
+
+            <p className="text-xs text-muted">
+              Menampilkan {displayedKandangs.length} dari {data.kandangs.length} kandang
+            </p>
+          </div>
+        ) : null}
+
         {data.kandangs.length === 0 ? (
           <Card className="flex flex-col items-center justify-center p-8 text-center">
             <Warehouse className="h-8 w-8 text-muted-light" />
@@ -235,17 +317,43 @@ export function FarmManagement({
               untuk memulai struktur farm.
             </p>
           </Card>
+        ) : displayedKandangs.length === 0 ? (
+          <Card className="flex flex-col items-center justify-center p-8 text-center">
+            <Warehouse className="h-8 w-8 text-muted-light" />
+
+            <h2 className="mt-3 font-semibold text-foreground">
+              Tidak ada kandang {statusFilter === "active" ? "aktif" : "nonaktif"}
+            </h2>
+
+            <p className="mt-1 max-w-sm text-sm text-muted">
+              {statusFilter === "active"
+                ? "Semua kandang saat ini dalam status nonaktif."
+                : "Semua kandang saat ini dalam status aktif."}
+            </p>
+          </Card>
         ) : (
           <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            {data.kandangs.map(
+            {displayedKandangs.map(
               (kandang) => (
                 <Card
                   key={kandang.id}
-                  className="min-w-0 overflow-hidden"
+                  className={[
+                    "min-w-0 overflow-hidden border-l-4",
+                    kandang.isActive
+                      ? "border-l-[#10B981] bg-white"
+                      : "border-l-[#EF4444] bg-[#FAFAFA]",
+                  ].join(" ")}
                 >
                   <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#F3F4F6] font-semibold text-[#4B5563]">
+                      <div
+                        className={[
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] font-semibold text-sm",
+                          kandang.isActive
+                            ? "bg-primary-soft text-primary-hover"
+                            : "bg-[#F3F4F6] text-[#6B7280]",
+                        ].join(" ")}
+                      >
                         {kandang.code}
                       </div>
 
@@ -255,17 +363,17 @@ export function FarmManagement({
                         </h2>
 
                         <div className="mt-2">
-                          <Badge
-                            variant={
-                              kandang.isActive
-                                ? "success"
-                                : "neutral"
-                            }
-                          >
-                            {kandang.isActive
-                              ? "Aktif"
-                              : "Nonaktif"}
-                          </Badge>
+                          {kandang.isActive ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#A7F3D0] bg-[#ECFDF5] px-2.5 py-0.5 text-xs font-semibold text-[#065F46]">
+                              <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                              Aktif
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-2.5 py-0.5 text-xs font-semibold text-[#991B1B]">
+                              <span className="h-2 w-2 rounded-full bg-[#EF4444]" />
+                              Nonaktif
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -285,6 +393,15 @@ export function FarmManagement({
                   </div>
 
                   <div className="space-y-4 p-5">
+                    {!kandang.isActive ? (
+                      <div className="flex items-start gap-2 rounded-[10px] border border-[#FECACA] bg-[#FEF2F2]/60 p-3 text-xs text-[#991B1B]">
+                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#EF4444]" />
+                        <span>
+                          Kandang sedang nonaktif. Aktifkan kandang untuk memulai siklus flock atau mencatat laporan harian.
+                        </span>
+                      </div>
+                    ) : null}
+
                     <div>
                       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-light">
                         Operator
@@ -293,21 +410,21 @@ export function FarmManagement({
                       {kandang.operators
                         .length === 0 ? (
                         <p className="text-sm text-muted">
-                          Belum ada operator.
+                          Belum ada operator ditugaskan.
                         </p>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
                           {kandang.operators.map(
                             (operator) => (
                               <div
                                 key={
                                   operator.id
                                 }
-                                className="flex min-w-0 items-center gap-2 text-sm"
+                                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[#F9FAFB] px-3 py-1 text-xs font-medium text-foreground"
                               >
-                                <UserRound className="h-4 w-4 shrink-0 text-muted" />
+                                <UserRound className="h-3.5 w-3.5 shrink-0 text-muted" />
 
-                                <span className="truncate text-foreground">
+                                <span className="truncate">
                                   {
                                     operator.name
                                   }
