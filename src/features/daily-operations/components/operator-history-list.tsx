@@ -21,12 +21,13 @@ type OperatorHistoryListProps = {
 
 function displayNumber(
   value: number | null,
+  suffix?: string,
 ): string {
-  return value === null
-    ? "—"
-    : new Intl.NumberFormat(
-        "id-ID",
-      ).format(value);
+  if (value === null) return "—";
+  const formatted = new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 2,
+  }).format(value);
+  return suffix ? `${formatted} ${suffix}` : formatted;
 }
 
 export function OperatorHistoryList({
@@ -89,6 +90,7 @@ export function OperatorHistoryList({
                 <p className="mt-1 text-sm font-medium text-foreground">
                   {displayNumber(
                     report.saleableEgg,
+                    "kg",
                   )}
                 </p>
               </div>
@@ -102,6 +104,7 @@ export function OperatorHistoryList({
                 <p className="mt-1 text-sm font-medium text-foreground">
                   {displayNumber(
                     report.feedUsed,
+                    "kg",
                   )}
                 </p>
               </div>
@@ -114,6 +117,7 @@ export function OperatorHistoryList({
                 <p className="mt-1 text-sm font-medium text-foreground">
                   {displayNumber(
                     report.mortality,
+                    "ekor",
                   )}
                 </p>
               </div>

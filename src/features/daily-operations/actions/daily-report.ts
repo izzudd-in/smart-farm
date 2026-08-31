@@ -41,7 +41,7 @@ import {
 } from "@/features/feed/schemas/feed";
 
 import {
-  resolveFeedUnitCostForDate,
+  resolveBatchFeedUnitCostsForDate,
 } from "@/features/feed/queries/resolve-feed-unit-cost";
 
 const TODAY_PATH =
@@ -441,46 +441,55 @@ async function saveReport(
                 ),
               );
 
-              const items =
-                await Promise.all(
-                  activeFormula.items.map(
-                    async (
-                      item,
-                    ): Promise<SnapshotItem> => {
-                      const cost =
-                        await resolveFeedUnitCostForDate(
-                          {
-                            farmId:
-                              kandang.farmId,
+              const ingredientIds =
+                activeFormula.items.map(
+                  (item) =>
+                    item.ingredient.id,
+                );
 
-                            ingredientId:
-                              item.ingredient.id,
+              const costMap =
+                await resolveBatchFeedUnitCostsForDate(
+                  {
+                    farmId:
+                      kandang.farmId,
+                    ingredientIds,
+                    date: reportDate,
+                  },
+                  tx,
+                );
 
-                            date:
-                              reportDate,
-                          },
+              const items: SnapshotItem[] =
+                activeFormula.items.map(
+                  (item) => {
+                    const cost =
+                      costMap.get(
+                        item.ingredient
+                          .id,
+                      );
 
-                          tx,
-                        );
+                    if (!cost) {
+                      throw ruleError(
+                        `Biaya bahan pakan ${item.ingredient.name} tidak ditemukan.`,
+                      );
+                    }
 
-                      return {
-                        ingredientId:
-                          item.ingredient.id,
+                    return {
+                      ingredientId:
+                        item.ingredient.id,
 
-                        ingredientNameSnapshot:
-                          item.ingredient.name,
+                      ingredientNameSnapshot:
+                        item.ingredient.name,
 
-                        percentage:
-                          item.percentage.toString(),
+                      percentage:
+                        item.percentage.toString(),
 
-                        unitCostPerKgSnapshot:
-                          cost.unitCostPerKg,
+                      unitCostPerKgSnapshot:
+                        cost.unitCostPerKg,
 
-                        costBasisSnapshot:
-                          cost.basis,
-                      };
-                    },
-                  ),
+                      costBasisSnapshot:
+                        cost.basis,
+                    };
+                  },
                 );
 
               snapshot = {
@@ -593,75 +602,75 @@ async function saveReport(
                 ),
               );
 
-            const nextItems =
-              await Promise.all(
-                parsed.feedComposition.map(
-                  async (
-                    compositionItem,
-                  ): Promise<SnapshotItem> => {
-                    const existingItem =
-                      existingItemByIngredient.get(
-                        compositionItem.ingredientId,
-                      );
+            const newCostMap =
+              newIngredientIds.length > 0
+                ? await resolveBatchFeedUnitCostsForDate(
+                    {
+                      farmId:
+                        kandang.farmId,
+                      ingredientIds:
+                        newIngredientIds,
+                      date: reportDate,
+                    },
+                    tx,
+                  )
+                : new Map();
 
-                    if (
-                      existingItem
-                    ) {
-                      return {
-                        ...existingItem,
+            const nextItems: SnapshotItem[] =
+              parsed.feedComposition.map(
+                (compositionItem) => {
+                  const existingItem =
+                    existingItemByIngredient.get(
+                      compositionItem.ingredientId,
+                    );
 
-                        percentage:
-                          compositionItem.percentage,
-                      };
-                    }
-
-                    const ingredient =
-                      newIngredientById.get(
-                        compositionItem.ingredientId,
-                      );
-
-                    if (
-                      !ingredient
-                    ) {
-                      throw ruleError(
-                        "Bahan pakan baru pada komposisi aktual tidak ditemukan.",
-                      );
-                    }
-
-                    const cost =
-                      await resolveFeedUnitCostForDate(
-                        {
-                          farmId:
-                            kandang.farmId,
-
-                          ingredientId:
-                            ingredient.id,
-
-                          date:
-                            reportDate,
-                        },
-
-                        tx,
-                      );
-
+                  if (existingItem) {
                     return {
-                      ingredientId:
-                        ingredient.id,
-
-                      ingredientNameSnapshot:
-                        ingredient.name,
-
+                      ...existingItem,
                       percentage:
                         compositionItem.percentage,
-
-                      unitCostPerKgSnapshot:
-                        cost.unitCostPerKg,
-
-                      costBasisSnapshot:
-                        cost.basis,
                     };
-                  },
-                ),
+                  }
+
+                  const ingredient =
+                    newIngredientById.get(
+                      compositionItem.ingredientId,
+                    );
+
+                  if (!ingredient) {
+                    throw ruleError(
+                      "Bahan pakan baru pada komposisi aktual tidak ditemukan.",
+                    );
+                  }
+
+                  const cost =
+                    newCostMap.get(
+                      ingredient.id,
+                    );
+
+                  if (!cost) {
+                    throw ruleError(
+                      `Biaya bahan pakan ${ingredient.name} tidak ditemukan.`,
+                    );
+                  }
+
+                  return {
+                    ingredientId:
+                      ingredient.id,
+
+                    ingredientNameSnapshot:
+                      ingredient.name,
+
+                    percentage:
+                      compositionItem.percentage,
+
+                    unitCostPerKgSnapshot:
+                      cost.unitCostPerKg,
+
+                    costBasisSnapshot:
+                      cost.basis,
+                  };
+                },
               );
 
             snapshot = {
@@ -682,18 +691,18 @@ async function saveReport(
             );
           }
 
-          // Validasi mortality tidak boleh melebihi sisa populasi aktif (REL-011 / DT-008 / BUG-006)
+          // Validasi mortality tidak boleh melebihi sisa populasi aktif flock (DT-008 / BUG-006)
           if (
             parsed.mortality !== null &&
             parsed.mortality > 0
           ) {
-            const priorMortalityAgg =
+            const otherMortalityAgg =
               await tx.dailyReport.aggregate({
                 where: {
                   flockId:
                     kandang.activeFlock.id,
                   date: {
-                    lt: reportDate,
+                    not: reportDate,
                   },
                   mortality: {
                     not: null,
@@ -704,15 +713,17 @@ async function saveReport(
                 },
               });
 
-            const priorMortality =
-              priorMortalityAgg._sum.mortality ?? 0;
-            const remainingPopulation =
+            const otherMortality =
+              otherMortalityAgg._sum.mortality ?? 0;
+            const remainingPopulation = Math.max(
+              0,
               kandang.activeFlock.initialPopulation -
-              priorMortality;
+                otherMortality,
+            );
 
             if (parsed.mortality > remainingPopulation) {
               throw ruleError(
-                `Jumlah kematian (${parsed.mortality} ekor) tidak boleh melebihi sisa populasi aktif (${remainingPopulation} ekor).`,
+                `Jumlah kematian (${parsed.mortality} ekor) tidak boleh melebihi sisa populasi aktif (${remainingPopulation} ekor). Total populasi awal flock: ${kandang.activeFlock.initialPopulation} ekor, kematian kumulatif hari lain: ${otherMortality} ekor.`,
               );
             }
           }

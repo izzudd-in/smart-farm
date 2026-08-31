@@ -12,6 +12,8 @@ import {
 } from "next/navigation";
 
 import {
+  ArrowLeft,
+  ArrowRight,
   ChevronDown,
   ChevronUp,
   CircleCheck,
@@ -211,6 +213,20 @@ export function DailyReportForm({
       if (mortality.trim() !== "") count++;
       return count;
     }, [saleableEgg, damagedEgg, feedUsed, mortality]);
+
+  const [activeStep, setActiveStep] = useState<"all" | 1 | 2 | 3>("all");
+
+  const step1Count = [saleableEgg, damagedEgg, mortality].filter(
+    (v) => v.trim() !== "",
+  ).length;
+  const step1Complete = step1Count === 3;
+
+  const step2Count = feedUsed.trim() !== "" ? 1 : 0;
+  const step2Complete = step2Count === 1;
+
+  const step3Count = [incidentalExpense, incidentNote].filter(
+    (v) => v.trim() !== "",
+  ).length;
 
   const progressPercentage =
     (filledCoreCount / 4) * 100;
@@ -497,94 +513,166 @@ export function DailyReportForm({
               {error}
             </div>
           ) : null}
+          {/* Step Selector Tabs (Mobile & Desktop) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveStep("all")}
+              className={[
+                "shrink-0 rounded-[8px] px-3 py-1.5 font-medium transition-colors",
+                activeStep === "all"
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "bg-[#F3F4F6] text-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              Semua Seksi
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveStep(1)}
+              className={[
+                "flex shrink-0 items-center gap-1.5 rounded-[8px] px-3 py-1.5 font-medium transition-colors",
+                activeStep === 1
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "bg-[#F3F4F6] text-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold",
+                  activeStep === 1
+                    ? "bg-white/20 text-primary-foreground"
+                    : step1Complete
+                      ? "bg-[#ECFDF5] text-[#065F46]"
+                      : "bg-[#E5E7EB] text-muted",
+                ].join(" ")}
+              >
+                {step1Complete ? "✓" : "1"}
+              </span>
+              <span>Produksi & Kematian</span>
+              <span
+                className={[
+                  "rounded-full px-1.5 py-0.5 text-[10px]",
+                  activeStep === 1
+                    ? "bg-white/20 text-primary-foreground"
+                    : step1Complete
+                      ? "bg-[#ECFDF5] text-[#065F46] font-semibold"
+                      : "bg-[#E5E7EB] text-muted",
+                ].join(" ")}
+              >
+                {step1Count}/3
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveStep(2)}
+              className={[
+                "flex shrink-0 items-center gap-1.5 rounded-[8px] px-3 py-1.5 font-medium transition-colors",
+                activeStep === 2
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "bg-[#F3F4F6] text-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold",
+                  activeStep === 2
+                    ? "bg-white/20 text-primary-foreground"
+                    : step2Complete
+                      ? "bg-[#ECFDF5] text-[#065F46]"
+                      : "bg-[#E5E7EB] text-muted",
+                ].join(" ")}
+              >
+                {step2Complete ? "✓" : "2"}
+              </span>
+              <span>Konsumsi Pakan</span>
+              <span
+                className={[
+                  "rounded-full px-1.5 py-0.5 text-[10px]",
+                  activeStep === 2
+                    ? "bg-white/20 text-primary-foreground"
+                    : step2Complete
+                      ? "bg-[#ECFDF5] text-[#065F46] font-semibold"
+                      : "bg-[#E5E7EB] text-muted",
+                ].join(" ")}
+              >
+                {step2Count}/1
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveStep(3)}
+              className={[
+                "flex shrink-0 items-center gap-1.5 rounded-[8px] px-3 py-1.5 font-medium transition-colors",
+                activeStep === 3
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "bg-[#F3F4F6] text-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold",
+                  activeStep === 3
+                    ? "bg-white/20 text-primary-foreground"
+                    : "bg-[#E5E7EB] text-muted",
+                ].join(" ")}
+              >
+                3
+              </span>
+              <span>Pengeluaran & Catatan</span>
+              {step3Count > 0 ? (
+                <span
+                  className={[
+                    "rounded-full px-1.5 py-0.5 text-[10px]",
+                    activeStep === 3
+                      ? "bg-white/20 text-primary-foreground"
+                      : "bg-[#E5E7EB] text-muted",
+                  ].join(" ")}
+                >
+                  {step3Count}
+                </span>
+              ) : null}
+            </button>
+          </div>
 
           {/* Section 1: Data Produksi & Populasi */}
-          <div className="space-y-4 rounded-[10px] border border-border/80 p-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-primary-hover font-semibold text-xs">
-                  <Egg className="h-4 w-4" />
+          {activeStep === "all" || activeStep === 1 ? (
+            <div className="space-y-4 rounded-[10px] border border-border/80 p-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-primary-hover font-semibold text-xs">
+                    <Egg className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      1. Data Produksi & Kematian
+                    </h3>
+                    <p className="text-xs text-muted">
+                      Catat telur panen dan mortalitas ayam hari ini
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    1. Data Produksi & Kematian
-                  </h3>
-                  <p className="text-xs text-muted">
-                    Catat telur panen dan mortalitas ayam hari ini
-                  </p>
-                </div>
+                <span className="text-xs font-medium text-muted">
+                  {step1Count}/3 terisi
+                </span>
               </div>
-              <span className="text-xs font-medium text-muted">
-                {[saleableEgg, damagedEgg, mortality].filter((v) => v.trim() !== "").length}/3 terisi
-              </span>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="saleable-egg"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                label="Telur Jual (kg)"
-                tooltip="Total berat telur utuh dan berkualitas baik yang siap untuk dijual hari ini."
-                helperText="Satuan kilogram (kg). Contoh: 45.5"
-                placeholder="0"
-                value={
-                  saleableEgg
-                }
-                disabled={
-                  disabled
-                }
-                onChange={(
-                  event,
-                ) => {
-                  setSaleableEgg(
-                    event.target.value,
-                  );
-                  if (error) setError("");
-                }}
-              />
-
-              <Input
-                id="damaged-egg"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                label="Telur Rusak (kg)"
-                tooltip="Total berat telur retak, pecah, atau tidak layak jual yang terkumpul hari ini."
-                helperText="Satuan kilogram (kg). Contoh: 1.2"
-                placeholder="0"
-                value={
-                  damagedEgg
-                }
-                disabled={
-                  disabled
-                }
-                onChange={(
-                  event,
-                ) => {
-                  setDamagedEgg(
-                    event.target.value,
-                  );
-                  if (error) setError("");
-                }}
-              />
-
-              <div className="sm:col-span-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Input
-                  id="mortality"
+                  id="saleable-egg"
                   type="number"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   min={0}
-                  step={1}
-                  label="Ayam Mati (ekor)"
-                  tooltip="Jumlah total ekor ayam yang mati pada kandang ini hari ini."
-                  helperText="Satuan ekor (bilangan bulat). Contoh: 0 atau 2"
+                  step="any"
+                  label="Telur Jual (kg)"
+                  tooltip="Total berat telur utuh dan berkualitas baik yang siap untuk dijual hari ini."
+                  helperText="Satuan kilogram (kg). Contoh: 45.5"
                   placeholder="0"
                   value={
-                    mortality
+                    saleableEgg
                   }
                   disabled={
                     disabled
@@ -592,139 +680,276 @@ export function DailyReportForm({
                   onChange={(
                     event,
                   ) => {
-                    setMortality(
+                    setSaleableEgg(
                       event.target.value,
                     );
                     if (error) setError("");
                   }}
                 />
+
+                <Input
+                  id="damaged-egg"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  label="Telur Rusak (kg)"
+                  tooltip="Total berat telur retak, pecah, atau tidak layak jual yang terkumpul hari ini."
+                  helperText="Satuan kilogram (kg). Contoh: 1.2"
+                  placeholder="0"
+                  value={
+                    damagedEgg
+                  }
+                  disabled={
+                    disabled
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+                    setDamagedEgg(
+                      event.target.value,
+                    );
+                    if (error) setError("");
+                  }}
+                />
+
+                <div className="sm:col-span-2">
+                  <Input
+                    id="mortality"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
+                    label="Ayam Mati (ekor)"
+                    tooltip="Jumlah total ekor ayam yang mati pada kandang ini hari ini."
+                    helperText="Satuan ekor (bilangan bulat). Contoh: 0 atau 2"
+                    placeholder="0"
+                    value={
+                      mortality
+                    }
+                    disabled={
+                      disabled
+                    }
+                    onChange={(
+                      event,
+                    ) => {
+                      setMortality(
+                        event.target.value,
+                      );
+                      if (error) setError("");
+                    }}
+                  />
+                </div>
               </div>
+
+              {activeStep === 1 ? (
+                <div className="flex justify-end border-t border-border/60 pt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setActiveStep(2)}
+                    className="gap-1.5"
+                  >
+                    <span>Lanjut: Data Pakan</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : null}
             </div>
-          </div>
+          ) : null}
 
           {/* Section 2: Data Pakan */}
-          <div className="space-y-4 rounded-[10px] border border-border/80 p-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-primary-hover font-semibold text-xs">
-                  <Wheat className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    2. Data Konsumsi Pakan
-                  </h3>
-                  <p className="text-xs text-muted">
-                    Catat bobot pakan dan verifikasi formula pakan aktif
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs font-medium text-muted">
-                {feedUsed.trim() !== "" ? "1/1 terisi" : "0/1 terisi"}
-              </span>
-            </div>
-
-            <Input
-              id="feed-used"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="any"
-              label="Pakan Digunakan (kg)"
-              tooltip="Total berat pakan yang diberikan kepada ayam di kandang ini hari ini."
-              helperText="Satuan kilogram (kg). Wajib memiliki formula pakan aktif."
-              placeholder="0"
-              value={
-                feedUsed
-              }
-              disabled={
-                disabled
-              }
-              onChange={(
-                event,
-              ) => {
-                setFeedUsed(
-                  event.target.value,
-                );
-                if (error) setError("");
-              }}
-            />
-
-            <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                Formula Pakan
-              </p>
-
-              {kandang.feed.source ===
-              "NONE" ? (
-                <div className="mt-2">
-                  <p className="text-sm font-medium text-[#B45309]">
-                    Belum ada formula aktif
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    Jika Pakan Digunakan diisi, Owner harus mengaktifkan formula pakan terlebih dahulu.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="mt-2 font-semibold text-foreground">
-                    {kandang.feed
-                      .formulaName ??
-                      "Formula Tersimpan"}
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted">
-                    {kandang.feed.source ===
-                    "REPORT_SNAPSHOT"
-                      ? "Komposisi laporan tersimpan"
-                      : "Komposisi standar digunakan"}
-                  </p>
-
-                  {!compositionOverride ? (
-                    <p className="mt-3 break-words text-sm text-muted">
-                      {composition
-                        .map(
-                          (
-                            item,
-                          ) =>
-                            `${item.ingredientName} ${Number(
-                              item.percentage,
-                            ).toLocaleString(
-                              "id-ID",
-                              {
-                                maximumFractionDigits:
-                                  2,
-                              },
-                            )}%`,
-                        )
-                        .join(
-                          " · ",
-                        )}
+          {activeStep === "all" || activeStep === 2 ? (
+            <div className="space-y-4 rounded-[10px] border border-border/80 p-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-primary-hover font-semibold text-xs">
+                    <Wheat className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      2. Data Konsumsi Pakan
+                    </h3>
+                    <p className="text-xs text-muted">
+                      Catat bobot pakan dan verifikasi formula pakan aktif
                     </p>
-                  ) : (
-                    <div className="mt-4 space-y-3">
-                      {composition.map(
-                        (
-                          item,
-                        ) => (
-                          <div
-                            key={
-                              item.ingredientId
-                            }
-                            className="grid grid-cols-[1fr_110px] items-center gap-3"
-                          >
-                            <span className="min-w-0 truncate text-sm text-foreground">
-                              {
-                                item.ingredientName
-                              }
-                            </span>
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-muted">
+                  {step2Count}/1 terisi
+                </span>
+              </div>
 
-                            <input
+              <Input
+                id="feed-used"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                label="Pakan Digunakan (kg)"
+                tooltip="Total berat pakan yang diberikan kepada ayam di kandang ini hari ini."
+                helperText="Satuan kilogram (kg). Wajib memiliki formula pakan aktif."
+                placeholder="0"
+                value={
+                  feedUsed
+                }
+                disabled={
+                  disabled
+                }
+                onChange={(
+                  event,
+                ) => {
+                  setFeedUsed(
+                    event.target.value,
+                  );
+                  if (error) setError("");
+                }}
+              />
+
+              <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                  Formula Pakan
+                </p>
+
+                {kandang.feed.source ===
+                "NONE" ? (
+                  <p className="mt-1 text-sm font-medium text-danger">
+                    Belum ada formula pakan
+                    aktif. Hubungi Owner
+                    untuk mengaktifkan
+                    formula pakan sebelum
+                    menyimpan laporan.
+                  </p>
+                ) : (
+                  <div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-foreground">
+                        {
+                          kandang.feed
+                            .formulaName
+                        }
+                      </p>
+
+                      <span className="rounded-full bg-[#E5E7EB] px-2 py-0.5 text-xs text-muted">
+                        {kandang.feed
+                          .source ===
+                        "REPORT_SNAPSHOT"
+                          ? "Snapshot Laporan"
+                          : "Formula Aktif"}
+                      </span>
+                    </div>
+
+                    {!compositionOverride ? (
+                      <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+                        {composition.map(
+                          (item) => (
+                            <div
+                              key={
+                                item.ingredientId
+                              }
+                              className="flex items-center justify-between text-xs"
+                            >
+                              <span className="text-muted">
+                                {
+                                  item.ingredientName
+                                }
+                              </span>
+
+                              <span className="font-medium text-foreground">
+                                {
+                                  item.percentage
+                                }
+                                %
+                              </span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
+
+                    {!readOnly ? (
+                      <div className="mt-3 border-t border-border pt-3">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setCompositionOverride(
+                              (
+                                current,
+                              ) =>
+                                !current,
+                            )
+                          }
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          {compositionOverride
+                            ? "Gunakan Formula Standar"
+                            : "Sesuaikan Komposisi Hari Ini"}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              {compositionOverride ? (
+                <div className="space-y-4 rounded-[10px] border border-dashed border-border bg-[#F9FAFB] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">
+                        Komposisi Aktual
+                      </p>
+
+                      <p className="text-xs text-muted">
+                        Total persentase
+                        harus tepat 100%.
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <span
+                        className={`text-xs font-semibold ${
+                          Math.abs(
+                            totalComposition -
+                              100,
+                          ) < 0.001
+                            ? "text-primary-hover"
+                            : "text-danger"
+                        }`}
+                      >
+                        Total:{" "}
+                        {totalComposition.toFixed(
+                          2,
+                        )}
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {composition.map(
+                      (item) => (
+                        <div
+                          key={
+                            item.ingredientId
+                          }
+                          className="flex items-center gap-3"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                            {
+                              item.ingredientName
+                            }
+                          </span>
+
+                          <div className="flex w-28 items-center gap-1.5">
+                            <Input
                               type="number"
                               inputMode="decimal"
-                              min="0.01"
-                              max="100"
-                              step="0.01"
+                              min={0}
+                              max={100}
+                              step="any"
                               value={
                                 item.percentage
                               }
@@ -736,246 +961,263 @@ export function DailyReportForm({
                               ) =>
                                 updatePercentage(
                                   item.ingredientId,
-                                  event.target.value,
+                                  event
+                                    .target
+                                    .value,
                                 )
                               }
-                              className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                              className="h-8 text-right text-xs"
                             />
+
+                            <span className="text-xs text-muted">
+                              %
+                            </span>
                           </div>
-                        ),
-                      )}
-
-                      <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
-                        <span className="text-muted">
-                          Total
-                        </span>
-
-                        <span
-                          className={
-                            compositionInvalid
-                              ? "font-semibold text-danger"
-                              : "font-semibold text-primary-hover"
-                          }
-                        >
-                          {totalComposition.toLocaleString(
-                            "id-ID",
-                            {
-                              maximumFractionDigits:
-                                2,
-                            },
-                          )}
-                          %
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {!readOnly ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCompositionOverride(
-                          (
-                            current,
-                          ) =>
-                            !current,
-                        )
-                      }
-                      className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary-hover"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-
-                      {compositionOverride
-                        ? "Gunakan Komposisi Tersimpan"
-                        : "Ubah Komposisi Aktual"}
-                    </button>
-                  ) : null}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Section 3: Pengeluaran & Catatan Kejadian */}
-          <div className="rounded-[10px] border border-border/80 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3F4F6] text-[#4B5563] font-semibold text-xs">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    3. Pengeluaran & Catatan Kejadian
-                  </h3>
-                  <p className="text-xs text-muted">
-                    Opsional — biaya insidental atau kejadian khusus
-                  </p>
-                </div>
-              </div>
-              <span className="rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-medium text-muted">
-                Opsional
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setOptionalOpen(
-                  (
-                    current,
-                  ) =>
-                    !current,
-                )
-              }
-              className="mt-3 flex w-full items-center justify-between gap-3 rounded-[10px] border border-dashed border-border bg-[#F9FAFB]/50 px-3 py-2.5 text-left text-sm font-medium text-primary-hover hover:bg-[#F9FAFB]"
-            >
-              <span className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                {optionalOpen
-                  ? "Sembunyikan Form Pengeluaran & Catatan"
-                  : "Buka Form Pengeluaran & Catatan"}
-              </span>
-
-              {optionalOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-
-            {optionalOpen ? (
-              <div className="mt-3 space-y-4 rounded-[10px] bg-[#F9FAFB] p-4">
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor={`expense-category-${kandang.id}`}
-                    className="text-[13px] font-medium text-foreground"
-                  >
-                    Kategori
-                  </label>
-
-                  <select
-                    id={`expense-category-${kandang.id}`}
-                    value={
-                      incidentalExpenseCategory
-                    }
-                    disabled={
-                      disabled ||
-                      incidentalExpense.trim() ===
-                        ""
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setIncidentalExpenseCategory(
-                        event.target
-                          .value as
-                          | DailyExpenseCategoryValue
-                          | "",
-                      )
-                    }
-                    className="h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
-                  >
-                    <option value="">
-                      Pilih kategori
-                    </option>
-
-                    {DAILY_EXPENSE_CATEGORY_VALUES.map(
-                      (
-                        category,
-                      ) => (
-                        <option
-                          key={
-                            category
-                          }
-                          value={
-                            category
-                          }
-                        >
-                          {
-                            DAILY_EXPENSE_CATEGORY_LABELS[
-                              category
-                            ]
-                          }
-                        </option>
+                        </div>
                       ),
                     )}
-                  </select>
+                  </div>
+
+                  {compositionInvalid ? (
+                    <p className="text-xs text-danger">
+                      Total komposisi
+                      aktual saat ini{" "}
+                      {totalComposition.toFixed(
+                        2,
+                      )}
+                      %. Harap sesuaikan
+                      agar tepat 100%.
+                    </p>
+                  ) : null}
                 </div>
+              ) : null}
 
-                <Input
-                  id={`incidental-expense-${kandang.id}`}
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
-                  label="Nominal (IDR)"
-                  tooltip="Nominal pengeluaran insidental atau tak terduga untuk kandang ini hari ini."
-                  helperText="Mata uang Rupiah (IDR). Contoh: 150000"
-                  placeholder="150000"
-                  value={
-                    incidentalExpense
-                  }
-                  disabled={
-                    disabled
-                  }
-                  onChange={(
-                    event,
-                  ) => {
-                    const value =
-                      event.target.value;
-
-                    setIncidentalExpense(
-                      value,
-                    );
-
-                    if (
-                      value.trim() ===
-                      ""
-                    ) {
-                      setIncidentalExpenseCategory(
-                        "",
-                      );
-                    }
-                  }}
-                />
-
-                {incidentalNeedsCategory ? (
-                  <p className="text-xs text-danger">
-                    Pilih kategori untuk pengeluaran ini.
-                  </p>
-                ) : null}
-
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor={`incident-${kandang.id}`}
-                    className="text-[13px] font-medium text-foreground"
+              {activeStep === 2 ? (
+                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setActiveStep(1)}
+                    className="gap-1.5 text-muted hover:text-foreground"
                   >
-                    Catatan / Keterangan
-                  </label>
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>Kembali: Produksi</span>
+                  </Button>
 
-                  <textarea
-                    id={`incident-${kandang.id}`}
-                    rows={4}
-                    maxLength={1000}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setActiveStep(3)}
+                    className="gap-1.5"
+                  >
+                    <span>Lanjut: Pengeluaran</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Section 3: Pengeluaran & Catatan Kejadian (Opsional) */}
+          {activeStep === "all" || activeStep === 3 ? (
+            <div className="rounded-[10px] border border-border/80 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-primary-hover font-semibold text-xs">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      3. Pengeluaran & Catatan Kejadian
+                    </h3>
+                    <p className="text-xs text-muted">
+                      Opsional — biaya insidental atau kejadian khusus
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-medium text-muted">
+                  Opsional
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setOptionalOpen(
+                    (
+                      current,
+                    ) =>
+                      !current,
+                  )
+                }
+                className="mt-3 flex w-full items-center justify-between gap-3 rounded-[10px] border border-dashed border-border bg-[#F9FAFB]/50 px-3 py-2.5 text-left text-sm font-medium text-primary-hover hover:bg-[#F9FAFB]"
+              >
+                <span className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  {optionalOpen
+                    ? "Sembunyikan Form Pengeluaran & Catatan"
+                    : "Buka Form Pengeluaran & Catatan"}
+                </span>
+
+                {optionalOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+
+              {optionalOpen ? (
+                <div className="mt-3 space-y-4 rounded-[10px] bg-[#F9FAFB] p-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      htmlFor={`expense-category-${kandang.id}`}
+                      className="text-[13px] font-medium text-foreground"
+                    >
+                      Kategori
+                    </label>
+
+                    <select
+                      id={`expense-category-${kandang.id}`}
+                      value={
+                        incidentalExpenseCategory
+                      }
+                      disabled={
+                        disabled ||
+                        incidentalExpense.trim() ===
+                          ""
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setIncidentalExpenseCategory(
+                          event.target
+                            .value as
+                            | DailyExpenseCategoryValue
+                            | "",
+                        )
+                      }
+                      className="h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                    >
+                      <option value="">
+                        Pilih kategori
+                      </option>
+
+                      {DAILY_EXPENSE_CATEGORY_VALUES.map(
+                        (
+                          category,
+                        ) => (
+                          <option
+                            key={
+                              category
+                            }
+                            value={
+                              category
+                            }
+                          >
+                            {
+                              DAILY_EXPENSE_CATEGORY_LABELS[
+                                category
+                              ]
+                            }
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+
+                  <Input
+                    id={`incidental-expense-${kandang.id}`}
+                    type="number"
+                    inputMode="decimal"
+                    min="0.01"
+                    step="0.01"
+                    label="Nominal (IDR)"
+                    tooltip="Nominal pengeluaran insidental atau tak terduga untuk kandang ini hari ini."
+                    helperText="Mata uang Rupiah (IDR). Contoh: 150000"
+                    placeholder="150000"
                     value={
-                      incidentNote
+                      incidentalExpense
                     }
                     disabled={
                       disabled
                     }
-                    placeholder="Opsional"
                     onChange={(
                       event,
-                    ) =>
-                      setIncidentNote(
-                        event.target.value,
-                      )
-                    }
-                    className="w-full resize-y rounded-[10px] border border-border bg-white px-3 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                    ) => {
+                      const value =
+                        event.target.value;
+
+                      setIncidentalExpense(
+                        value,
+                      );
+
+                      if (
+                        value.trim() ===
+                        ""
+                      ) {
+                        setIncidentalExpenseCategory(
+                          "",
+                        );
+                      }
+                    }}
                   />
+
+                  {incidentalNeedsCategory ? (
+                    <p className="text-xs text-danger">
+                      Pilih kategori untuk pengeluaran ini.
+                    </p>
+                  ) : null}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      htmlFor={`incident-${kandang.id}`}
+                      className="text-[13px] font-medium text-foreground"
+                    >
+                      Catatan / Keterangan
+                    </label>
+
+                    <textarea
+                      id={`incident-${kandang.id}`}
+                      rows={4}
+                      maxLength={1000}
+                      value={
+                        incidentNote
+                      }
+                      disabled={
+                        disabled
+                      }
+                      placeholder="Opsional"
+                      onChange={(
+                        event,
+                      ) =>
+                        setIncidentNote(
+                          event.target.value,
+                        )
+                      }
+                      className="w-full resize-y rounded-[10px] border border-border bg-white px-3 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+
+              {activeStep === 3 ? (
+                <div className="mt-3 flex items-center border-t border-border/60 pt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setActiveStep(2)}
+                    className="gap-1.5 text-muted hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>Kembali: Data Pakan</span>
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {!readOnly ? (
             <div>
