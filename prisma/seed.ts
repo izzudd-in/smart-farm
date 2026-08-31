@@ -14,6 +14,7 @@ import {
   FeedStockAdjustmentType,
   RoutineCostCategory,
   UserRole,
+  FeedCostBasis,
 } from "../src/generated/prisma/enums";
 
 import {
@@ -227,35 +228,21 @@ async function ensureFeedPurchase(
     createdById: string;
   },
 ) {
-  const existing =
-    await prisma.feedPurchase.findUnique({
-      where: {
-        id:
-          data.id,
-      },
-
-      select: {
-        id: true,
-      },
-    });
-
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.feedPurchase.create({
-    data: {
-      ...data,
-
-      totalPrice:
-        calculateFeedPurchaseTotal(
-          data.quantityKg,
-          data.unitPricePerKg,
-        ),
+  const totalPrice = calculateFeedPurchaseTotal(data.quantityKg, data.unitPricePerKg);
+  return prisma.feedPurchase.upsert({
+    where: {
+      id: data.id,
     },
-
-    select: {
-      id: true,
+    update: {
+      quantityKg: data.quantityKg,
+      unitPricePerKg: data.unitPricePerKg,
+      totalPrice,
+      supplier: data.supplier,
+      note: data.note,
+    },
+    create: {
+      ...data,
+      totalPrice,
     },
   });
 }
@@ -271,35 +258,17 @@ async function ensureFeedOpening(
     createdById: string;
   },
 ) {
-  const existing =
-    await prisma.feedStockAdjustment.findUnique({
-      where: {
-        openingKey:
-          data.ingredientId,
-      },
-
-      select: {
-        id: true,
-      },
-    });
-
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.feedStockAdjustment.create({
-    data: {
-      ...data,
-
-      type:
-        FeedStockAdjustmentType.OPENING,
-
-      openingKey:
-        data.ingredientId,
+  return prisma.feedStockAdjustment.upsert({
+    where: {
+      openingKey: data.ingredientId,
     },
-
-    select: {
-      id: true,
+    update: {
+      quantityKg: data.quantityKg,
+    },
+    create: {
+      ...data,
+      type: FeedStockAdjustmentType.OPENING,
+      openingKey: data.ingredientId,
     },
   });
 }
@@ -936,820 +905,269 @@ async function main() {
     }),
   ]);
 
-  const tokoBerkah =
-    await ensureCustomer(
-      farm.id,
-      {
-        name:
-          "Toko Berkah",
+  // --- START DYNAMIC SEEDING ---
+  
+  const customers = [
+    { name: "Toko Berkah", phone: "081234567890", address: "Jember", discount: "500.00" },
+    { name: "Warung Maju", phone: "081298765432", address: "Jember", discount: "0.00" },
+    { name: "Agen Mandiri", phone: "082211223344", address: "Banyuwangi", discount: "1000.00" },
+    { name: "Eceran Farm", phone: "081199998888", address: "Jember", discount: "0.00" }
+  ];
+  
+  const customerRecords = [];
+  for (const c of customers) {
+    customerRecords.push(await ensureCustomer(farm.id, {
+      name: c.name,
+      phone: c.phone,
+      address: c.address,
+      discountPerKg: c.discount
+    }));
+  }
 
-        phone:
-          "081234567890",
+  // Set Egg Prices over the month
+  await ensureEggPrice(farm.id, new Date("2026-08-01T00:00:00.000Z"), "27000.00");
+  await ensureEggPrice(farm.id, new Date("2026-08-08T00:00:00.000Z"), "27500.00");
+  await ensureEggPrice(farm.id, new Date("2026-08-15T00:00:00.000Z"), "28000.00");
 
-        address:
-          "Jember",
-
-        discountPerKg:
-          "500.00",
-      },
-    );
-
-  const warungMaju =
-    await ensureCustomer(
-      farm.id,
-      {
-        name:
-          "Warung Maju",
-
-        phone:
-          "081298765432",
-
-        address:
-          "Jember",
-
-        discountPerKg:
-          "0.00",
-      },
-    );
-
-  await ensureEggPrice(
-    farm.id,
-    new Date(
-      "2026-08-10T00:00:00.000Z",
-    ),
-    "27500.00",
-  );
-
-  await ensureEggPrice(
-    farm.id,
-    new Date(
-      "2026-08-18T00:00:00.000Z",
-    ),
-    "28000.00",
-  );
-
-  const historicalFinalPrice =
-    calculateFinalPricePerKg(
-      "27500.00",
-      tokoBerkah.discountPerKg.toString(),
-    );
-
-  await ensureOrder({
-    id:
-      "seed-order-toko-20260815",
-
-    farmId:
-      farm.id,
-
-    customerId:
-      tokoBerkah.id,
-
-    customerNameSnapshot:
-      tokoBerkah.name,
-
-    orderedAt:
-      new Date(
-        "2026-08-15T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "100",
-
-    basePricePerKg:
-      "27500.00",
-
-    discountPerKg:
-      tokoBerkah.discountPerKg.toString(),
-
-    finalPricePerKg:
-      historicalFinalPrice,
-
-    totalPrice:
-      calculateOrderTotal(
-        "100",
-        historicalFinalPrice,
-      ),
-
-    note:
-      "Seed order harga historis.",
+  // Initial Openings
+  await prisma.eggStockAdjustment.upsert({
+    where: { openingKey: farm.id },
+    update: { quantityKg: "3000.000" },
+    create: {
+      id: "seed-egg-opening-20260801",
+      farmId: farm.id,
+      occurredAt: new Date("2026-08-01T00:00:00.000Z"),
+      type: EggStockAdjustmentType.OPENING,
+      quantityKg: "3000.000",
+      note: "Stok awal development.",
+      createdById: owner.id,
+      openingKey: farm.id
+    }
   });
 
-  const currentDiscountFinalPrice =
-    calculateFinalPricePerKg(
-      "28000.00",
-      tokoBerkah.discountPerKg.toString(),
-    );
-
-  await ensureOrder({
-    id:
-      "seed-order-toko-20260818",
-
-    farmId:
-      farm.id,
-
-    customerId:
-      tokoBerkah.id,
-
-    customerNameSnapshot:
-      tokoBerkah.name,
-
-    orderedAt:
-      new Date(
-        "2026-08-18T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "100",
-
-    basePricePerKg:
-      "28000.00",
-
-    discountPerKg:
-      tokoBerkah.discountPerKg.toString(),
-
-    finalPricePerKg:
-      currentDiscountFinalPrice,
-
-    totalPrice:
-      calculateOrderTotal(
-        "100",
-        currentDiscountFinalPrice,
-      ),
-
-    note:
-      "Seed order customer diskon.",
+  await ensureFeedOpening({
+    id: "seed-feed-opening-jagung",
+    farmId: farm.id,
+    ingredientId: jagung.id,
+    occurredAt: new Date("2026-08-01T00:00:00.000Z"),
+    quantityKg: "5000.000",
+    note: "Stok awal Jagung development.",
+    createdById: owner.id,
+  });
+  await ensureFeedOpening({
+    id: "seed-feed-opening-konsentrat",
+    farmId: farm.id,
+    ingredientId: konsentrat.id,
+    occurredAt: new Date("2026-08-01T00:00:00.000Z"),
+    quantityKg: "4000.000",
+    note: "Stok awal Konsentrat development.",
+    createdById: owner.id,
+  });
+  await ensureFeedOpening({
+    id: "seed-feed-opening-dedak",
+    farmId: farm.id,
+    ingredientId: dedak.id,
+    occurredAt: new Date("2026-08-01T00:00:00.000Z"),
+    quantityKg: "2000.000",
+    note: "Stok awal Dedak development.",
+    createdById: owner.id,
   });
 
-  const warungFinalPrice =
-    calculateFinalPricePerKg(
-      "28000.00",
-      warungMaju.discountPerKg.toString(),
-    );
+  // Loop 14 days (Aug 1 to Aug 14) for daily operations
+  for (let d = 1; d <= 14; d++) {
+    const dateStr = `2026-08-${d.toString().padStart(2, '0')}T00:00:00.000Z`;
+    const reportDate = new Date(dateStr);
 
-  await ensureOrder({
-    id:
-      "seed-order-warung-20260818",
-
-    farmId:
-      farm.id,
-
-    customerId:
-      warungMaju.id,
-
-    customerNameSnapshot:
-      warungMaju.name,
-
-    orderedAt:
-      new Date(
-        "2026-08-18T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "25.5",
-
-    basePricePerKg:
-      "28000.00",
-
-    discountPerKg:
-      warungMaju.discountPerKg.toString(),
-
-    finalPricePerKg:
-      warungFinalPrice,
-
-    totalPrice:
-      calculateOrderTotal(
-        "25.5",
-        warungFinalPrice,
-      ),
-
-    note:
-      "Seed order quantity desimal.",
-  });
-
-  const reportA =
-    await prisma.dailyReport.upsert({
-      where: {
-        date_kandangId: {
-          date:
-            new Date(
-              "2026-08-17T00:00:00.000Z",
-            ),
-
-          kandangId:
-            kandangA.id,
-        },
-      },
-
-      update: {
-        flockId:
-          flockA.id,
-
-        operatorId:
-          operator.id,
-
-        saleableEgg:
-          185.5,
-
-        damagedEgg:
-          4.5,
-
-        feedUsed:
-          480,
-
-        mortality:
-          3,
-
-        incidentalExpense:
-          "25000.00",
-
-        incidentalExpenseCategory:
-          DailyExpenseCategory.MAINTENANCE,
-
-        incidentNote:
-          "Pembersihan saluran air kandang.",
-
-        feedFormulaId:
-          formula.id,
-
-        feedFormulaNameSnapshot:
-          "Formula Layer Utama",
-      },
-
+    // DAILY REPORTS for Kandang A
+    const kandangAMortality = Math.floor(Math.random() * 3);
+    const reportA = await prisma.dailyReport.upsert({
+      where: { date_kandangId: { date: reportDate, kandangId: kandangA.id } },
+      update: {},
       create: {
-        date:
-          new Date(
-            "2026-08-17T00:00:00.000Z",
-          ),
-
-        kandangId:
-          kandangA.id,
-
-        flockId:
-          flockA.id,
-
-        operatorId:
-          operator.id,
-
-        saleableEgg:
-          185.5,
-
-        damagedEgg:
-          4.5,
-
-        feedUsed:
-          480,
-
-        mortality:
-          3,
-
-        incidentalExpense:
-          "25000.00",
-
-        incidentalExpenseCategory:
-          DailyExpenseCategory.MAINTENANCE,
-
-        incidentNote:
-          "Pembersihan saluran air kandang.",
-
-        feedFormulaId:
-          formula.id,
-
-        feedFormulaNameSnapshot:
-          "Formula Layer Utama",
-      },
+        date: reportDate,
+        kandangId: kandangA.id,
+        flockId: flockA.id,
+        operatorId: operator.id,
+        saleableEgg: 180 + Math.floor(Math.random() * 15),
+        damagedEgg: Math.floor(Math.random() * 5),
+        feedUsed: 470 + Math.floor(Math.random() * 10),
+        mortality: kandangAMortality,
+        incidentalExpense: kandangAMortality > 1 ? "25000.00" : null,
+        incidentalExpenseCategory: kandangAMortality > 1 ? DailyExpenseCategory.MEDICINE_VITAMIN : null,
+        incidentNote: kandangAMortality > 1 ? "Beli vitamin tambahan" : null,
+        feedFormulaId: formula.id,
+        feedFormulaNameSnapshot: "Formula Layer Utama"
+      }
     });
 
-  const reportB =
-    await prisma.dailyReport.upsert({
-      where: {
-        date_kandangId: {
-          date:
-            new Date(
-              "2026-08-16T00:00:00.000Z",
-            ),
-
-          kandangId:
-            kandangB.id,
-        },
-      },
-
-      update: {
-        flockId:
-          flockB.id,
-
-        operatorId:
-          operator.id,
-
-        saleableEgg:
-          170,
-
-        damagedEgg:
-          null,
-
-        feedUsed:
-          430,
-
-        mortality:
-          1,
-
-        incidentalExpense:
-          null,
-
-        incidentalExpenseCategory:
-          null,
-
-        incidentNote:
-          "Telur rusak belum direkap.",
-
-        feedFormulaId:
-          formula.id,
-
-        feedFormulaNameSnapshot:
-          "Formula Layer Utama",
-      },
-
+    // DAILY REPORTS for Kandang B
+    const kandangBMortality = Math.floor(Math.random() * 2);
+    const reportB = await prisma.dailyReport.upsert({
+      where: { date_kandangId: { date: reportDate, kandangId: kandangB.id } },
+      update: {},
       create: {
-        date:
-          new Date(
-            "2026-08-16T00:00:00.000Z",
-          ),
-
-        kandangId:
-          kandangB.id,
-
-        flockId:
-          flockB.id,
-
-        operatorId:
-          operator.id,
-
-        saleableEgg:
-          170,
-
-        damagedEgg:
-          null,
-
-        feedUsed:
-          430,
-
-        mortality:
-          1,
-
-        incidentalExpense:
-          null,
-
-        incidentalExpenseCategory:
-          null,
-
-        incidentNote:
-          "Telur rusak belum direkap.",
-
-        feedFormulaId:
-          formula.id,
-
-        feedFormulaNameSnapshot:
-          "Formula Layer Utama",
-      },
+        date: reportDate,
+        kandangId: kandangB.id,
+        flockId: flockB.id,
+        operatorId: operator.id,
+        saleableEgg: 160 + Math.floor(Math.random() * 10),
+        damagedEgg: Math.floor(Math.random() * 3),
+        feedUsed: 430 + Math.floor(Math.random() * 10),
+        mortality: kandangBMortality,
+        feedFormulaId: formula.id,
+        feedFormulaNameSnapshot: "Formula Layer Utama"
+      }
     });
 
-  for (
-    const report
-    of [
-      reportA,
-      reportB,
-    ]
-  ) {
-    await prisma.$transaction([
-      prisma.dailyReportFeedItem.deleteMany({
-        where: {
-          dailyReportId:
-            report.id,
-        },
-      }),
-
-      prisma.dailyReportFeedItem.createMany({
+    for (const report of [reportA, reportB]) {
+      await prisma.dailyReportFeedItem.deleteMany({
+        where: { dailyReportId: report.id }
+      });
+      
+      await prisma.dailyReportFeedItem.createMany({
         data: [
-          {
-            dailyReportId:
-              report.id,
-
-            ingredientId:
-              jagung.id,
-
-            ingredientNameSnapshot:
-              "Jagung",
-
-            percentage:
-              "50.00",
+          { 
+            dailyReportId: report.id, 
+            ingredientId: jagung.id, 
+            ingredientNameSnapshot: "Jagung", 
+            percentage: "50.00",
+            unitCostPerKgSnapshot: "5500.00",
+            costBasisSnapshot: FeedCostBasis.LATEST_PURCHASE
           },
-          {
-            dailyReportId:
-              report.id,
-
-            ingredientId:
-              konsentrat.id,
-
-            ingredientNameSnapshot:
-              "Konsentrat",
-
-            percentage:
-              "35.00",
+          { 
+            dailyReportId: report.id, 
+            ingredientId: konsentrat.id, 
+            ingredientNameSnapshot: "Konsentrat", 
+            percentage: "35.00",
+            unitCostPerKgSnapshot: "8500.00",
+            costBasisSnapshot: FeedCostBasis.LATEST_PURCHASE
           },
-          {
-            dailyReportId:
-              report.id,
-
-            ingredientId:
-              dedak.id,
-
-            ingredientNameSnapshot:
-              "Dedak",
-
-            percentage:
-              "15.00",
+          { 
+            dailyReportId: report.id, 
+            ingredientId: dedak.id, 
+            ingredientNameSnapshot: "Dedak", 
+            percentage: "15.00",
+            unitCostPerKgSnapshot: "3500.00",
+            costBasisSnapshot: FeedCostBasis.LATEST_PURCHASE
           },
-        ],
-      }),
-    ]);
+        ]
+      });
+    }
+
+    // ORDERS
+    // 1-3 orders per day
+    const numOrders = 1 + Math.floor(Math.random() * 3);
+    for (let o = 0; o < numOrders; o++) {
+      const customer = customerRecords[Math.floor(Math.random() * customerRecords.length)];
+      let basePrice = "27000.00";
+      if (d >= 8) basePrice = "27500.00";
+      if (d >= 15) basePrice = "28000.00";
+
+      const qty = [25.5, 50, 100, 150][Math.floor(Math.random() * 4)];
+      const finalPrice = calculateFinalPricePerKg(basePrice, customer.discountPerKg.toString());
+      
+      await ensureOrder({
+        id: `seed-order-${d}-${o}-${customer.id.substring(0,5)}`,
+        farmId: farm.id,
+        customerId: customer.id,
+        customerNameSnapshot: customer.name,
+        orderedAt: reportDate,
+        quantityKg: qty.toString(),
+        basePricePerKg: basePrice,
+        discountPerKg: customer.discountPerKg.toString(),
+        finalPricePerKg: finalPrice,
+        totalPrice: calculateOrderTotal(qty.toString(), finalPrice),
+        note: "Transaksi seed."
+      });
+    }
+
+    // RANDOM EXPENSES (every 5 days)
+    if (d % 5 === 0) {
+      await ensureDailyExpense({
+        id: `seed-daily-expense-${d}`,
+        farmId: farm.id,
+        category: DailyExpenseCategory.TRANSPORT,
+        amount: "150000.00",
+        occurredAt: reportDate,
+        description: "Transport pakan dan telur",
+        createdById: owner.id
+      });
+    }
+
+    // FEED PURCHASES (Weekly on day 7 and 14)
+    if (d === 7 || d === 14) {
+      await ensureFeedPurchase({
+        id: `seed-feed-purchase-jagung-${d}`,
+        farmId: farm.id,
+        ingredientId: jagung.id,
+        purchasedAt: reportDate,
+        quantityKg: "1500.000",
+        unitPricePerKg: "5500.00",
+        supplier: "Supplier Jagung",
+        note: "Restock mingguan",
+        createdById: owner.id
+      });
+      await ensureFeedPurchase({
+        id: `seed-feed-purchase-konsentrat-${d}`,
+        farmId: farm.id,
+        ingredientId: konsentrat.id,
+        purchasedAt: reportDate,
+        quantityKg: "1000.000",
+        unitPricePerKg: "8500.00",
+        supplier: "Supplier Konsentrat",
+        note: "Restock mingguan",
+        createdById: owner.id
+      });
+      await ensureFeedPurchase({
+        id: `seed-feed-purchase-dedak-${d}`,
+        farmId: farm.id,
+        ingredientId: dedak.id,
+        purchasedAt: reportDate,
+        quantityKg: "500.000",
+        unitPricePerKg: "3500.00",
+        supplier: "Supplier Dedak",
+        note: "Restock mingguan",
+        createdById: owner.id
+      });
+    }
   }
 
-  const existingEggOpening =
-    await prisma.eggStockAdjustment.findUnique({
-      where: {
-        openingKey:
-          farm.id,
-      },
-
-      select: {
-        id:
-          true,
-      },
-    });
-
-  if (
-    !existingEggOpening
-  ) {
-    await prisma.eggStockAdjustment.create({
-      data: {
-        id:
-          "seed-egg-opening-20260801",
-
-        farmId:
-          farm.id,
-
-        occurredAt:
-          new Date(
-            "2026-08-01T00:00:00.000Z",
-          ),
-
-        type:
-          EggStockAdjustmentType.OPENING,
-
-        quantityKg:
-          "100.000",
-
-        note:
-          "Stok awal development.",
-
-        createdById:
-          owner.id,
-
-        openingKey:
-          farm.id,
-      },
-    });
-  }
-
-  const existingEggAdjustment =
-    await prisma.eggStockAdjustment.findUnique({
-      where: {
-        id:
-          "seed-egg-adjustment-20260817",
-      },
-
-      select: {
-        id:
-          true,
-      },
-    });
-
-  if (
-    !existingEggAdjustment
-  ) {
-    await prisma.eggStockAdjustment.create({
-      data: {
-        id:
-          "seed-egg-adjustment-20260817",
-
-        farmId:
-          farm.id,
-
-        occurredAt:
-          new Date(
-            "2026-08-17T00:00:00.000Z",
-          ),
-
-        type:
-          EggStockAdjustmentType.DECREASE,
-
-        quantityKg:
-          "2.000",
-
-        note:
-          "Telur pecah setelah penyimpanan.",
-
-        createdById:
-          owner.id,
-      },
-    });
-  }
-
-  await ensureFeedOpening({
-    id:
-      "seed-feed-opening-jagung",
-
-    farmId:
-      farm.id,
-
-    ingredientId:
-      jagung.id,
-
-    occurredAt:
-      new Date(
-        "2026-08-01T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "400.000",
-
-    note:
-      "Stok awal Jagung development.",
-
-    createdById:
-      owner.id,
-  });
-
-  await ensureFeedOpening({
-    id:
-      "seed-feed-opening-konsentrat",
-
-    farmId:
-      farm.id,
-
-    ingredientId:
-      konsentrat.id,
-
-    occurredAt:
-      new Date(
-        "2026-08-01T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "300.000",
-
-    note:
-      "Stok awal Konsentrat development.",
-
-    createdById:
-      owner.id,
-  });
-
-  await ensureFeedOpening({
-    id:
-      "seed-feed-opening-dedak",
-
-    farmId:
-      farm.id,
-
-    ingredientId:
-      dedak.id,
-
-    occurredAt:
-      new Date(
-        "2026-08-01T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "200.000",
-
-    note:
-      "Stok awal Dedak development.",
-
-    createdById:
-      owner.id,
-  });
-
-  await ensureFeedPurchase({
-    id:
-      "seed-feed-purchase-jagung-20260817",
-
-    farmId:
-      farm.id,
-
-    ingredientId:
-      jagung.id,
-
-    purchasedAt:
-      new Date(
-        "2026-08-17T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "200.000",
-
-    unitPricePerKg:
-      "5500.00",
-
-    supplier:
-      "Supplier Development",
-
-    note:
-      "Pembelian Jagung development.",
-
-    createdById:
-      owner.id,
-  });
-
-  await ensureFeedPurchase({
-    id:
-      "seed-feed-purchase-konsentrat-20260817",
-
-    farmId:
-      farm.id,
-
-    ingredientId:
-      konsentrat.id,
-
-    purchasedAt:
-      new Date(
-        "2026-08-17T00:00:00.000Z",
-      ),
-
-    quantityKg:
-      "150.000",
-
-    unitPricePerKg:
-      "8500.00",
-
-    supplier:
-      "Supplier Development",
-
-    note:
-      "Pembelian Konsentrat development.",
-
-    createdById:
-      owner.id,
-  });
-
+  // Routine Costs (Monthly)
   await ensureRoutineCost({
-    id:
-      "seed-routine-cost-salary-202608",
-
-    farmId:
-      farm.id,
-
-    category:
-      RoutineCostCategory.SALARY,
-
-    name:
-      "Gaji Karyawan",
-
-    amount:
-      "9300000.00",
-
-    periodStart:
-      new Date(
-        "2026-08-01T00:00:00.000Z",
-      ),
-
-    periodEnd:
-      new Date(
-        "2026-08-31T00:00:00.000Z",
-      ),
-
-    note:
-      "Gaji karyawan bulan Agustus 2026.",
-
-    createdById:
-      owner.id,
+    id: "seed-routine-cost-salary-202608",
+    farmId: farm.id,
+    category: RoutineCostCategory.SALARY,
+    name: "Gaji Karyawan",
+    amount: "9300000.00",
+    periodStart: new Date("2026-08-01T00:00:00.000Z"),
+    periodEnd: new Date("2026-08-31T00:00:00.000Z"),
+    note: "Gaji karyawan bulan Agustus 2026.",
+    createdById: owner.id,
   });
-
   await ensureRoutineCost({
-    id:
-      "seed-routine-cost-electricity-202608",
-
-    farmId:
-      farm.id,
-
-    category:
-      RoutineCostCategory.ELECTRICITY,
-
-    name:
-      "Listrik Farm",
-
-    amount:
-      "1550000.00",
-
-    periodStart:
-      new Date(
-        "2026-08-01T00:00:00.000Z",
-      ),
-
-    periodEnd:
-      new Date(
-        "2026-08-31T00:00:00.000Z",
-      ),
-
-    note:
-      "Biaya listrik bulan Agustus 2026.",
-
-    createdById:
-      owner.id,
+    id: "seed-routine-cost-electricity-202608",
+    farmId: farm.id,
+    category: RoutineCostCategory.ELECTRICITY,
+    name: "Listrik Farm",
+    amount: "1550000.00",
+    periodStart: new Date("2026-08-01T00:00:00.000Z"),
+    periodEnd: new Date("2026-08-31T00:00:00.000Z"),
+    note: "Biaya listrik bulan Agustus 2026.",
+    createdById: owner.id,
   });
-
   await ensureRoutineCost({
-    id:
-      "seed-routine-cost-water-202608",
-
-    farmId:
-      farm.id,
-
-    category:
-      RoutineCostCategory.WATER,
-
-    name:
-      "Air Farm",
-
-    amount:
-      "310000.00",
-
-    periodStart:
-      new Date(
-        "2026-08-01T00:00:00.000Z",
-      ),
-
-    periodEnd:
-      new Date(
-        "2026-08-31T00:00:00.000Z",
-      ),
-
-    note:
-      "Biaya air bulan Agustus 2026.",
-
-    createdById:
-      owner.id,
+    id: "seed-routine-cost-water-202608",
+    farmId: farm.id,
+    category: RoutineCostCategory.WATER,
+    name: "Air Farm",
+    amount: "310000.00",
+    periodStart: new Date("2026-08-01T00:00:00.000Z"),
+    periodEnd: new Date("2026-08-31T00:00:00.000Z"),
+    note: "Biaya air bulan Agustus 2026.",
+    createdById: owner.id,
   });
-
-  await ensureDailyExpense({
-    id:
-      "seed-daily-expense-transport-20260817",
-
-    farmId:
-      farm.id,
-
-    category:
-      DailyExpenseCategory.TRANSPORT,
-
-    amount:
-      "200000.00",
-
-    occurredAt:
-      new Date(
-        "2026-08-17T00:00:00.000Z",
-      ),
-
-    description:
-      "Transport pengambilan kebutuhan farm.",
-
-    createdById:
-      owner.id,
-  });
-
-  await ensureDailyExpense({
-    id:
-      "seed-daily-expense-equipment-20260818",
-
-    farmId:
-      farm.id,
-
-    category:
-      DailyExpenseCategory.EQUIPMENT,
-
-    amount:
-      "125000.00",
-
-    occurredAt:
-      new Date(
-        "2026-08-18T00:00:00.000Z",
-      ),
-
-    description:
-      "Pembelian alat operasional kecil.",
-
-    createdById:
-      owner.id,
-  });
-
+  // --- END DYNAMIC SEEDING ---
+  
   console.log(
     "Database seed completed.",
   );
