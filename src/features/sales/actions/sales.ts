@@ -43,6 +43,10 @@ import {
   getEggPriceForDate,
 } from "@/features/sales/queries/get-egg-price-for-date";
 
+import {
+  getEggStockAsOfDate,
+} from "@/features/inventory/queries/get-egg-stock";
+
 const SALES_PATH =
   "/sales";
 
@@ -184,6 +188,28 @@ export async function createCustomer(
     const farm =
       await getPrimaryFarm();
 
+    const existingCustomer =
+      await prisma.customer.findFirst({
+        where: {
+          farmId:
+            farm.id,
+          name: {
+            equals:
+              parsed.name,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existingCustomer) {
+      throw ruleError(
+        "Customer dengan nama tersebut sudah terdaftar.",
+      );
+    }
+
     await prisma.customer.create({
       data: {
         farmId:
@@ -208,6 +234,10 @@ export async function createCustomer(
 
     revalidatePath(
       SALES_PATH,
+    );
+
+    revalidatePath(
+      DASHBOARD_PATH,
     );
 
     return {
@@ -253,12 +283,39 @@ export async function updateCustomer(
         select: {
           id:
             true,
+          farmId:
+            true,
         },
       });
 
     if (!customer) {
       throw ruleError(
         "Customer tidak ditemukan.",
+      );
+    }
+
+    const existingCustomer =
+      await prisma.customer.findFirst({
+        where: {
+          farmId:
+            customer.farmId,
+          id: {
+            not: customer.id,
+          },
+          name: {
+            equals:
+              parsed.name,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existingCustomer) {
+      throw ruleError(
+        "Customer dengan nama tersebut sudah terdaftar.",
       );
     }
 
@@ -285,6 +342,10 @@ export async function updateCustomer(
 
     revalidatePath(
       SALES_PATH,
+    );
+
+    revalidatePath(
+      DASHBOARD_PATH,
     );
 
     return {
@@ -347,6 +408,10 @@ export async function setCustomerActive(
 
     revalidatePath(
       SALES_PATH,
+    );
+
+    revalidatePath(
+      DASHBOARD_PATH,
     );
 
     return {
@@ -463,10 +528,15 @@ export async function getOrderPricingPreview(
       };
     }
 
-    const eggPrice =
-      await getEggPriceForDate(
-        parsed.orderedAt,
-      );
+    const [eggPrice, stockSummary] =
+      await Promise.all([
+        getEggPriceForDate(
+          parsed.orderedAt,
+        ),
+        getEggStockAsOfDate(
+          parsed.orderedAt,
+        ),
+      ]);
 
     if (!eggPrice) {
       return {
@@ -500,6 +570,9 @@ export async function getOrderPricingPreview(
           basePricePerKg,
           discountPerKg,
         ),
+
+      availableStockKg:
+        stockSummary.currentStockKg,
     };
   } catch (error) {
     if (

@@ -97,19 +97,25 @@ function parsePositiveMoney(
   value: string,
   label: string,
 ): string {
-  const result =
-    parseNonNegativeMoney(
-      value,
-      label,
-    );
+  const normalized =
+    normalizeMoney(value);
 
-  if (Number(result) <= 0) {
+  const num =
+    Number(normalized);
+
+  if (
+    Number.isNaN(num) ||
+    num <= 0 ||
+    !/^\d+(\.\d{1,2})?$/.test(
+      normalized,
+    )
+  ) {
     throw new SalesValidationError(
       `${label} harus lebih dari 0.`,
     );
   }
 
-  return result;
+  return num.toFixed(2);
 }
 
 function isValidDateString(
@@ -199,6 +205,38 @@ function getDefaultOrderFromDate(
     .slice(0, 10);
 }
 
+function optionalPhone(
+  value: string,
+  label: string,
+): string | null {
+  const normalized =
+    value.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    normalized.length > 30
+  ) {
+    throw new SalesValidationError(
+      `${label} maksimal 30 karakter.`,
+    );
+  }
+
+  if (
+    !/^[0-9+\-\s()]+$/.test(
+      normalized,
+    )
+  ) {
+    throw new SalesValidationError(
+      `${label} hanya boleh berisi angka dan simbol (+, -, ()).`,
+    );
+  }
+
+  return normalized;
+}
+
 export function parseCustomerInput(
   input: CustomerInput,
 ) {
@@ -209,14 +247,13 @@ export function parseCustomerInput(
       100,
     ),
 
-    phone: optionalText(
-      input.phone,
+    phone: optionalPhone(
+      input.phone ?? "",
       "Nomor telepon",
-      30,
     ),
 
     address: optionalText(
-      input.address,
+      input.address ?? "",
       "Alamat",
       500,
     ),

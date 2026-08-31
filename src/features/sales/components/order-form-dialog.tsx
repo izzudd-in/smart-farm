@@ -2,11 +2,11 @@
 
 import {
   type FormEvent,
-  useEffect,
   useState,
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import type {
   CustomerView,
   OrderPricingPreviewResult,
 } from "@/features/sales/types/sales";
+import { calculateOrderTotal } from "@/features/sales/utils/pricing";
 
 import { SalesModal } from "./sales-modal";
 
@@ -25,6 +26,7 @@ type OrderFormDialogProps = {
   customers: CustomerView[];
   defaultOrderedAt: string;
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 };
 
 const currencyFormatter =
@@ -49,6 +51,7 @@ export function OrderFormDialog({
   customers,
   defaultOrderedAt,
   onClose,
+  onSuccess,
 }: OrderFormDialogProps) {
   const router = useRouter();
 
@@ -102,61 +105,98 @@ export function OrderFormDialog({
     startTransition,
   ] = useTransition();
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadPreview() {
-      if (!customerId || !orderedAt) {
-        setIsPreviewLoading(false);
-        setPreview(null);
-        setPreviewError("");
-        return;
-      }
-
-      setIsPreviewLoading(true);
+  async function fetchPreview(
+    cId: string,
+    oDate: string,
+  ) {
+    if (!cId || !oDate) {
       setPreview(null);
       setPreviewError("");
-
-      const result = await getOrderPricingPreview({
-        customerId,
-        orderedAt,
-      });
-
-      if (!active) {
-        return;
-      }
-
-      setIsPreviewLoading(false);
-
-      if (!result.success) {
-        setPreviewError(result.error);
-        return;
-      }
-
-      setPreview(result);
+      return;
     }
 
-    void loadPreview();
+    setIsPreviewLoading(true);
+    setPreviewError("");
 
-    return () => {
-      active = false;
-    };
-  }, [customerId, orderedAt]);
+    try {
+      const result =
+        await getOrderPricingPreview({
+          customerId: cId,
+          orderedAt: oDate,
+        });
+
+      if (result.success) {
+        setPreview(result);
+        setPreviewError("");
+      } else {
+        setPreview(null);
+        setPreviewError(
+          result.error,
+        );
+      }
+    } catch {
+      setPreview(null);
+      setPreviewError(
+        "Gagal memuat preview harga.",
+      );
+    } finally {
+      setIsPreviewLoading(
+        false,
+      );
+    }
+  }
 
   function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
-
     setError("");
+
+    if (!customerId) {
+      setError("Customer wajib dipilih.");
+      return;
+    }
+
+    if (!orderedAt) {
+      setError("Tanggal order wajib diisi.");
+      return;
+    }
+
+    const trimmedQty = quantityKg.trim().replace(",", ".");
+    if (!trimmedQty) {
+      setError("Jumlah telur wajib diisi.");
+      return;
+    }
+
+    const qtyNum = Number(trimmedQty);
+    if (
+      Number.isNaN(qtyNum) ||
+      qtyNum <= 0 ||
+      !/^\d+(\.\d{1,3})?$/.test(trimmedQty)
+    ) {
+      setError(
+        "Jumlah telur harus lebih dari 0 kg dengan maksimal 3 angka desimal.",
+      );
+      return;
+    }
+
+    if (
+      preview?.availableStockKg !== undefined &&
+      qtyNum > Number(preview.availableStockKg)
+    ) {
+      setError(
+        `Stok telur tidak mencukupi. Stok tersedia: ${preview.availableStockKg} kg, jumlah order: ${trimmedQty} kg.`,
+      );
+      return;
+    }
 
     startTransition(async () => {
       const result =
         await createOrder({
           customerId,
           orderedAt,
-          quantityKg,
-          note,
+          quantityKg: trimmedQty,
+          note: note.trim(),
         });
 
       if (!result.success) {
@@ -166,15 +206,28 @@ export function OrderFormDialog({
         return;
       }
 
+      onSuccess?.(result.message);
       router.refresh();
       onClose();
     });
   }
 
+  const normalizedQty = quantityKg.trim().replace(",", ".");
+  const isQtyValid =
+    Boolean(normalizedQty) &&
+    !Number.isNaN(Number(normalizedQty)) &&
+    Number(normalizedQty) > 0 &&
+    /^\d+(\.\d{1,3})?$/.test(normalizedQty);
+
+  const isStockExceeded =
+    Boolean(preview?.availableStockKg) &&
+    isQtyValid &&
+    Number(normalizedQty) > Number(preview?.availableStockKg);
+
   return (
     <SalesModal
       title="Order Baru"
-      description="Harga final dihitung ulang oleh server saat order disimpan."
+      description="Harga final dan ketersediaan stok diverifikasi saat order disimpan."
       onClose={onClose}
     >
       <form
@@ -202,11 +255,16 @@ export function OrderFormDialog({
             id="order-customer"
             value={customerId}
             disabled={isPending}
-            onChange={(event) =>
-              setCustomerId(
-                event.target.value,
-              )
-            }
+            onChange={(event) => {
+              const val =
+                event.target.value;
+              setCustomerId(val);
+              if (error) setError("");
+              void fetchPreview(
+                val,
+                orderedAt,
+              );
+            }}
             className="h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
           >
             <option value="">
@@ -237,18 +295,25 @@ export function OrderFormDialog({
         </div>
 
         <Input
+          id="order-date"
           type="date"
           label="Tanggal Order"
           value={orderedAt}
           disabled={isPending}
-          onChange={(event) =>
-            setOrderedAt(
-              event.target.value,
-            )
-          }
+          onChange={(event) => {
+            const val =
+              event.target.value;
+            setOrderedAt(val);
+            if (error) setError("");
+            void fetchPreview(
+              customerId,
+              val,
+            );
+          }}
         />
 
         <Input
+          id="order-quantity"
           type="number"
           inputMode="decimal"
           min="0.001"
@@ -257,11 +322,12 @@ export function OrderFormDialog({
           placeholder="100"
           value={quantityKg}
           disabled={isPending}
-          onChange={(event) =>
+          onChange={(event) => {
             setQuantityKg(
               event.target.value,
-            )
-          }
+            );
+            if (error) setError("");
+          }}
         />
 
         <div className="flex flex-col gap-1.5">
@@ -279,11 +345,12 @@ export function OrderFormDialog({
             value={note}
             disabled={isPending}
             placeholder="Opsional"
-            onChange={(event) =>
+            onChange={(event) => {
               setNote(
                 event.target.value,
-              )
-            }
+              );
+              if (error) setError("");
+            }}
             className="w-full resize-y rounded-[10px] border border-border bg-white px-3 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
           />
         </div>
@@ -292,19 +359,19 @@ export function OrderFormDialog({
         orderedAt ? (
           <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted">
-              Preview Harga
+              Preview Harga & Stok
             </p>
 
             {isPreviewLoading ? (
               <p className="mt-3 text-sm text-muted">
-                Memuat harga...
+                Memuat preview harga & stok...
               </p>
             ) : previewError ? (
               <p className="mt-3 text-sm text-danger">
                 {previewError}
               </p>
             ) : preview ? (
-              <div className="mt-3 space-y-2 text-sm">
+              <div className="mt-3 space-y-2.5 text-sm">
                 <div className="flex justify-between gap-4">
                   <span className="text-muted">
                     Harga dasar
@@ -333,7 +400,7 @@ export function OrderFormDialog({
 
                 <div className="flex justify-between gap-4 border-t border-border pt-2">
                   <span className="text-muted">
-                    Estimasi harga
+                    Harga final
                   </span>
 
                   <span className="font-semibold text-primary-hover">
@@ -343,6 +410,52 @@ export function OrderFormDialog({
                     /kg
                   </span>
                 </div>
+
+                {preview.availableStockKg !== undefined ? (
+                  <div className="flex justify-between gap-4 border-t border-border pt-2 text-xs">
+                    <span className="text-muted">
+                      Stok telur tersedia
+                    </span>
+
+                    <span
+                      className={`font-semibold ${
+                        isStockExceeded
+                          ? "text-danger"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {preview.availableStockKg} kg
+                    </span>
+                  </div>
+                ) : null}
+
+                {isQtyValid ? (
+                  <div className="flex justify-between gap-4 border-t border-dashed border-border pt-2">
+                    <span className="font-medium text-foreground">
+                      Estimasi Total (
+                      {normalizedQty} kg)
+                    </span>
+
+                    <span className="font-bold text-primary">
+                      {formatMoney(
+                        calculateOrderTotal(
+                          normalizedQty,
+                          preview.finalPricePerKg,
+                        ),
+                      )}
+                    </span>
+                  </div>
+                ) : null}
+
+                {isStockExceeded ? (
+                  <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#FECACA] bg-danger-soft p-2.5 text-xs text-danger">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      Jumlah order ({normalizedQty} kg) melebihi stok yang tersedia (
+                      {preview.availableStockKg} kg).
+                    </span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

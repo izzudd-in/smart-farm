@@ -67,6 +67,7 @@ export type OrderPricingPreviewResult =
       basePricePerKg: string;
       discountPerKg: string;
       finalPricePerKg: string;
+      availableStockKg?: string;
     }
   | {
       success: false;

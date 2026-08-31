@@ -16,10 +16,12 @@ import { SalesModal } from "./sales-modal";
 
 type EggPriceFormDialogProps = {
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 };
 
 export function EggPriceFormDialog({
   onClose,
+  onSuccess,
 }: EggPriceFormDialogProps) {
   const router = useRouter();
 
@@ -45,14 +47,36 @@ export function EggPriceFormDialog({
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
-
     setError("");
+
+    const trimmedPrice = pricePerKg.trim().replace(",", ".");
+    const trimmedDate = effectiveAt.trim();
+
+    if (!trimmedPrice) {
+      setError("Harga/kg wajib diisi.");
+      return;
+    }
+
+    const priceNum = Number(trimmedPrice);
+    if (
+      Number.isNaN(priceNum) ||
+      priceNum <= 0 ||
+      !/^\d+(\.\d{1,2})?$/.test(trimmedPrice)
+    ) {
+      setError("Harga/kg harus lebih dari 0.");
+      return;
+    }
+
+    if (!trimmedDate) {
+      setError("Tanggal berlaku wajib diisi.");
+      return;
+    }
 
     startTransition(async () => {
       const result =
         await createEggPrice({
-          pricePerKg,
-          effectiveAt,
+          pricePerKg: trimmedPrice,
+          effectiveAt: trimmedDate,
         });
 
       if (!result.success) {
@@ -62,6 +86,7 @@ export function EggPriceFormDialog({
         return;
       }
 
+      onSuccess?.(result.message);
       router.refresh();
       onClose();
     });
@@ -87,6 +112,7 @@ export function EggPriceFormDialog({
         ) : null}
 
         <Input
+          id="egg-price-input"
           type="number"
           inputMode="decimal"
           min="0.01"
@@ -95,23 +121,26 @@ export function EggPriceFormDialog({
           placeholder="28000"
           value={pricePerKg}
           disabled={isPending}
-          onChange={(event) =>
+          onChange={(event) => {
             setPricePerKg(
               event.target.value,
-            )
-          }
+            );
+            if (error) setError("");
+          }}
         />
 
         <Input
+          id="egg-price-effective-at"
           type="date"
           label="Berlaku Mulai"
           value={effectiveAt}
           disabled={isPending}
-          onChange={(event) =>
+          onChange={(event) => {
             setEffectiveAt(
               event.target.value,
-            )
-          }
+            );
+            if (error) setError("");
+          }}
         />
 
         <div className="rounded-[10px] bg-[#F9FAFB] p-3 text-xs leading-5 text-muted">
