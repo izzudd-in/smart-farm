@@ -21,30 +21,22 @@ function mapEggPrice(
     effectiveAt: Date;
     createdAt: Date;
   },
+  previousPricePerKg?: string | null,
 ): EggPriceView {
   return {
     id: price.id,
-
-    pricePerKg:
-      price.pricePerKg.toString(),
-
-    effectiveAt:
-      price.effectiveAt
-        .toISOString()
-        .slice(0, 10),
-
-    createdAt:
-      price.createdAt.toISOString(),
+    pricePerKg: price.pricePerKg.toString(),
+    previousPricePerKg: previousPricePerKg ?? null,
+    effectiveAt: price.effectiveAt.toISOString().slice(0, 10),
+    createdAt: price.createdAt.toISOString(),
+    changedBy: "Owner",
   };
 }
 
 export async function getSalesPageData(): Promise<SalesPageData> {
-  await requireRole(
-    UserRole.OWNER,
-  );
+  await requireRole(UserRole.OWNER);
 
-  const today =
-    getJakartaTodayDate();
+  const today = getJakartaTodayDate();
 
   const [
     customers,
@@ -57,7 +49,6 @@ export async function getSalesPageData(): Promise<SalesPageData> {
           scope: "PRIMARY",
         },
       },
-
       orderBy: [
         {
           isActive: "desc",
@@ -66,7 +57,6 @@ export async function getSalesPageData(): Promise<SalesPageData> {
           name: "asc",
         },
       ],
-
       select: {
         id: true,
         name: true,
@@ -85,7 +75,6 @@ export async function getSalesPageData(): Promise<SalesPageData> {
           scope: "PRIMARY",
         },
       },
-
       orderBy: [
         {
           effectiveAt: "desc",
@@ -94,9 +83,7 @@ export async function getSalesPageData(): Promise<SalesPageData> {
           createdAt: "desc",
         },
       ],
-
       take: 50,
-
       select: {
         id: true,
         pricePerKg: true,
@@ -107,36 +94,27 @@ export async function getSalesPageData(): Promise<SalesPageData> {
   ]);
 
   return {
-    asOfDate:
-      getJakartaTodayString(),
-
-    customers:
-      customers.map(
-        (customer) => ({
-          id: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          address:
-            customer.address,
-
-          discountPerKg:
-            customer.discountPerKg.toString(),
-
-          isActive:
-            customer.isActive,
-        }),
-      ),
-
-    activePrice:
-      activePrice
-        ? mapEggPrice(
-            activePrice,
-          )
-        : null,
-
-    priceHistory:
-      priceHistory.map(
-        mapEggPrice,
-      ),
+    asOfDate: getJakartaTodayString(),
+    customers: customers.map((customer) => ({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      address: customer.address,
+      discountPerKg: customer.discountPerKg.toString(),
+      isActive: customer.isActive,
+    })),
+    activePrice: activePrice
+      ? mapEggPrice(
+          activePrice,
+          priceHistory[1]?.pricePerKg.toString() ?? null,
+        )
+      : null,
+    priceHistory: priceHistory.map((price, index) => {
+      const prev = priceHistory[index + 1];
+      return mapEggPrice(
+        price,
+        prev ? prev.pricePerKg.toString() : null,
+      );
+    }),
   };
 }

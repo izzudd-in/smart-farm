@@ -37,8 +37,10 @@ export type CustomerView = {
 export type EggPriceView = {
   id: string;
   pricePerKg: string;
+  previousPricePerKg?: string | null;
   effectiveAt: string;
   createdAt: string;
+  changedBy?: string;
 };
 
 export type SalesPageData = {

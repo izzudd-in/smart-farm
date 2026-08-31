@@ -696,49 +696,75 @@ export function SalesManagement({
               ) : (
                 <Card className="divide-y divide-border overflow-hidden">
                   {data.priceHistory.map(
-                    (price) => (
-                      <div
-                        key={
-                          price.id
-                        }
-                        className="flex items-center justify-between gap-4 p-4"
-                      >
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-medium text-foreground">
-                              Berlaku: {formatDate(
-                                price.effectiveAt,
-                              )}
-                            </p>
+                    (price) => {
+                      const currentNum = Number(price.pricePerKg);
+                      const prevNum = price.previousPricePerKg
+                        ? Number(price.previousPricePerKg)
+                        : null;
+                      const diff = prevNum !== null ? currentNum - prevNum : null;
 
-                            {price.effectiveAt >
-                            data.asOfDate ? (
-                              <Badge
-                                variant="neutral"
-                                className="text-[10px] py-0 px-1.5"
-                              >
-                                Akan datang
-                              </Badge>
-                            ) : null}
+                      return (
+                        <div
+                          key={price.id}
+                          className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground">
+                                Berlaku: {formatDate(price.effectiveAt)}
+                              </p>
+
+                              {price.effectiveAt > data.asOfDate ? (
+                                <Badge
+                                  variant="neutral"
+                                  className="text-[10px] py-0 px-1.5"
+                                >
+                                  Akan datang
+                                </Badge>
+                              ) : null}
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+                              <span>
+                                Dicatat: {formatDateTime(price.createdAt)} WIB
+                              </span>
+                              <span>•</span>
+                              <span>
+                                Oleh: {price.changedBy ?? "Owner"}
+                              </span>
+                              {prevNum !== null ? (
+                                <>
+                                  <span>•</span>
+                                  <span>
+                                    Sebelumnya:{" "}
+                                    {currencyFormatter.format(prevNum)}/kg
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
                           </div>
 
-                          <p className="mt-0.5 text-xs text-muted">
-                            Dicatat: {formatDateTime(
-                              price.createdAt,
-                            )} WIB
-                          </p>
-                        </div>
+                          <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-0.5">
+                            <p className="shrink-0 font-bold text-foreground sm:text-base">
+                              {currencyFormatter.format(currentNum)}/kg
+                            </p>
 
-                        <p className="shrink-0 font-semibold text-foreground">
-                          {currencyFormatter.format(
-                            Number(
-                              price.pricePerKg,
-                            ),
-                          )}
-                          /kg
-                        </p>
-                      </div>
-                    ),
+                            {diff !== null && diff !== 0 ? (
+                              <span
+                                className={`text-[11px] font-medium ${
+                                  diff > 0
+                                    ? "text-[#059669]"
+                                    : "text-danger"
+                                }`}
+                              >
+                                {diff > 0 ? "+" : ""}
+                                {currencyFormatter.format(diff)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    },
                   )}
                 </Card>
               )}

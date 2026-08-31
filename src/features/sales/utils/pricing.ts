@@ -87,10 +87,23 @@ export function calculateFinalPricePerKg(
       discountPerKg,
     );
 
+  if (discount > base) {
+    throw new Error(
+      "Diskon customer tidak boleh melebihi harga dasar telur.",
+    );
+  }
+
+  const finalCents =
+    base - discount;
+
+  if (finalCents < BigInt(0)) {
+    throw new Error(
+      "Harga akhir per kg tidak boleh bernilai negatif.",
+    );
+  }
+
   return centsToMoney(
-    base > discount
-      ? base - discount
-      : BigInt(0),
+    finalCents,
   );
 }
 

@@ -554,6 +554,16 @@ export async function getOrderPricingPreview(
     const discountPerKg =
       customer.discountPerKg.toString();
 
+    if (Number(discountPerKg) > Number(basePricePerKg)) {
+      return {
+        success:
+          false,
+
+        error:
+          "Diskon customer tidak boleh melebihi harga dasar telur.",
+      };
+    }
+
     return {
       success:
         true,
