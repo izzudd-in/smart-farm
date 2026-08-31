@@ -131,6 +131,7 @@ model Flock {
 
   @@unique([kandangId, name])
   @@index([kandangId, startDate])
+  @@index([kandangId, endedAt])
 }
 
 model DailyReport {

@@ -16,7 +16,6 @@ import {
   ClipboardCheck,
   Egg,
   FileSpreadsheet,
-  Home,
   LayoutDashboard,
   MoreHorizontal,
   Receipt,
@@ -508,10 +507,10 @@ export function OwnerShell({
             " ",
           )}
         >
-          <Home className="h-5 w-5" />
+          <LayoutDashboard className="h-5 w-5" />
 
           <span className="text-[10px] font-medium">
-            Home
+            Dashboard
           </span>
         </Link>
 
@@ -534,12 +533,12 @@ export function OwnerShell({
           <ClipboardCheck className="h-5 w-5" />
 
           <span className="text-[10px] font-medium">
-            Hari Ini
+            Operasional
           </span>
         </Link>
 
         <Link
-          href="/sales?tab=order"
+          href="/sales"
           aria-current={
             salesActive
               ? "page"
@@ -557,7 +556,7 @@ export function OwnerShell({
           <ShoppingCart className="h-5 w-5" />
 
           <span className="text-[10px] font-medium">
-            Order
+            Penjualan
           </span>
         </Link>
 
