@@ -16,6 +16,7 @@ import type {
   FlockInput,
   KandangInput,
 } from "@/features/farm/types/farm";
+import { getJakartaDateString } from "@/features/farm/utils/flock-age";
 
 const FARM_PATH = "/farm";
 
@@ -23,16 +24,26 @@ function ruleError(message: string): Error {
   return new Error(`FARM_RULE:${message}`);
 }
 
-function getDatabaseErrorCode(
+function getDatabaseErrorInfo(
   error: unknown,
-): string | null {
+): { code?: string; target?: string[] } | null {
   if (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
     typeof error.code === "string"
   ) {
-    return error.code;
+    let target: string[] | undefined;
+    if (
+      "meta" in error &&
+      typeof error.meta === "object" &&
+      error.meta !== null &&
+      "target" in error.meta &&
+      Array.isArray(error.meta.target)
+    ) {
+      target = error.meta.target as string[];
+    }
+    return { code: error.code, target };
   }
 
   return null;
@@ -78,10 +89,8 @@ function actionError(
     };
   }
 
-  if (
-    getDatabaseErrorCode(error) ===
-    "P2002"
-  ) {
+  const dbInfo = getDatabaseErrorInfo(error);
+  if (dbInfo?.code === "P2002") {
     return {
       success: false,
       error: duplicateMessage,
@@ -279,12 +288,16 @@ export async function setKandangActive(
           !isActive &&
           kandang.activeFlockId
         ) {
+          const today = new Date(
+            `${getJakartaDateString()}T00:00:00.000Z`,
+          );
+
           await tx.flock.update({
             where: {
               id: kandang.activeFlockId,
             },
             data: {
-              endedAt: new Date(),
+              endedAt: today,
             },
           });
         }
@@ -368,8 +381,8 @@ export async function startFlock(
 
         if (
           kandang.activeFlock &&
-          data.startDate <
-            kandang.activeFlock.startDate
+          data.startDate.getTime() <
+            kandang.activeFlock.startDate.getTime()
         ) {
           throw ruleError(
             "Tanggal flock baru tidak boleh lebih awal dari flock aktif.",
@@ -460,7 +473,7 @@ export async function updateFlock(
 
     if (
       flock.endedAt &&
-      data.startDate > flock.endedAt
+      data.startDate.getTime() > flock.endedAt.getTime()
     ) {
       throw ruleError(
         "Tanggal mulai tidak boleh melewati tanggal berakhir flock.",

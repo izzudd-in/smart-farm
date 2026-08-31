@@ -5,8 +5,10 @@ import {
   useTransition,
 } from "react";
 import {
+  AlertCircle,
   Bird,
   CalendarDays,
+  CheckCircle2,
   Pencil,
   Plus,
   Power,
@@ -14,6 +16,7 @@ import {
   UserRound,
   Users,
   Warehouse,
+  X,
 } from "lucide-react";
 
 import { setKandangActive } from "@/features/farm/actions/farm";
@@ -43,6 +46,11 @@ type FlockDialogState =
       kandang: KandangSummary;
     }
   | null;
+
+type FeedbackState = {
+  type: "success" | "error";
+  message: string;
+} | null;
 
 const numberFormatter =
   new Intl.NumberFormat("id-ID");
@@ -84,8 +92,8 @@ export function FarmManagement({
     setConfirmDeactivateKandang,
   ] = useState<KandangSummary | null>(null);
 
-  const [actionError, setActionError] =
-    useState("");
+  const [feedback, setFeedback] =
+    useState<FeedbackState>(null);
 
   const [pendingKandangId, setPendingKandangId] =
     useState<string | null>(null);
@@ -96,7 +104,7 @@ export function FarmManagement({
   function toggleKandang(
     kandang: KandangSummary,
   ) {
-    setActionError("");
+    setFeedback(null);
     setPendingKandangId(kandang.id);
 
     startTransition(async () => {
@@ -109,7 +117,15 @@ export function FarmManagement({
       setPendingKandangId(null);
 
       if (!result.success) {
-        setActionError(result.error);
+        setFeedback({
+          type: "error",
+          message: result.error,
+        });
+      } else {
+        setFeedback({
+          type: "success",
+          message: result.message,
+        });
       }
     });
   }
@@ -131,21 +147,47 @@ export function FarmManagement({
 
           <Button
             className="w-full sm:w-auto"
-            onClick={() =>
-              setEditingKandang("create")
-            }
+            onClick={() => {
+              setFeedback(null);
+              setEditingKandang("create");
+            }}
           >
             <Plus className="h-4 w-4" />
             Tambah Kandang
           </Button>
         </div>
 
-        {actionError ? (
+        {feedback ? (
           <div
-            role="alert"
-            className="rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-sm text-danger"
+            role={
+              feedback.type === "error"
+                ? "alert"
+                : "status"
+            }
+            className={[
+              "flex items-center justify-between rounded-[10px] border p-4 text-sm",
+              feedback.type === "error"
+                ? "border-[#FECACA] bg-danger-soft text-danger"
+                : "border-[#BBF7D0] bg-[#ECFDF5] text-[#065F46]",
+            ].join(" ")}
           >
-            {actionError}
+            <div className="flex items-center gap-2.5">
+              {feedback.type === "error" ? (
+                <AlertCircle className="h-4 w-4 shrink-0 text-danger" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[#10B981]" />
+              )}
+              <span>{feedback.message}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              className="p-1 text-muted hover:text-foreground"
+              aria-label="Tutup notifikasi"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         ) : null}
 
@@ -438,6 +480,12 @@ export function FarmManagement({
               : editingKandang
           }
           operators={data.operators}
+          onSuccess={(message) => {
+            setFeedback({
+              type: "success",
+              message,
+            });
+          }}
           onClose={() =>
             setEditingKandang(null)
           }
@@ -453,6 +501,12 @@ export function FarmManagement({
                   .activeFlock ?? undefined
               : undefined
           }
+          onSuccess={(message) => {
+            setFeedback({
+              type: "success",
+              message,
+            });
+          }}
           onClose={() =>
             setFlockDialog(null)
           }

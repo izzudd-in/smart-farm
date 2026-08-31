@@ -65,11 +65,28 @@ function parseStartDate(
 export function parseKandangInput(
   input: KandangInput,
 ) {
-  const code = requiredText(
-    input.code,
-    "Kode kandang",
-    20,
-  ).toUpperCase();
+  if (!input || typeof input !== "object") {
+    throw new FarmValidationError("Data input kandang tidak valid.");
+  }
+
+  const rawCode = typeof input.code === "string" ? input.code : "";
+  const trimmedCode = rawCode.trim();
+
+  if (!trimmedCode) {
+    throw new FarmValidationError("Kode kandang wajib diisi.");
+  }
+
+  if (trimmedCode.length > 20) {
+    throw new FarmValidationError("Kode kandang maksimal 20 karakter.");
+  }
+
+  if (/\s/.test(trimmedCode)) {
+    throw new FarmValidationError(
+      "Kode kandang tidak boleh mengandung spasi.",
+    );
+  }
+
+  const code = trimmedCode.toUpperCase();
 
   if (!/^[A-Z0-9_-]+$/.test(code)) {
     throw new FarmValidationError(
@@ -77,23 +94,48 @@ export function parseKandangInput(
     );
   }
 
-  return {
-    code,
-    name: requiredText(
-      input.name,
-      "Nama kandang",
-    ),
-    operatorIds: Array.from(
-      new Set(
-        input.operatorIds.filter(Boolean),
+  const name = requiredText(
+    input.name,
+    "Nama kandang",
+    100,
+  );
+
+  const rawOperators = Array.isArray(input.operatorIds)
+    ? input.operatorIds
+    : [];
+
+  const operatorIds = Array.from(
+    new Set(
+      rawOperators.filter(
+        (id): id is string => typeof id === "string" && Boolean(id.trim()),
       ),
     ),
+  );
+
+  return {
+    code,
+    name,
+    operatorIds,
   };
 }
 
 export function parseFlockInput(
   input: FlockInput,
 ) {
+  if (!input || typeof input !== "object") {
+    throw new FarmValidationError("Data input flock tidak valid.");
+  }
+
+  const rawName = typeof input.name === "string" ? input.name : "";
+  const name = requiredText(
+    rawName,
+    "Nama flock",
+    100,
+  );
+
+  const rawStartDate = typeof input.startDate === "string" ? input.startDate : "";
+  const startDate = parseStartDate(rawStartDate);
+
   const initialPopulation = Number(
     input.initialPopulation,
   );
@@ -108,13 +150,8 @@ export function parseFlockInput(
   }
 
   return {
-    name: requiredText(
-      input.name,
-      "Nama flock",
-    ),
-    startDate: parseStartDate(
-      input.startDate,
-    ),
+    name,
+    startDate,
     initialPopulation,
   };
 }

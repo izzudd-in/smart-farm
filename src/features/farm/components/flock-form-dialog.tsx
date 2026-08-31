@@ -24,12 +24,14 @@ type FlockFormDialogProps = {
   kandang: KandangSummary;
   flock?: FlockSummary;
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 };
 
 export function FlockFormDialog({
   kandang,
   flock,
   onClose,
+  onSuccess,
 }: FlockFormDialogProps) {
   const isEditing = Boolean(flock);
 
@@ -67,20 +69,55 @@ export function FlockFormDialog({
 
     setError("");
 
-    if (!isEditing && kandang.activeFlock && !confirmEndActiveFlock) {
-      setError(
-        "Silakan centang konfirmasi pengakhiran flock aktif terlebih dahulu.",
-      );
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Nama flock wajib diisi.");
+      return;
+    }
+
+    if (trimmedName.length > 100) {
+      setError("Nama flock maksimal 100 karakter.");
+      return;
+    }
+
+    if (!startDate) {
+      setError("Tanggal mulai tidak valid.");
+      return;
+    }
+
+    const todayStr = getJakartaDateString();
+    if (startDate > todayStr) {
+      setError("Tanggal mulai tidak boleh di masa depan.");
+      return;
+    }
+
+    if (!isEditing && kandang.activeFlock) {
+      if (startDate < kandang.activeFlock.startDate) {
+        setError(
+          "Tanggal flock baru tidak boleh lebih awal dari flock aktif.",
+        );
+        return;
+      }
+
+      if (!confirmEndActiveFlock) {
+        setError(
+          "Silakan centang konfirmasi pengakhiran flock aktif terlebih dahulu.",
+        );
+        return;
+      }
+    }
+
+    const populationNumber = Number(initialPopulation);
+    if (!Number.isInteger(populationNumber) || populationNumber <= 0) {
+      setError("Populasi awal harus berupa angka bulat lebih dari 0.");
       return;
     }
 
     startTransition(async () => {
       const input = {
-        name,
+        name: trimmedName,
         startDate,
-        initialPopulation: Number(
-          initialPopulation,
-        ),
+        initialPopulation: populationNumber,
       };
 
       const result =
@@ -99,6 +136,7 @@ export function FlockFormDialog({
         return;
       }
 
+      onSuccess?.(result.message);
       onClose();
     });
   }
@@ -136,16 +174,21 @@ export function FlockFormDialog({
               </p>
             </div>
 
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-xs text-danger">
+            <label
+              htmlFor="confirm-end-active-flock"
+              className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-xs text-danger"
+            >
               <input
+                id="confirm-end-active-flock"
                 type="checkbox"
                 checked={confirmEndActiveFlock}
                 disabled={isPending}
-                onChange={(event) =>
+                onChange={(event) => {
                   setConfirmEndActiveFlock(
                     event.target.checked,
-                  )
-                }
+                  );
+                  if (error) setError("");
+                }}
                 className="mt-0.5 h-4 w-4 shrink-0 accent-danger"
               />
               <span>
@@ -157,28 +200,35 @@ export function FlockFormDialog({
         ) : null}
 
         <Input
+          id="flock-name"
           label="Nama / Batch Flock"
           value={name}
           placeholder="Flock A 2026"
+          maxLength={100}
           disabled={isPending}
-          onChange={(event) =>
-            setName(event.target.value)
-          }
+          onChange={(event) => {
+            setName(event.target.value);
+            if (error) setError("");
+          }}
         />
 
         <Input
+          id="flock-start-date"
           type="date"
           label="Tanggal Mulai"
           value={startDate}
+          max={getJakartaDateString()}
           disabled={isPending}
-          onChange={(event) =>
+          onChange={(event) => {
             setStartDate(
               event.target.value,
-            )
-          }
+            );
+            if (error) setError("");
+          }}
         />
 
         <Input
+          id="flock-initial-population"
           type="number"
           label="Populasi Awal"
           min={1}
@@ -187,11 +237,12 @@ export function FlockFormDialog({
           value={initialPopulation}
           placeholder="5000"
           disabled={isPending}
-          onChange={(event) =>
+          onChange={(event) => {
             setInitialPopulation(
               event.target.value,
-            )
-          }
+            );
+            if (error) setError("");
+          }}
         />
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">

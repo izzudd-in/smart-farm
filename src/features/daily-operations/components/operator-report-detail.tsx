@@ -31,15 +31,16 @@ type OperatorReportDetailProps = {
   report: DailyReportView;
 };
 
-function displayNumber(
+function formatAmount(
   value:
     | number
     | null,
+  suffix: string,
 ): string {
   return value ===
     null
     ? "—"
-    : new Intl.NumberFormat(
+    : `${new Intl.NumberFormat(
         "id-ID",
         {
           maximumFractionDigits:
@@ -47,7 +48,7 @@ function displayNumber(
         },
       ).format(
         value,
-      );
+      )} ${suffix}`;
 }
 
 function Metric({
@@ -125,22 +126,25 @@ export function OperatorReportDetail({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Metric
               label="Telur Jual"
-              value={displayNumber(
+              value={formatAmount(
                 report.saleableEgg,
+                "kg",
               )}
             />
 
             <Metric
               label="Telur Rusak"
-              value={displayNumber(
+              value={formatAmount(
                 report.damagedEgg,
+                "kg",
               )}
             />
 
             <Metric
               label="Ayam Mati"
-              value={displayNumber(
+              value={formatAmount(
                 report.mortality,
+                "ekor",
               )}
             />
           </div>
@@ -164,12 +168,10 @@ export function OperatorReportDetail({
                   </p>
 
                   <p className="mt-1 text-sm font-medium">
-                    {report.feedUsed ===
-                    null
-                      ? "—"
-                      : `${displayNumber(
-                          report.feedUsed,
-                        )} kg`}
+                    {formatAmount(
+                      report.feedUsed,
+                      "kg",
+                    )}
                   </p>
                 </div>
 

@@ -296,6 +296,38 @@ export function DailyReportForm({
     setError("");
     setSuccess("");
 
+    if (saleableEgg.trim() !== "") {
+      const num = Number(saleableEgg.trim().replace(",", "."));
+      if (!Number.isFinite(num) || num < 0) {
+        setError("Telur Jual harus berupa angka 0 atau lebih.");
+        return;
+      }
+    }
+
+    if (damagedEgg.trim() !== "") {
+      const num = Number(damagedEgg.trim().replace(",", "."));
+      if (!Number.isFinite(num) || num < 0) {
+        setError("Telur Rusak harus berupa angka 0 atau lebih.");
+        return;
+      }
+    }
+
+    if (feedUsed.trim() !== "") {
+      const num = Number(feedUsed.trim().replace(",", "."));
+      if (!Number.isFinite(num) || num < 0) {
+        setError("Pakan Digunakan harus berupa angka 0 atau lebih.");
+        return;
+      }
+    }
+
+    if (mortality.trim() !== "") {
+      const num = Number(mortality.trim());
+      if (!Number.isInteger(num) || num < 0) {
+        setError("Ayam Mati harus berupa angka bulat 0 atau lebih.");
+        return;
+      }
+    }
+
     const input = {
       kandangId:
         kandang.id,
@@ -420,11 +452,12 @@ export function DailyReportForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
+              id="saleable-egg"
               type="number"
               inputMode="decimal"
               min={0}
               step="any"
-              label="Telur Jual"
+              label="Telur Jual (kg)"
               placeholder="0"
               value={
                 saleableEgg
@@ -434,19 +467,21 @@ export function DailyReportForm({
               }
               onChange={(
                 event,
-              ) =>
+              ) => {
                 setSaleableEgg(
                   event.target.value,
-                )
-              }
+                );
+                if (error) setError("");
+              }}
             />
 
             <Input
+              id="damaged-egg"
               type="number"
               inputMode="decimal"
               min={0}
               step="any"
-              label="Telur Rusak"
+              label="Telur Rusak (kg)"
               placeholder="0"
               value={
                 damagedEgg
@@ -456,19 +491,21 @@ export function DailyReportForm({
               }
               onChange={(
                 event,
-              ) =>
+              ) => {
                 setDamagedEgg(
                   event.target.value,
-                )
-              }
+                );
+                if (error) setError("");
+              }}
             />
 
             <Input
+              id="feed-used"
               type="number"
               inputMode="decimal"
               min={0}
               step="any"
-              label="Pakan Digunakan"
+              label="Pakan Digunakan (kg)"
               placeholder="0"
               value={
                 feedUsed
@@ -478,19 +515,21 @@ export function DailyReportForm({
               }
               onChange={(
                 event,
-              ) =>
+              ) => {
                 setFeedUsed(
                   event.target.value,
-                )
-              }
+                );
+                if (error) setError("");
+              }}
             />
 
             <Input
+              id="mortality"
               type="number"
               inputMode="numeric"
               min={0}
               step={1}
-              label="Ayam Mati"
+              label="Ayam Mati (ekor)"
               placeholder="0"
               value={
                 mortality
@@ -500,11 +539,12 @@ export function DailyReportForm({
               }
               onChange={(
                 event,
-              ) =>
+              ) => {
                 setMortality(
                   event.target.value,
-                )
-              }
+                );
+                if (error) setError("");
+              }}
             />
           </div>
 

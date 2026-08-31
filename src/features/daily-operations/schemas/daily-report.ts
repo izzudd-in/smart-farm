@@ -21,11 +21,22 @@ import {
 export class DailyReportValidationError extends Error {}
 
 function parseOptionalNumber(
-  value: string,
+  value: unknown,
   label: string,
 ): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const rawStr =
+    typeof value === "number"
+      ? String(value)
+      : typeof value === "string"
+        ? value
+        : "";
+
   const normalized =
-    value
+    rawStr
       .trim()
       .replace(
         ",",
@@ -56,11 +67,22 @@ function parseOptionalNumber(
 }
 
 function parseOptionalInteger(
-  value: string,
+  value: unknown,
   label: string,
 ): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const rawStr =
+    typeof value === "number"
+      ? String(value)
+      : typeof value === "string"
+        ? value
+        : "";
+
   const normalized =
-    value.trim();
+    rawStr.trim();
 
   if (!normalized) {
     return null;
@@ -235,8 +257,16 @@ export function parseDailyReportInput(
   input: DailyReportFormInput,
   requireComplete: boolean,
 ) {
+  if (!input || typeof input !== "object") {
+    throw new DailyReportValidationError("Data input laporan tidak valid.");
+  }
+
+  const rawKandangId =
+    typeof input.kandangId === "string"
+      ? input.kandangId
+      : "";
   const kandangId =
-    input.kandangId.trim();
+    rawKandangId.trim();
 
   if (
     !kandangId
@@ -284,8 +314,12 @@ export function parseDailyReportInput(
     );
   }
 
+  const rawNote =
+    typeof input.incidentNote === "string"
+      ? input.incidentNote
+      : "";
   const incidentNote =
-    input.incidentNote.trim();
+    rawNote.trim();
 
   if (
     incidentNote.length >
@@ -298,8 +332,12 @@ export function parseDailyReportInput(
 
   const incidental =
     parseIncidentalExpense(
-      input.incidentalExpense,
-      input.incidentalExpenseCategory,
+      typeof input.incidentalExpense === "string"
+        ? input.incidentalExpense
+        : "",
+      typeof input.incidentalExpenseCategory === "string"
+        ? input.incidentalExpenseCategory
+        : "",
     );
 
   const hasAnyValue =

@@ -191,7 +191,7 @@ async function saveReport(
 
           if (!kandang) {
             throw ruleError(
-              "Kandang tidak ditemukan, tidak aktif, atau tidak di-assign kepada Anda.",
+              "Kandang tidak ditemukan, tidak aktif, atau tidak di-assign.",
             );
           }
 
@@ -678,7 +678,7 @@ async function saveReport(
             !snapshot
           ) {
             throw ruleError(
-              "Pakan Digunakan sudah diisi, tetapi belum ada formula pakan aktif. Hubungi Owner untuk mengaktifkan formula.",
+              "Belum ada formula pakan aktif. Hubungi Owner untuk mengaktifkan formula.",
             );
           }
 

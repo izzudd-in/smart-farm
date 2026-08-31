@@ -23,12 +23,14 @@ type KandangFormDialogProps = {
   kandang?: KandangSummary;
   operators: OperatorOption[];
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 };
 
 export function KandangFormDialog({
   kandang,
   operators,
   onClose,
+  onSuccess,
 }: KandangFormDialogProps) {
   const isEditing = Boolean(kandang);
 
@@ -72,12 +74,46 @@ export function KandangFormDialog({
 
     setError("");
 
+    const trimmedCode = code.trim().toUpperCase();
+    const trimmedName = name.trim();
+
+    if (!trimmedCode) {
+      setError("Kode kandang wajib diisi.");
+      return;
+    }
+
+    if (trimmedCode.length > 20) {
+      setError("Kode kandang maksimal 20 karakter.");
+      return;
+    }
+
+    if (/\s/.test(trimmedCode)) {
+      setError("Kode kandang tidak boleh mengandung spasi.");
+      return;
+    }
+
+    if (!/^[A-Z0-9_-]+$/.test(trimmedCode)) {
+      setError(
+        "Kode kandang hanya boleh berisi huruf, angka, tanda - atau _.",
+      );
+      return;
+    }
+
+    if (!trimmedName) {
+      setError("Nama kandang wajib diisi.");
+      return;
+    }
+
+    if (trimmedName.length > 100) {
+      setError("Nama kandang maksimal 100 karakter.");
+      return;
+    }
+
     startTransition(async () => {
       const input = {
-        code,
-        name,
-        operatorIds:
-          selectedOperatorIds,
+        code: trimmedCode,
+        name: trimmedName,
+        operatorIds: selectedOperatorIds,
       };
 
       const result =
@@ -93,6 +129,7 @@ export function KandangFormDialog({
         return;
       }
 
+      onSuccess?.(result.message);
       onClose();
     });
   }
@@ -122,24 +159,29 @@ export function KandangFormDialog({
 
         <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
           <Input
+            id="kandang-code"
             label="Kode"
             value={code}
             placeholder="A"
             maxLength={20}
             disabled={isPending}
-            onChange={(event) =>
-              setCode(event.target.value)
-            }
+            onChange={(event) => {
+              setCode(event.target.value);
+              if (error) setError("");
+            }}
           />
 
           <Input
+            id="kandang-name"
             label="Nama Kandang"
             value={name}
             placeholder="Kandang A"
+            maxLength={100}
             disabled={isPending}
-            onChange={(event) =>
-              setName(event.target.value)
-            }
+            onChange={(event) => {
+              setName(event.target.value);
+              if (error) setError("");
+            }}
           />
         </div>
 
@@ -157,9 +199,11 @@ export function KandangFormDialog({
               operators.map((operator) => (
                 <label
                   key={operator.id}
+                  htmlFor={`operator-${operator.id}`}
                   className="flex cursor-pointer items-center gap-3 rounded-[10px] border border-border p-3 hover:bg-[#F9FAFB]"
                 >
                   <input
+                    id={`operator-${operator.id}`}
                     type="checkbox"
                     checked={selectedOperatorIds.includes(
                       operator.id,
