@@ -1,6 +1,6 @@
 import { UserRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
-import { requireRole } from "@/server/auth/guards";
+import { requirePageRole } from "@/server/auth/guards";
 
 import { dailyReportViewSelect } from "@/features/daily-operations/queries/report-fields";
 import type {
@@ -19,7 +19,7 @@ import {
 } from "@/features/feed/schemas/feed";
 
 export async function getOperatorTodayData(): Promise<OperatorTodayData> {
-  const user = await requireRole(
+  const user = await requirePageRole(
     UserRole.OPERATOR,
   );
 

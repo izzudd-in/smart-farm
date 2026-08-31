@@ -1,4 +1,4 @@
-import { getSessionPayload } from "@/lib/auth/session";
+import { clearSession, getSessionPayload } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 import type { AuthUser } from "@/features/auth/types/auth";
@@ -25,6 +25,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   });
 
   if (!user || !user.isActive) {
+    try {
+      await clearSession();
+    } catch {
+      // Non-blocking in read-only headers context
+    }
     return null;
   }
 
@@ -33,6 +38,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     session.iat &&
     Math.floor(user.updatedAt.getTime() / 1000) > session.iat + 1
   ) {
+    try {
+      await clearSession();
+    } catch {
+      // Non-blocking in read-only headers context
+    }
     return null;
   }
 

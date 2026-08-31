@@ -95,15 +95,8 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // 5. Auth / Login page handling
+  // 5. Auth / Login page handling: let LoginPage handle database-backed check to avoid redirect loops
   if (pathname === "/login") {
-    if (session) {
-      const homeUrl =
-        session.role === UserRole.OWNER ? "/dashboard" : "/operator/today";
-      return withSlidingSession(
-        NextResponse.redirect(new URL(homeUrl, request.url)),
-      );
-    }
     return NextResponse.next();
   }
 
