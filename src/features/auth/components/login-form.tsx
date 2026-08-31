@@ -182,6 +182,10 @@ export function LoginForm() {
               "Masuk"
             )}
           </Button>
+
+          <p className="text-center text-xs text-muted">
+            Kendala akses atau lupa kredensial? Hubungi Administrator Farm.
+          </p>
         </form>
       </Card>
     </main>
