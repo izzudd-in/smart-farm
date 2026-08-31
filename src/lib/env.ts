@@ -123,7 +123,8 @@ export const env = Object.freeze({
     appUrl.origin,
 
   IS_HTTPS:
-    appUrl.protocol === "https:",
+    appUrl.protocol === "https:" ||
+    nodeEnv === "production",
 
   NODE_ENV:
     nodeEnv,
