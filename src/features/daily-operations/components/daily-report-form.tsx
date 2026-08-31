@@ -527,6 +527,8 @@ export function DailyReportForm({
                 min={0}
                 step="any"
                 label="Telur Jual (kg)"
+                tooltip="Total berat telur utuh dan berkualitas baik yang siap untuk dijual hari ini."
+                helperText="Satuan kilogram (kg). Contoh: 45.5"
                 placeholder="0"
                 value={
                   saleableEgg
@@ -551,6 +553,8 @@ export function DailyReportForm({
                 min={0}
                 step="any"
                 label="Telur Rusak (kg)"
+                tooltip="Total berat telur retak, pecah, atau tidak layak jual yang terkumpul hari ini."
+                helperText="Satuan kilogram (kg). Contoh: 1.2"
                 placeholder="0"
                 value={
                   damagedEgg
@@ -576,6 +580,8 @@ export function DailyReportForm({
                   min={0}
                   step={1}
                   label="Ayam Mati (ekor)"
+                  tooltip="Jumlah total ekor ayam yang mati pada kandang ini hari ini."
+                  helperText="Satuan ekor (bilangan bulat). Contoh: 0 atau 2"
                   placeholder="0"
                   value={
                     mortality
@@ -624,6 +630,8 @@ export function DailyReportForm({
               min={0}
               step="any"
               label="Pakan Digunakan (kg)"
+              tooltip="Total berat pakan yang diberikan kepada ayam di kandang ini hari ini."
+              helperText="Satuan kilogram (kg). Wajib memiliki formula pakan aktif."
               placeholder="0"
               value={
                 feedUsed
@@ -894,11 +902,14 @@ export function DailyReportForm({
                 </div>
 
                 <Input
+                  id={`incidental-expense-${kandang.id}`}
                   type="number"
                   inputMode="decimal"
                   min="0.01"
                   step="0.01"
-                  label="Nominal"
+                  label="Nominal (IDR)"
+                  tooltip="Nominal pengeluaran insidental atau tak terduga untuk kandang ini hari ini."
+                  helperText="Mata uang Rupiah (IDR). Contoh: 150000"
                   placeholder="150000"
                   value={
                     incidentalExpense

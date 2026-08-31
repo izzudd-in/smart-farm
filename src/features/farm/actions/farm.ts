@@ -505,3 +505,87 @@ export async function updateFlock(
     );
   }
 }
+
+export async function endFlock(
+  flockId: string,
+): Promise<FarmActionResult> {
+  try {
+    await requireRole(UserRole.OWNER);
+
+    const flock = await prisma.flock.findFirst({
+      where: {
+        id: flockId,
+        kandang: {
+          farm: {
+            scope: "PRIMARY",
+          },
+        },
+      },
+      select: {
+        id: true,
+        kandangId: true,
+        name: true,
+        startDate: true,
+        endedAt: true,
+        activeForKandang: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!flock) {
+      throw ruleError("Flock tidak ditemukan.");
+    }
+
+    if (flock.endedAt) {
+      throw ruleError("Flock sudah dalam status nonaktif / berakhir.");
+    }
+
+    const todayStr = getJakartaDateString();
+    const todayDate = new Date(`${todayStr}T00:00:00.000Z`);
+
+    if (todayDate.getTime() < flock.startDate.getTime()) {
+      throw ruleError(
+        "Tanggal pengakhiran flock tidak boleh lebih awal dari tanggal mulai.",
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.flock.update({
+        where: {
+          id: flock.id,
+        },
+        data: {
+          endedAt: todayDate,
+        },
+      });
+
+      if (flock.activeForKandang) {
+        await tx.kandang.update({
+          where: {
+            id: flock.kandangId,
+          },
+          data: {
+            activeFlock: {
+              disconnect: true,
+            },
+          },
+        });
+      }
+    });
+
+    revalidatePath(FARM_PATH);
+
+    return {
+      success: true,
+      message: `Flock ${flock.name} berhasil diakhiri.`,
+    };
+  } catch (error) {
+    return actionError(
+      error,
+      "Gagal mengakhiri flock.",
+    );
+  }
+}

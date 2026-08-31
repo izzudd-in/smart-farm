@@ -19,9 +19,10 @@ import {
   X,
 } from "lucide-react";
 
-import { setKandangActive } from "@/features/farm/actions/farm";
+import { endFlock, setKandangActive } from "@/features/farm/actions/farm";
 import type {
   FarmPageData,
+  FlockSummary,
   KandangSummary,
 } from "@/features/farm/types/farm";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +93,14 @@ export function FarmManagement({
     setConfirmDeactivateKandang,
   ] = useState<KandangSummary | null>(null);
 
+  const [
+    confirmEndFlock,
+    setConfirmEndFlock,
+  ] = useState<{
+    kandang: KandangSummary;
+    flock: FlockSummary;
+  } | null>(null);
+
   const [feedback, setFeedback] =
     useState<FeedbackState>(null);
 
@@ -133,6 +142,26 @@ export function FarmManagement({
 
       setPendingKandangId(null);
 
+      if (!result.success) {
+        setFeedback({
+          type: "error",
+          message: result.error,
+        });
+      } else {
+        setFeedback({
+          type: "success",
+          message: result.message,
+        });
+      }
+    });
+  }
+
+  function handleEndFlock(
+    flockId: string,
+  ) {
+    setFeedback(null);
+    startTransition(async () => {
+      const result = await endFlock(flockId);
       if (!result.success) {
         setFeedback({
           type: "error",
@@ -531,19 +560,35 @@ export function FarmManagement({
                       ) : null}
 
                       {kandang.activeFlock ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setFlockDialog({
-                              mode: "edit",
-                              kandang,
-                            })
-                          }
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit Flock
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setFlockDialog({
+                                mode: "edit",
+                                kandang,
+                              })
+                            }
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit Flock
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-danger hover:bg-danger-soft hover:text-danger"
+                            onClick={() =>
+                              setConfirmEndFlock({
+                                kandang,
+                                flock: kandang.activeFlock!,
+                              })
+                            }
+                          >
+                            Akhiri Flock
+                          </Button>
+                        </>
                       ) : null}
 
                       <Button
@@ -626,6 +671,43 @@ export function FarmManagement({
           }}
           onClose={() =>
             setFlockDialog(null)
+          }
+        />
+      ) : null}
+
+      {confirmEndFlock ? (
+        <ConfirmDialog
+          title="Konfirmasi Pengakhiran Flock"
+          confirmText="Ya, Akhiri Flock"
+          cancelText="Batal"
+          variant="destructive"
+          isLoading={isPending}
+          onConfirm={() => {
+            const target = confirmEndFlock;
+            setConfirmEndFlock(null);
+            handleEndFlock(target.flock.id);
+          }}
+          onClose={() => setConfirmEndFlock(null)}
+          description={
+            <div className="space-y-3">
+              <p className="text-foreground font-medium">
+                Apakah Anda yakin ingin mengakhiri masa aktif flock{" "}
+                <strong>{confirmEndFlock.flock.name}</strong> pada kandang{" "}
+                <strong>
+                  {confirmEndFlock.kandang.name} ({confirmEndFlock.kandang.code})
+                </strong>
+                ?
+              </p>
+
+              <div className="rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-xs text-danger leading-relaxed">
+                <p className="font-semibold">⚠️ Konsekuensi Pengakhiran Flock:</p>
+                <ul className="mt-1 list-disc pl-4 space-y-1">
+                  <li>Flock akan diakhiri secara permanen pada tanggal hari ini.</li>
+                  <li>Laporan harian yang belum diisi atau masih draft untuk flock ini tidak dapat diubah lagi setelah flock diakhiri.</li>
+                  <li>Tindakan ini tidak dapat dibatalkan (undo).</li>
+                </ul>
+              </div>
+            </div>
           }
         />
       ) : null}
