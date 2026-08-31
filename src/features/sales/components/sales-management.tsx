@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   Pencil,
   Plus,
   Power,
@@ -129,6 +130,15 @@ export function SalesManagement({
   ] = useState(false);
 
   const [
+    repeatOrderData,
+    setRepeatOrderData,
+  ] = useState<{
+    customerId: string;
+    quantityKg: string;
+    note?: string;
+  } | null>(null);
+
+  const [
     feedback,
     setFeedback,
   ] = useState<FeedbackState>(null);
@@ -215,6 +225,7 @@ export function SalesManagement({
   function handlePrimaryAction() {
     setFeedback(null);
     if (tab === "order") {
+      setRepeatOrderData(null);
       setOrderDialog(true);
       return;
     }
@@ -350,6 +361,21 @@ export function SalesManagement({
             customers={
               data.customers
             }
+            onRepeatOrder={(order) => {
+              setFeedback(null);
+              setRepeatOrderData({
+                customerId:
+                  order.customerId,
+                quantityKg:
+                  order.quantityKg,
+                note:
+                  order.note ??
+                  "",
+              });
+              setOrderDialog(
+                true,
+              );
+            }}
           />
         ) : tab ===
           "customer" ? (
@@ -528,6 +554,27 @@ export function SalesManagement({
                       </div>
 
                       <div className="flex shrink-0 flex-wrap gap-2">
+                        {customer.isActive ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setFeedback(null);
+                              setRepeatOrderData({
+                                customerId:
+                                  customer.id,
+                                quantityKg: "",
+                                note: "",
+                              });
+                              setOrderDialog(true);
+                            }}
+                            className="text-primary hover:text-primary-hover"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Order
+                          </Button>
+                        ) : null}
+
                         <Button
                           size="sm"
                           variant="secondary"
@@ -606,14 +653,20 @@ export function SalesManagement({
                   </p>
 
                   {data.activePrice ? (
-                    <p className="mt-1 text-xs text-muted">
-                      Berlaku sejak{" "}
-                      {formatDate(
-                        data
-                          .activePrice
-                          .effectiveAt,
-                      )}
-                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                      <span>
+                        Berlaku sejak: {formatDate(
+                          data.activePrice.effectiveAt,
+                        )}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 font-medium text-foreground">
+                        <Clock className="h-3.5 w-3.5 text-muted" />
+                        Terakhir diperbarui: {formatDateTime(
+                          data.activePrice.createdAt,
+                        )} WIB
+                      </span>
+                    </div>
                   ) : null}
                 </div>
 
@@ -702,17 +755,23 @@ export function SalesManagement({
           defaultOrderedAt={
             data.asOfDate
           }
+          initialData={
+            repeatOrderData
+          }
           onSuccess={(message) => {
             setFeedback({
               type: "success",
               message,
             });
           }}
-          onClose={() =>
+          onClose={() => {
             setOrderDialog(
               false,
-            )
-          }
+            );
+            setRepeatOrderData(
+              null,
+            );
+          }}
         />
       ) : null}
 

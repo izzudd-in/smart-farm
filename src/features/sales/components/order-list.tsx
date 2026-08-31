@@ -3,6 +3,7 @@ import {
   ChevronRight,
   FileText,
   Package,
+  RotateCcw,
   ShoppingCart,
 } from "lucide-react";
 
@@ -11,11 +12,13 @@ import { Card } from "@/components/ui/card";
 import type {
   CustomerView,
   OrderListData,
+  OrderView,
 } from "@/features/sales/types/sales";
 
 type OrderListProps = {
   data: OrderListData;
   customers: CustomerView[];
+  onRepeatOrder?: (order: OrderView) => void;
 };
 
 const currencyFormatter =
@@ -87,6 +90,7 @@ function SummaryCard({
 export function OrderList({
   data,
   customers,
+  onRepeatOrder,
 }: OrderListProps) {
   const {
     summary,
@@ -279,13 +283,27 @@ export function OrderList({
                         </p>
                       </div>
 
-                      <Link
-                        href={`/sales/orders/${order.id}`}
-                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-primary-soft px-2.5 text-xs font-medium text-primary hover:bg-primary/15 transition-colors"
-                      >
-                        Detail
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Link>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {onRepeatOrder ? (
+                          <button
+                            type="button"
+                            onClick={() => onRepeatOrder(order)}
+                            className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-white px-2 text-xs font-medium text-foreground hover:bg-[#F9FAFB] transition-colors"
+                            title="Ulangi order ini"
+                          >
+                            <RotateCcw className="h-3 w-3 text-muted" />
+                            Ulangi
+                          </button>
+                        ) : null}
+
+                        <Link
+                          href={`/sales/orders/${order.id}`}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg bg-primary-soft px-2.5 text-xs font-medium text-primary hover:bg-primary/15 transition-colors"
+                        >
+                          Detail
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </div>
 
                     {/* Order Metrics Grid */}
@@ -334,7 +352,7 @@ export function OrderList({
 
           {/* Desktop Table Layout (UX-016: Structured table for desktop) */}
           <Card className="hidden overflow-hidden md:block">
-            <div className="grid grid-cols-[minmax(0,1.2fr)_130px_110px_140px_160px_80px] items-center gap-4 border-b border-border bg-[#F9FAFB] px-4 py-3 text-xs font-semibold text-muted">
+            <div className="grid grid-cols-[minmax(0,1.2fr)_120px_100px_130px_150px_130px] items-center gap-4 border-b border-border bg-[#F9FAFB] px-4 py-3 text-xs font-semibold text-muted">
               <span>Customer</span>
               <span>Tanggal</span>
               <span className="text-right">Jumlah</span>
@@ -350,7 +368,7 @@ export function OrderList({
                   return (
                     <div
                       key={order.id}
-                      className="grid min-w-0 grid-cols-[minmax(0,1.2fr)_130px_110px_140px_160px_80px] items-center gap-4 px-4 py-3 hover:bg-[#F9FAFB]/60 transition-colors"
+                      className="grid min-w-0 grid-cols-[minmax(0,1.2fr)_120px_100px_130px_150px_130px] items-center gap-4 px-4 py-3 hover:bg-[#F9FAFB]/60 transition-colors"
                     >
                       <div className="min-w-0">
                         <p className="min-w-0 truncate text-sm font-medium text-foreground">
@@ -386,7 +404,19 @@ export function OrderList({
                         {currencyFormatter.format(Number(order.totalPrice))}
                       </p>
 
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {onRepeatOrder ? (
+                          <button
+                            type="button"
+                            onClick={() => onRepeatOrder(order)}
+                            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted hover:text-foreground hover:bg-[#F3F4F6] transition-colors"
+                            title="Ulangi order ini"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Ulangi
+                          </button>
+                        ) : null}
+
                         <Link
                           href={`/sales/orders/${order.id}`}
                           className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary-soft transition-colors"

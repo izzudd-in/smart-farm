@@ -2,11 +2,16 @@
 
 import {
   type FormEvent,
+  useEffect,
   useState,
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  RotateCcw,
+  Zap,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -26,9 +31,23 @@ import { SalesModal } from "./sales-modal";
 type OrderFormDialogProps = {
   customers: CustomerView[];
   defaultOrderedAt: string;
+  initialData?: {
+    customerId?: string;
+    quantityKg?: string;
+    note?: string;
+  } | null;
   onClose: () => void;
   onSuccess?: (message: string) => void;
 };
+
+const QUANTITY_PRESETS = [
+  "10",
+  "25",
+  "50",
+  "100",
+  "200",
+  "500",
+];
 
 const currencyFormatter =
   new Intl.NumberFormat(
@@ -51,6 +70,7 @@ function formatMoney(
 export function OrderFormDialog({
   customers,
   defaultOrderedAt,
+  initialData,
   onClose,
   onSuccess,
 }: OrderFormDialogProps) {
@@ -59,7 +79,9 @@ export function OrderFormDialog({
   const [
     customerId,
     setCustomerId,
-  ] = useState("");
+  ] = useState(
+    initialData?.customerId ?? "",
+  );
 
   const [
     orderedAt,
@@ -71,10 +93,14 @@ export function OrderFormDialog({
   const [
     quantityKg,
     setQuantityKg,
-  ] = useState("");
+  ] = useState(
+    initialData?.quantityKg ?? "",
+  );
 
   const [note, setNote] =
-    useState("");
+    useState(
+      initialData?.note ?? "",
+    );
 
   const [
     preview,
@@ -105,6 +131,38 @@ export function OrderFormDialog({
     isPending,
     startTransition,
   ] = useTransition();
+
+  // Load preview on initialData mount
+  useEffect(() => {
+    if (
+      initialData?.customerId &&
+      defaultOrderedAt
+    ) {
+      let isMounted = true;
+      getOrderPricingPreview({
+        customerId:
+          initialData.customerId,
+        orderedAt:
+          defaultOrderedAt,
+      })
+        .then((result) => {
+          if (!isMounted) return;
+          if (result.success) {
+            setPreview(result);
+          }
+        })
+        .catch(() => {
+          // ignore background initial fetch error
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [
+    initialData?.customerId,
+    defaultOrderedAt,
+  ]);
 
   async function fetchPreview(
     cId: string,
@@ -244,13 +302,38 @@ export function OrderFormDialog({
           </div>
         ) : null}
 
+        {/* Repeat Order Indicator Banner */}
+        {initialData ? (
+          <div className="flex items-center justify-between rounded-lg bg-primary-soft px-3 py-2 text-xs font-medium text-primary">
+            <span className="flex items-center gap-1.5">
+              <RotateCcw className="h-3.5 w-3.5" />
+              Mengulang order sebelumnya
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setCustomerId("");
+                setQuantityKg("");
+                setNote("");
+                setPreview(null);
+              }}
+              className="underline hover:text-primary-hover"
+            >
+              Reset
+            </button>
+          </div>
+        ) : null}
+
+        {/* Customer Field & Quick Selector Chips (HE-009) */}
         <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="order-customer"
-            className="text-[13px] font-medium text-foreground"
-          >
-            Customer
-          </label>
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="order-customer"
+              className="text-[13px] font-medium text-foreground"
+            >
+              Customer
+            </label>
+          </div>
 
           <select
             id="order-customer"
@@ -288,6 +371,39 @@ export function OrderFormDialog({
             )}
           </select>
 
+          {/* Quick Customer Chips */}
+          {customers.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="flex items-center gap-1 text-[11px] font-medium text-muted mr-0.5">
+                <Zap className="h-3 w-3 text-primary" />
+                Cepat:
+              </span>
+              {customers.slice(0, 4).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    setCustomerId(c.id);
+                    if (error) setError("");
+                    void fetchPreview(
+                      c.id,
+                      orderedAt,
+                    );
+                  }}
+                  className={[
+                    "rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                    customerId === c.id
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
+                  ].join(" ")}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           {customers.length === 0 ? (
             <p className="text-xs text-[#B45309]">
               Belum ada customer aktif.
@@ -310,23 +426,52 @@ export function OrderFormDialog({
           }}
         />
 
-        <Input
-          id="order-quantity"
-          type="number"
-          inputMode="decimal"
-          min="0.001"
-          step="0.001"
-          label="Jumlah Telur (kg)"
-          placeholder="100"
-          value={quantityKg}
-          disabled={isPending}
-          onChange={(event) => {
-            setQuantityKg(
-              event.target.value,
-            );
-            if (error) setError("");
-          }}
-        />
+        {/* Quantity Field & Quick Presets (HE-009) */}
+        <div className="space-y-1.5">
+          <Input
+            id="order-quantity"
+            type="number"
+            inputMode="decimal"
+            min="0.001"
+            step="0.001"
+            label="Jumlah Telur (kg)"
+            placeholder="Contoh: 50"
+            value={quantityKg}
+            disabled={isPending}
+            onChange={(event) => {
+              setQuantityKg(
+                event.target.value,
+              );
+              if (error) setError("");
+            }}
+          />
+
+          {/* Quick Quantity Presets */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span className="text-[11px] font-medium text-muted mr-0.5">
+              Preset:
+            </span>
+            {QUANTITY_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setQuantityKg(preset);
+                  if (error) setError("");
+                }}
+                className={[
+                  "rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                  quantityKg === preset
+                    ? "bg-primary text-white shadow-xs"
+                    : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
+                ].join(" ")}
+              >
+                {preset} kg
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <label
@@ -338,7 +483,7 @@ export function OrderFormDialog({
 
           <textarea
             id="order-note"
-            rows={3}
+            rows={2}
             maxLength={1000}
             value={note}
             disabled={isPending}
@@ -349,7 +494,7 @@ export function OrderFormDialog({
               );
               if (error) setError("");
             }}
-            className="w-full resize-y rounded-[10px] border border-border bg-white px-3 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
+            className="w-full resize-y rounded-[10px] border border-border bg-white px-3 py-2 text-sm text-foreground outline-none transition-all placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
           />
         </div>
 
