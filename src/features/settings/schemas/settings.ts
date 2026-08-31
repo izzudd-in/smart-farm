@@ -75,7 +75,7 @@ function parseEmail(
   return email;
 }
 
-function parseNewPassword(
+export function parseNewPassword(
   value: string,
 ): string {
   if (!value) {
