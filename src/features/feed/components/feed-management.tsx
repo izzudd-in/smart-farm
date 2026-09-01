@@ -330,6 +330,10 @@ export function FeedManagement({
               null,
             )
           }
+          onSuccess={(message) => {
+            setActionSuccess(message);
+            setActionError("");
+          }}
         />
       ) : null}
 
@@ -347,6 +351,10 @@ export function FeedManagement({
           onClose={() =>
             setFormulaDialog(null)
           }
+          onSuccess={(message) => {
+            setActionSuccess(message);
+            setActionError("");
+          }}
         />
       ) : null}
     </>

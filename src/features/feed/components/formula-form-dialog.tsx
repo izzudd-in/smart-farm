@@ -33,6 +33,7 @@ type FormulaFormDialogProps = {
   formula?: FeedFormulaView;
   ingredients: FeedIngredientView[];
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 };
 
 type CompositionRow = {
@@ -51,6 +52,7 @@ export function FormulaFormDialog({
   formula,
   ingredients,
   onClose,
+  onSuccess,
 }: FormulaFormDialogProps) {
   const router = useRouter();
 
@@ -191,6 +193,7 @@ export function FormulaFormDialog({
         return;
       }
 
+      onSuccess?.(result.message);
       router.refresh();
       onClose();
     });

@@ -215,12 +215,13 @@ export async function createFeedIngredient(
     });
 
     revalidatePath(FEED_PATH);
+    revalidatePath("/inventory");
 
     return {
       success: true,
 
       message:
-        "Bahan pakan berhasil ditambahkan.",
+        `Bahan pakan "${parsed.name}" berhasil ditambahkan.`,
     };
   } catch (error) {
     return handleActionError(
@@ -303,12 +304,13 @@ export async function updateFeedIngredient(
     });
 
     revalidatePath(FEED_PATH);
+    revalidatePath("/inventory");
 
     return {
       success: true,
 
       message:
-        "Bahan pakan berhasil diperbarui.",
+        `Bahan pakan "${parsed.name}" berhasil diperbarui.`,
     };
   } catch (error) {
     return handleActionError(

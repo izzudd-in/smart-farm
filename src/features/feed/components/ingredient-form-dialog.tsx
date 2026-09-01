@@ -20,11 +20,19 @@ import { FeedModal } from "./feed-modal";
 type IngredientFormDialogProps = {
   ingredient?: FeedIngredientView;
   onClose: () => void;
+  onSuccess?: (message: string) => void;
 };
+
+const currencyFormatter = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 2,
+});
 
 export function IngredientFormDialog({
   ingredient,
   onClose,
+  onSuccess,
 }: IngredientFormDialogProps) {
   const router = useRouter();
 
@@ -46,6 +54,13 @@ export function IngredientFormDialog({
   const [isPending, startTransition] =
     useTransition();
 
+  const parsedPriceNumber = (() => {
+    const cleaned = currentPricePerKg.trim().replace(",", ".");
+    if (!cleaned) return null;
+    const num = Number(cleaned);
+    return Number.isFinite(num) && num >= 0 ? num : null;
+  })();
+
   function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -53,9 +68,30 @@ export function IngredientFormDialog({
 
     setError("");
 
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Nama bahan pakan wajib diisi.");
+      return;
+    }
+
+    if (!currentPricePerKg.trim()) {
+      setError("Harga/kg wajib diisi.");
+      return;
+    }
+
+    if (parsedPriceNumber === null) {
+      setError("Harga/kg harus berupa angka 0 atau lebih dengan maksimal 2 desimal.");
+      return;
+    }
+
+    if (parsedPriceNumber > 100_000_000) {
+      setError("Harga/kg tidak boleh melebihi Rp 100.000.000.");
+      return;
+    }
+
     startTransition(async () => {
       const input = {
-        name,
+        name: trimmedName,
         currentPricePerKg,
       };
 
@@ -73,6 +109,7 @@ export function IngredientFormDialog({
         return;
       }
 
+      onSuccess?.(result.message);
       router.refresh();
       onClose();
     });
@@ -103,32 +140,43 @@ export function IngredientFormDialog({
 
         <Input
           label="Nama Bahan"
-          placeholder="Jagung"
+          placeholder="Jagung, Konsentrat, Dedak..."
           value={name}
           disabled={isPending}
-          onChange={(event) =>
-            setName(event.target.value)
-          }
+          autoFocus
+          onChange={(event) => {
+            setName(event.target.value);
+            if (error) setError("");
+          }}
         />
 
-        <Input
-          type="number"
-          inputMode="decimal"
-          min={0}
-          step="0.01"
-          label="Harga / kg"
-          placeholder="5500"
-          value={currentPricePerKg}
-          disabled={isPending}
-          onChange={(event) =>
-            setCurrentPricePerKg(
-              event.target.value,
-            )
-          }
-        />
+        <div>
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="0.01"
+            label="Harga / kg"
+            placeholder="Contoh: 5500"
+            value={currentPricePerKg}
+            disabled={isPending}
+            onChange={(event) => {
+              setCurrentPricePerKg(
+                event.target.value,
+              );
+              if (error) setError("");
+            }}
+          />
+
+          {parsedPriceNumber !== null ? (
+            <p className="mt-1 text-xs text-muted">
+              Format: <span className="font-medium text-foreground">{currencyFormatter.format(parsedPriceNumber)}</span> / kg
+            </p>
+          ) : null}
+        </div>
 
         <div className="rounded-[10px] bg-[#F9FAFB] p-3 text-xs text-muted">
-          Unit bahan pakan: kg
+          Unit bahan pakan: <strong>kg</strong> (Kilogram)
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">
@@ -147,7 +195,9 @@ export function IngredientFormDialog({
           >
             {isPending
               ? "Menyimpan..."
-              : "Simpan"}
+              : ingredient
+                ? "Simpan Perubahan"
+                : "Tambah Bahan"}
           </Button>
         </div>
       </form>

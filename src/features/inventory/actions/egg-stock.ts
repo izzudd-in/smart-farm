@@ -29,6 +29,14 @@ import type {
   InventoryActionResult,
 } from "@/features/inventory/types/inventory";
 
+import {
+  getCompleteDailyReportStockWhere,
+} from "@/features/inventory/queries/stock-source-filters";
+
+import {
+  quantityToMilliKg,
+} from "@/features/inventory/utils/quantity";
+
 const INVENTORY_PATH =
   "/inventory";
 
@@ -269,58 +277,170 @@ export async function createEggStockAdjustment(
         input,
       );
 
-    const farm =
-      await prisma.farm.findUnique({
-        where: {
-          scope:
-            "PRIMARY",
-        },
+    await prisma.$transaction(
+      async (tx) => {
+        const farm =
+          await tx.farm.findUnique({
+            where: {
+              scope:
+                "PRIMARY",
+            },
 
-        select: {
-          id:
-            true,
+            select: {
+              id:
+                true,
 
-          isActive:
-            true,
-        },
-      });
+              isActive:
+                true,
+            },
+          });
 
-    if (
-      !farm ||
-      !farm.isActive
-    ) {
-      throw ruleError(
-        "Farm utama tidak tersedia atau tidak aktif.",
-      );
-    }
+        if (
+          !farm ||
+          !farm.isActive
+        ) {
+          throw ruleError(
+            "Farm utama tidak tersedia atau tidak aktif.",
+          );
+        }
 
-    await prisma.eggStockAdjustment.create({
-      data: {
-        farmId:
-          farm.id,
+        if (parsed.type === "DECREASE") {
+          const [
+            production,
+            sales,
+            adjustments,
+          ] = await Promise.all([
+            tx.dailyReport.aggregate({
+              where:
+                getCompleteDailyReportStockWhere(
+                  parsed.occurredAt,
+                ),
+              _sum: {
+                saleableEgg:
+                  true,
+              },
+            }),
+            tx.order.aggregate({
+              where: {
+                orderedAt: {
+                  lte: parsed.occurredAt,
+                },
+                farmId: farm.id,
+              },
+              _sum: {
+                quantityKg:
+                  true,
+              },
+            }),
+            tx.eggStockAdjustment.groupBy({
+              by: ["type"],
+              where: {
+                occurredAt: {
+                  lte: parsed.occurredAt,
+                },
+                farmId: farm.id,
+              },
+              _sum: {
+                quantityKg:
+                  true,
+              },
+            }),
+          ]);
 
-        occurredAt:
-          parsed.occurredAt,
+          const productionMilliKg =
+            quantityToMilliKg(
+              production._sum
+                .saleableEgg ?? 0,
+            );
 
-        type:
-          parsed.type ===
-          "INCREASE"
-            ? EggStockAdjustmentType.INCREASE
-            : EggStockAdjustmentType.DECREASE,
+          const salesMilliKg =
+            quantityToMilliKg(
+              sales._sum
+                .quantityKg
+                ?.toString() ??
+                "0",
+            );
 
-        quantityKg:
-          parsed.quantityKg,
+          let openingMilliKg = BigInt(0);
+          let increaseMilliKg = BigInt(0);
+          let decreaseMilliKg = BigInt(0);
 
-        note:
-          parsed.note,
+          for (const adj of adjustments) {
+            const quantity =
+              quantityToMilliKg(
+                adj._sum
+                  .quantityKg
+                  ?.toString() ??
+                  "0",
+              );
 
-        createdById:
-          user.id,
+            switch (adj.type) {
+              case EggStockAdjustmentType.OPENING:
+                openingMilliKg += quantity;
+                break;
+              case EggStockAdjustmentType.INCREASE:
+                increaseMilliKg += quantity;
+                break;
+              case EggStockAdjustmentType.DECREASE:
+                decreaseMilliKg += quantity;
+                break;
+            }
+          }
 
-        openingKey:
-          null,
+          const availableMilliKg =
+            openingMilliKg +
+            productionMilliKg -
+            salesMilliKg +
+            increaseMilliKg -
+            decreaseMilliKg;
+
+          const decrMilliKg =
+            quantityToMilliKg(
+              parsed.quantityKg,
+            );
+
+          if (
+            decrMilliKg > availableMilliKg
+          ) {
+            const availableKg =
+              availableMilliKg > BigInt(0)
+                ? Number(availableMilliKg) / 1000
+                : 0;
+            throw ruleError(
+              `Stok telur tidak mencukupi untuk koreksi pengurangan. Stok saat ini: ${availableKg} kg, pengurangan diminta: ${parsed.quantityKg} kg.`,
+            );
+          }
+        }
+
+        await tx.eggStockAdjustment.create({
+          data: {
+            farmId:
+              farm.id,
+
+            occurredAt:
+              parsed.occurredAt,
+
+            type:
+              parsed.type ===
+              "INCREASE"
+                ? EggStockAdjustmentType.INCREASE
+                : EggStockAdjustmentType.DECREASE,
+
+            quantityKg:
+              parsed.quantityKg,
+
+            note:
+              parsed.note,
+
+            createdById:
+              user.id,
+
+            openingKey:
+              null,
+          },
+        });
       },
-    });
+    );
 
     revalidatePath(
       INVENTORY_PATH,

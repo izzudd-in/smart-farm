@@ -91,10 +91,19 @@ export function basisPointsToPercentage(
 export function parseFeedIngredientInput(
   input: FeedIngredientInput,
 ) {
-  const price =
-    normalizeDecimal(
-      input.currentPricePerKg,
+  const name = requiredText(
+    input.name,
+    "Nama bahan pakan",
+  );
+
+  const rawPrice = input.currentPricePerKg ?? "";
+  const price = normalizeDecimal(rawPrice);
+
+  if (!price) {
+    throw new FeedValidationError(
+      "Harga/kg wajib diisi.",
     );
+  }
 
   if (
     !/^\d+(\.\d{1,2})?$/.test(
@@ -107,13 +116,16 @@ export function parseFeedIngredientInput(
     );
   }
 
+  const numPrice = Number(price);
+  if (numPrice > 100_000_000) {
+    throw new FeedValidationError(
+      "Harga/kg tidak boleh melebihi Rp 100.000.000.",
+    );
+  }
+
   return {
-    name: requiredText(
-      input.name,
-      "Nama bahan pakan",
-    ),
-    currentPricePerKg:
-      Number(price).toFixed(2),
+    name,
+    currentPricePerKg: numPrice.toFixed(2),
   };
 }
 
