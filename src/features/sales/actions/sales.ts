@@ -47,6 +47,10 @@ import {
   getEggStockAsOfDate,
 } from "@/features/inventory/queries/get-egg-stock";
 
+import {
+  quantityToMilliKg,
+} from "@/features/inventory/utils/quantity";
+
 const SALES_PATH =
   "/sales";
 
@@ -790,56 +794,25 @@ export async function createOrder(
             );
           }
 
-          // Validasi stok telur mencukupi sebelum membuat order (REL-009 / FT-052)
-          const [productionAgg, salesAgg, adjustmentsAgg] = await Promise.all([
-            tx.dailyReport.aggregate({
-              where: {
-                date: { lte: parsed.orderedAt },
-                kandang: { farmId: farm.id },
-                saleableEgg: { not: null },
-                damagedEgg: { not: null },
-                feedUsed: { not: null },
-                mortality: { not: null },
-              },
-              _sum: { saleableEgg: true },
-            }),
-            tx.order.aggregate({
-              where: {
-                orderedAt: { lte: parsed.orderedAt },
-                farmId: farm.id,
-              },
-              _sum: { quantityKg: true },
-            }),
-            tx.eggStockAdjustment.groupBy({
-              by: ["type"],
-              where: {
-                occurredAt: { lte: parsed.orderedAt },
-                farmId: farm.id,
-              },
-              _sum: { quantityKg: true },
-            }),
-          ]);
+          // Validasi stok telur mencukupi sebelum membuat order (BUG-002)
+          const stockSummary =
+            await getEggStockAsOfDate(
+              parsed.orderedAt,
+            );
 
-          const prodMilliKg = BigInt(Math.round((productionAgg._sum.saleableEgg ?? 0) * 1000));
-          const soldMilliKg = BigInt(Math.round(Number(salesAgg._sum.quantityKg ?? 0) * 1000));
+          const availableStockMilliKg =
+            quantityToMilliKg(
+              stockSummary.currentStockKg,
+            );
 
-          let adjMilliKg = BigInt(0);
-          for (const adj of adjustmentsAgg) {
-            const qtyMilliKg = BigInt(Math.round(Number(adj._sum.quantityKg ?? 0) * 1000));
-            if (adj.type === "OPENING" || adj.type === "INCREASE") {
-              adjMilliKg += qtyMilliKg;
-            } else if (adj.type === "DECREASE") {
-              adjMilliKg -= qtyMilliKg;
-            }
-          }
-
-          const availableStockMilliKg = prodMilliKg + adjMilliKg - soldMilliKg;
-          const orderQtyMilliKg = BigInt(Math.round(Number(parsed.quantityKg) * 1000));
+          const orderQtyMilliKg =
+            quantityToMilliKg(
+              parsed.quantityKg,
+            );
 
           if (orderQtyMilliKg > availableStockMilliKg) {
-            const availableKg = Number(availableStockMilliKg > BigInt(0) ? availableStockMilliKg : BigInt(0)) / 1000;
             throw ruleError(
-              `Stok telur tidak mencukupi. Stok tersedia: ${availableKg} kg, jumlah order: ${parsed.quantityKg} kg.`,
+              `Stok telur tidak mencukupi. Stok tersedia: ${stockSummary.currentStockKg} kg, jumlah order: ${parsed.quantityKg} kg.`,
             );
           }
 

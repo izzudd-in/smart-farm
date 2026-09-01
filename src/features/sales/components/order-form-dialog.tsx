@@ -291,7 +291,7 @@ export function OrderFormDialog({
     >
       <form
         onSubmit={handleSubmit}
-        className="space-y-5 p-5"
+        className="space-y-4 sm:space-y-5 p-4 sm:p-6"
       >
         {error ? (
           <div
@@ -392,7 +392,7 @@ export function OrderFormDialog({
                     );
                   }}
                   className={[
-                    "rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                    "min-h-[30px] rounded-md px-2.5 py-1 text-xs font-medium transition-all",
                     customerId === c.id
                       ? "bg-primary text-white shadow-xs"
                       : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
@@ -461,7 +461,7 @@ export function OrderFormDialog({
                   if (error) setError("");
                 }}
                 className={[
-                  "rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                  "min-h-[30px] rounded-md px-2.5 py-1 text-xs font-medium transition-all",
                   quantityKg === preset
                     ? "bg-primary text-white shadow-xs"
                     : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
@@ -604,10 +604,11 @@ export function OrderFormDialog({
           </div>
         ) : null}
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border pt-4">
           <Button
             type="button"
             variant="secondary"
+            className="w-full sm:w-auto"
             disabled={isPending}
             onClick={onClose}
           >
@@ -616,6 +617,7 @@ export function OrderFormDialog({
 
           <Button
             type="submit"
+            className="w-full sm:w-auto"
             disabled={
               isPending ||
               isPreviewLoading ||
