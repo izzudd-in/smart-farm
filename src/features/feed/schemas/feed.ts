@@ -74,12 +74,18 @@ export function percentageToBasisPoints(
   return basisPoints;
 }
 
-function basisPointsToString(
+export function basisPointsToString(
   basisPoints: number,
 ): string {
   return (
     basisPoints / 100
   ).toFixed(2);
+}
+
+export function basisPointsToPercentage(
+  basisPoints: number,
+): number {
+  return basisPoints / 100;
 }
 
 export function parseFeedIngredientInput(
