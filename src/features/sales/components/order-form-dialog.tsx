@@ -291,7 +291,7 @@ export function OrderFormDialog({
     >
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 p-4 sm:p-5"
+        className="space-y-4 sm:space-y-5 p-4 sm:p-6"
       >
         {error ? (
           <div
@@ -390,7 +390,7 @@ export function OrderFormDialog({
                     );
                   }}
                   className={[
-                    "rounded-md px-2 py-0.5 text-xs font-medium transition-all",
+                    "min-h-[30px] rounded-md px-2.5 py-1 text-xs font-medium transition-all",
                     customerId === c.id
                       ? "bg-primary text-white shadow-xs"
                       : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
@@ -446,7 +446,7 @@ export function OrderFormDialog({
             />
 
             {/* Quick Quantity Presets */}
-            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               <span className="text-[11px] font-medium text-muted mr-0.5">
                 Preset:
               </span>
@@ -460,13 +460,13 @@ export function OrderFormDialog({
                     if (error) setError("");
                   }}
                   className={[
-                    "rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-all",
+                    "min-h-[30px] rounded-md px-2.5 py-1 text-xs font-medium transition-all",
                     quantityKg === preset
                       ? "bg-primary text-white shadow-xs"
                       : "bg-[#F3F4F6] text-muted hover:bg-primary-soft hover:text-primary",
                   ].join(" ")}
                 >
-                  {preset}kg
+                  {preset} kg
                 </button>
               ))}
             </div>
@@ -606,11 +606,11 @@ export function OrderFormDialog({
           </div>
         ) : null}
 
-        {/* Modal Action Buttons */}
-        <div className="flex justify-end gap-2 border-t border-border pt-3">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border pt-4">
           <Button
             type="button"
             variant="secondary"
+            className="w-full sm:w-auto"
             disabled={isPending}
             onClick={onClose}
           >
@@ -619,6 +619,7 @@ export function OrderFormDialog({
 
           <Button
             type="submit"
+            className="w-full sm:w-auto"
             disabled={
               isPending ||
               isPreviewLoading ||
