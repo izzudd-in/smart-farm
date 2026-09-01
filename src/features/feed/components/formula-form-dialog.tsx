@@ -254,7 +254,7 @@ export function FormulaFormDialog({
             </Button>
           </div>
 
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 space-y-3 max-h-[280px] overflow-y-auto pr-1">
             {items.length === 0 ? (
               <div className="rounded-[10px] border border-dashed border-border p-5 text-center text-sm text-muted">
                 Belum ada komposisi.
@@ -437,14 +437,16 @@ export function FormulaFormDialog({
           </div>
         </div>
 
-        {formula?.isActive &&
-        Math.abs(
-          calculations.total - 100,
-        ) >= 0.001 ? (
-          <p className="text-xs text-[#B45309]">
-            Formula aktif harus tetap
-            berjumlah 100%.
-          </p>
+        {Math.abs(calculations.total - 100) >= 0.001 ? (
+          formula?.isActive ? (
+            <div className="rounded-[8px] bg-danger-soft border border-[#FECACA] p-3 text-xs text-danger font-medium">
+              ⚠️ Formula aktif wajib memiliki total komposisi tepat 100% (saat ini {calculations.total}%).
+            </div>
+          ) : (
+            <div className="rounded-[8px] bg-[#FFFBEB] border border-[#FDE68A] p-3 text-xs text-[#B45309]">
+              ℹ️ Total komposisi saat ini {calculations.total}%. Formula ini akan disimpan sebagai draft (baru dapat diaktifkan setelah total mencapai 100%).
+            </div>
+          )
         ) : null}
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">

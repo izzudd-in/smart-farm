@@ -194,7 +194,7 @@ export function FeedFormulaList({
                       Belum ada komposisi bahan. Klik Edit untuk menambahkan bahan.
                     </p>
                   ) : (
-                    <div className="overflow-x-auto rounded-[8px] border border-border">
+                    <div className="overflow-x-auto max-h-[320px] overflow-y-auto rounded-[8px] border border-border">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[#F9FAFB] text-xs font-medium text-muted">
                           <tr>

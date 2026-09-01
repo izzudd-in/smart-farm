@@ -690,6 +690,102 @@ async function saveReport(
             );
           }
 
+          // Validasi stok pakan tidak boleh negatif (BUG-007 / DT-007)
+          if (
+            parsed.feedUsed !== null &&
+            parsed.feedUsed > 0 &&
+            snapshot &&
+            snapshot.items.length > 0
+          ) {
+            for (const item of snapshot.items) {
+              const itemPct = Number(item.percentage) / 100;
+              const requiredItemKg = parsed.feedUsed * itemPct;
+
+              const [purchasesAgg, adjustmentsAgg, otherReports] =
+                await Promise.all([
+                  tx.feedPurchase.aggregate({
+                    where: {
+                      farmId: kandang.farmId,
+                      ingredientId: item.ingredientId,
+                      purchasedAt: {
+                        lte: reportDate,
+                      },
+                    },
+                    _sum: {
+                      quantityKg: true,
+                    },
+                  }),
+                  tx.feedStockAdjustment.groupBy({
+                    by: ["type"],
+                    where: {
+                      farmId: kandang.farmId,
+                      ingredientId: item.ingredientId,
+                      occurredAt: {
+                        lte: reportDate,
+                      },
+                    },
+                    _sum: {
+                      quantityKg: true,
+                    },
+                  }),
+                  tx.dailyReport.findMany({
+                    where: {
+                      kandang: {
+                        farmId: kandang.farmId,
+                      },
+                      id: existing
+                        ? { not: existing.id }
+                        : undefined,
+                      date: {
+                        lte: reportDate,
+                      },
+                      feedUsed: {
+                        not: null,
+                      },
+                    },
+                    select: {
+                      feedUsed: true,
+                      feedItems: {
+                        where: {
+                          ingredientId: item.ingredientId,
+                        },
+                        select: {
+                          percentage: true,
+                        },
+                      },
+                    },
+                  }),
+                ]);
+
+              let totalInKg = Number(purchasesAgg._sum.quantityKg ?? 0);
+              for (const adj of adjustmentsAgg) {
+                const q = Number(adj._sum.quantityKg ?? 0);
+                if (adj.type === "OPENING" || adj.type === "INCREASE") {
+                  totalInKg += q;
+                } else if (adj.type === "DECREASE") {
+                  totalInKg -= q;
+                }
+              }
+
+              let otherUsageKg = 0;
+              for (const rep of otherReports) {
+                if (rep.feedUsed && rep.feedItems.length > 0) {
+                  for (const fi of rep.feedItems) {
+                    otherUsageKg += rep.feedUsed * (Number(fi.percentage) / 100);
+                  }
+                }
+              }
+
+              const availableStockKg = Math.max(0, totalInKg - otherUsageKg);
+
+              if (totalInKg > 0 && requiredItemKg > availableStockKg + 0.001) {
+                throw ruleError(
+                  `Stok pakan ${item.ingredientNameSnapshot} tidak mencukupi untuk pemakaian ${parsed.feedUsed} kg (${requiredItemKg.toFixed(2)} kg bahan). Sisa stok tersedia: ${availableStockKg.toFixed(2)} kg.`,
+                );
+              }
+            }
+          }
+
           // Validasi mortality tidak boleh melebihi sisa populasi aktif flock (BUG-006 / DT-008)
           if (
             parsed.mortality !== null &&
