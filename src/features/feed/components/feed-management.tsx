@@ -64,6 +64,9 @@ export function FeedManagement({
   const [actionError, setActionError] =
     useState("");
 
+  const [actionSuccess, setActionSuccess] =
+    useState("");
+
   const [pendingId, setPendingId] =
     useState<string | null>(null);
 
@@ -74,6 +77,7 @@ export function FeedManagement({
     ingredient: FeedIngredientView,
   ) {
     setActionError("");
+    setActionSuccess("");
     setPendingId(
       ingredient.id,
     );
@@ -94,6 +98,12 @@ export function FeedManagement({
         return;
       }
 
+      setActionSuccess(
+        result.message ??
+          (ingredient.isActive
+            ? "Bahan pakan berhasil dinonaktifkan."
+            : "Bahan pakan berhasil diaktifkan."),
+      );
       router.refresh();
     });
   }
@@ -102,6 +112,7 @@ export function FeedManagement({
     formula: FeedFormulaView,
   ) {
     setActionError("");
+    setActionSuccess("");
     setPendingId(formula.id);
 
     startTransition(async () => {
@@ -120,6 +131,12 @@ export function FeedManagement({
         return;
       }
 
+      setActionSuccess(
+        result.message ??
+          (formula.isActive
+            ? "Formula pakan berhasil dinonaktifkan."
+            : "Formula pakan berhasil diaktifkan."),
+      );
       router.refresh();
     });
   }
@@ -171,6 +188,22 @@ export function FeedManagement({
             className="rounded-[10px] border border-[#FECACA] bg-danger-soft p-3 text-sm text-danger"
           >
             {actionError}
+          </div>
+        ) : null}
+
+        {actionSuccess ? (
+          <div
+            role="status"
+            className="flex items-center justify-between rounded-[10px] border border-[#BBF7D0] bg-[#F0FDF4] p-3 text-sm text-[#15803D]"
+          >
+            <span className="font-medium">{actionSuccess}</span>
+            <button
+              type="button"
+              onClick={() => setActionSuccess("")}
+              className="ml-2 text-xs font-bold text-[#15803D]/70 hover:text-[#15803D]"
+            >
+              ✕
+            </button>
           </div>
         ) : null}
 

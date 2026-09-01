@@ -89,8 +89,9 @@ export function FeedFormulaList({
 
                     <Badge
                       variant={formula.isActive ? "success" : "neutral"}
+                      className={formula.isActive ? "font-bold tracking-wide" : ""}
                     >
-                      {formula.isActive ? "Formula Aktif" : "Draft / Nonaktif"}
+                      {formula.isActive ? "AKTIF" : "Nonaktif"}
                     </Badge>
 
                     {Math.abs(formula.totalPercentage - 100) >= 0.001 ? (

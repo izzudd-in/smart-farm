@@ -622,6 +622,10 @@ export async function setFeedFormulaActive(
       UserRole.OWNER,
     );
 
+    let successMessage = isActive
+      ? "Formula pakan berhasil diaktifkan."
+      : "Formula pakan berhasil dinonaktifkan.";
+
     await prisma.$transaction(
       async (tx) => {
         const formula =
@@ -637,6 +641,7 @@ export async function setFeedFormulaActive(
             select: {
               id: true,
               farmId: true,
+              name: true,
 
               items: {
                 select: {
@@ -669,6 +674,7 @@ export async function setFeedFormulaActive(
             },
           });
 
+          successMessage = `Formula ${formula.name} berhasil dinonaktifkan.`;
           return;
         }
 
@@ -706,6 +712,20 @@ export async function setFeedFormulaActive(
           totalBasisPoints,
         );
 
+        const previousActiveFormulas =
+          await tx.feedFormula.findMany({
+            where: {
+              farmId: formula.farmId,
+              isActive: true,
+              id: {
+                not: formula.id,
+              },
+            },
+            select: {
+              name: true,
+            },
+          });
+
         await tx.feedFormula.updateMany({
           where: {
             farmId: formula.farmId,
@@ -731,6 +751,15 @@ export async function setFeedFormulaActive(
             isActive: true,
           },
         });
+
+        if (previousActiveFormulas.length > 0) {
+          const prevNames = previousActiveFormulas
+            .map((f) => f.name)
+            .join(", ");
+          successMessage = `Formula ${prevNames} dinonaktifkan, Formula ${formula.name} sekarang aktif.`;
+        } else {
+          successMessage = `Formula ${formula.name} sekarang aktif.`;
+        }
       },
     );
 
@@ -738,10 +767,7 @@ export async function setFeedFormulaActive(
 
     return {
       success: true,
-
-      message: isActive
-        ? "Formula pakan berhasil diaktifkan."
-        : "Formula pakan berhasil dinonaktifkan.",
+      message: successMessage,
     };
   } catch (error) {
     return handleActionError(
