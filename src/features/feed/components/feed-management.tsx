@@ -174,50 +174,74 @@ export function FeedManagement({
           </div>
         ) : null}
 
-        <div className="flex overflow-x-auto border-b border-border">
+        <div className="flex overflow-x-auto border-b border-border gap-2 pb-px">
           <button
             type="button"
-            onClick={() =>
-              setTab("usage")
-            }
+            onClick={() => {
+              setTab("usage");
+              window.history.replaceState(null, "", "/feed?tab=usage");
+            }}
             className={[
-              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "flex items-center gap-2 shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-all",
               tab === "usage"
-                ? "border-primary text-primary-hover"
-                : "border-transparent text-muted hover:text-foreground",
+                ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
+                : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
             ].join(" ")}
           >
-            Pemakaian
+            <Wheat className="h-4 w-4" />
+            <span>Pemakaian</span>
           </button>
 
           <button
             type="button"
-            onClick={() =>
-              setTab("formula")
-            }
+            onClick={() => {
+              setTab("formula");
+              window.history.replaceState(null, "", "/feed?tab=formula");
+            }}
             className={[
-              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "flex items-center gap-2 shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-all",
               tab === "formula"
-                ? "border-primary text-primary-hover"
-                : "border-transparent text-muted hover:text-foreground",
+                ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
+                : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
             ].join(" ")}
           >
-            Formula Pakan
+            <span>Formula Pakan</span>
+            <span
+              className={[
+                "rounded-full px-2 py-0.5 text-xs font-medium",
+                tab === "formula"
+                  ? "bg-primary text-white"
+                  : "bg-[#F3F4F6] text-muted",
+              ].join(" ")}
+            >
+              {data.formulas.length}
+            </span>
           </button>
 
           <button
             type="button"
-            onClick={() =>
-              setTab("ingredient")
-            }
+            onClick={() => {
+              setTab("ingredient");
+              window.history.replaceState(null, "", "/feed?tab=ingredient");
+            }}
             className={[
-              "shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+              "flex items-center gap-2 shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-all",
               tab === "ingredient"
-                ? "border-primary text-primary-hover"
-                : "border-transparent text-muted hover:text-foreground",
+                ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
+                : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
             ].join(" ")}
           >
-            Bahan Pakan
+            <span>Bahan Pakan</span>
+            <span
+              className={[
+                "rounded-full px-2 py-0.5 text-xs font-medium",
+                tab === "ingredient"
+                  ? "bg-primary text-white"
+                  : "bg-[#F3F4F6] text-muted",
+              ].join(" ")}
+            >
+              {data.ingredients.length}
+            </span>
           </button>
         </div>
 

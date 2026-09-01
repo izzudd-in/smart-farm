@@ -125,7 +125,7 @@ function handleError(
         false,
 
       error:
-        "Stok awal untuk farm ini sudah pernah dibuat.",
+        "Stok awal sudah pernah dibuat.",
     };
   }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Egg, Wheat } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -50,10 +51,15 @@ function firstValue(
 function inventoryUrl(
   tab: InventoryTab,
   date: string,
+  today?: string,
 ): string {
-  return `/inventory?tab=${tab}&date=${encodeURIComponent(
-    date,
-  )}`;
+  const isToday = !today || date === today;
+  if (tab === "egg") {
+    return isToday ? "/inventory" : `/inventory?date=${encodeURIComponent(date)}`;
+  }
+  return isToday
+    ? `/inventory?tab=feed`
+    : `/inventory?tab=feed&date=${encodeURIComponent(date)}`;
 }
 
 export default async function InventoryPage({
@@ -88,11 +94,12 @@ export default async function InventoryPage({
         </p>
       </div>
 
-      <div className="flex min-w-0 border-b border-border">
+      <div className="flex min-w-0 border-b border-border gap-2 pb-px">
         <Link
           href={inventoryUrl(
             "egg",
             asOf.dateString,
+            asOf.today,
           )}
           aria-current={
             tab === "egg"
@@ -100,19 +107,21 @@ export default async function InventoryPage({
               : undefined
           }
           className={[
-            "min-w-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+            "flex items-center gap-2 min-w-0 border-b-2 px-5 py-3 text-sm font-semibold transition-all",
             tab === "egg"
-              ? "border-primary text-primary-hover"
-              : "border-transparent text-muted hover:text-foreground",
+              ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
+              : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
           ].join(" ")}
         >
-          Stok Telur
+          <Egg className="h-4 w-4 text-primary-hover" />
+          <span>Stok Telur</span>
         </Link>
 
         <Link
           href={inventoryUrl(
             "feed",
             asOf.dateString,
+            asOf.today,
           )}
           aria-current={
             tab === "feed"
@@ -120,13 +129,14 @@ export default async function InventoryPage({
               : undefined
           }
           className={[
-            "min-w-0 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+            "flex items-center gap-2 min-w-0 border-b-2 px-5 py-3 text-sm font-semibold transition-all",
             tab === "feed"
-              ? "border-primary text-primary-hover"
-              : "border-transparent text-muted hover:text-foreground",
+              ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
+              : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
           ].join(" ")}
         >
-          Stok Pakan
+          <Wheat className="h-4 w-4 text-primary-hover" />
+          <span>Stok Pakan</span>
         </Link>
       </div>
 

@@ -133,30 +133,34 @@ async function validateIngredients(
   ingredientIds: string[],
   requireActive = false,
 ): Promise<void> {
-  const count =
-    await prisma.feedIngredient.count({
+  const ingredients =
+    await prisma.feedIngredient.findMany({
       where: {
         farmId,
-
         id: {
           in: ingredientIds,
         },
-
-        ...(requireActive
-          ? {
-              isActive: true,
-            }
-          : {}),
+      },
+      select: {
+        id: true,
+        isActive: true,
       },
     });
 
   if (
-    count !== ingredientIds.length
+    ingredients.length !== ingredientIds.length
   ) {
     throw ruleError(
-      requireActive
-        ? "Formula aktif hanya boleh menggunakan bahan pakan aktif."
-        : "Terdapat bahan pakan yang tidak valid.",
+      "Terdapat bahan pakan yang tidak valid.",
+    );
+  }
+
+  if (
+    requireActive &&
+    ingredients.some((item) => !item.isActive)
+  ) {
+    throw ruleError(
+      "Formula tidak dapat diaktifkan karena terdapat bahan pakan nonaktif.",
     );
   }
 }
@@ -176,6 +180,26 @@ export async function createFeedIngredient(
 
     const farm =
       await getPrimaryFarm();
+
+    const existing =
+      await prisma.feedIngredient.findFirst({
+        where: {
+          farmId: farm.id,
+          name: {
+            equals: parsed.name,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existing) {
+      throw ruleError(
+        "Nama bahan pakan sudah digunakan.",
+      );
+    }
 
     await prisma.feedIngredient.create({
       data: {
@@ -232,12 +256,36 @@ export async function updateFeedIngredient(
 
         select: {
           id: true,
+          farmId: true,
         },
       });
 
     if (!ingredient) {
       throw ruleError(
         "Bahan pakan tidak ditemukan.",
+      );
+    }
+
+    const existing =
+      await prisma.feedIngredient.findFirst({
+        where: {
+          farmId: ingredient.farmId,
+          id: {
+            not: ingredient.id,
+          },
+          name: {
+            equals: parsed.name,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existing) {
+      throw ruleError(
+        "Nama bahan pakan sudah digunakan.",
       );
     }
 
@@ -369,6 +417,26 @@ export async function createFeedFormula(
     const farm =
       await getPrimaryFarm();
 
+    const existing =
+      await prisma.feedFormula.findFirst({
+        where: {
+          farmId: farm.id,
+          name: {
+            equals: parsed.name,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existing) {
+      throw ruleError(
+        "Nama formula sudah digunakan.",
+      );
+    }
+
     await validateIngredients(
       farm.id,
 
@@ -449,6 +517,29 @@ export async function updateFeedFormula(
     if (!formula) {
       throw ruleError(
         "Formula pakan tidak ditemukan.",
+      );
+    }
+
+    const existing =
+      await prisma.feedFormula.findFirst({
+        where: {
+          farmId: formula.farmId,
+          id: {
+            not: formula.id,
+          },
+          name: {
+            equals: parsed.name,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existing) {
+      throw ruleError(
+        "Nama formula sudah digunakan.",
       );
     }
 

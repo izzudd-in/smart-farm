@@ -121,7 +121,7 @@ export function parseFeedFormulaInput(
 
   if (input.items.length === 0) {
     throw new FeedValidationError(
-      "Formula harus memiliki minimal satu bahan pakan.",
+      "Formula belum memiliki komposisi.",
     );
   }
 
