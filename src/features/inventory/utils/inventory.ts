@@ -146,3 +146,35 @@ export function formatInventoryDate(
     ),
   );
 }
+
+export function formatFeedWeightWithConversions(
+  value: string | number,
+): string {
+  const quantity =
+    typeof value === "string"
+      ? Number(value)
+      : value;
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 0
+  ) {
+    return "0 kg";
+  }
+
+  const formattedKg =
+    quantityFormatter.format(quantity);
+
+  if (quantity >= 1000) {
+    const ton = quantity / 1000;
+    const kuintal = quantity / 100;
+    return `${formattedKg} kg (${quantityFormatter.format(kuintal)} kw / ${quantityFormatter.format(ton)} ton)`;
+  }
+
+  if (quantity >= 100) {
+    const kuintal = quantity / 100;
+    return `${formattedKg} kg (${quantityFormatter.format(kuintal)} kw)`;
+  }
+
+  return `${formattedKg} kg`;
+}

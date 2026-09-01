@@ -63,6 +63,10 @@ export function FeedFormulaList({
 
   return (
     <div className="space-y-3">
+      <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-3 text-xs text-muted">
+        <strong>Master Formula Pakan:</strong> Standar komposisi campuran pakan di kandang (maksimal 1 formula aktif dalam satu waktu). Klik <strong>Detail</strong> pada tiap baris formula untuk melihat rincian komposisi dan kontribusi biaya bahan.
+      </div>
+
       {formulas.map((formula) => {
         const isExpanded = expandedIds.has(formula.id);
         const hasInactiveIngredient = formula.items.some(
@@ -196,7 +200,7 @@ export function FeedFormulaList({
                   ) : (
                     <div className="overflow-x-auto max-h-[320px] overflow-y-auto rounded-[8px] border border-border">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-[#F9FAFB] text-xs font-medium text-muted">
+                        <thead className="sticky top-0 bg-[#F9FAFB] text-xs font-semibold text-muted shadow-xs z-10 border-b border-border">
                           <tr>
                             <th className="px-3 py-2.5">Bahan Pakan</th>
                             <th className="px-3 py-2.5 text-right">Persentase</th>

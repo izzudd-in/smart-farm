@@ -176,7 +176,7 @@ export function IngredientFormDialog({
         </div>
 
         <div className="rounded-[10px] bg-[#F9FAFB] p-3 text-xs text-muted">
-          Unit bahan pakan: <strong>kg</strong> (Kilogram)
+          Unit bahan pakan: <strong>kg</strong> (Kilogram) • <span className="text-foreground/80">Konversi: 1 kuintal (kw) = 100 kg, 1 ton = 1.000 kg</span>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">

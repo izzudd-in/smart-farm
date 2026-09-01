@@ -94,26 +94,31 @@ export default async function InventoryPage({
         </p>
       </div>
 
-      <div className="flex min-w-0 border-b border-border gap-2 pb-px">
+      <div className="flex min-w-0 border-b border-border gap-2 pb-px" role="tablist">
         <Link
           href={inventoryUrl(
             "egg",
             asOf.dateString,
             asOf.today,
           )}
+          role="tab"
+          aria-selected={tab === "egg"}
           aria-current={
             tab === "egg"
               ? "page"
               : undefined
           }
           className={[
-            "flex items-center gap-2 min-w-0 border-b-2 px-5 py-3 text-sm font-semibold transition-all",
+            "flex items-center gap-2.5 min-w-0 border-b-2 px-5 py-3 text-sm font-semibold transition-all",
             tab === "egg"
-              ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
-              : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
+              ? "border-primary text-primary-hover bg-primary/10 rounded-t-[10px] shadow-xs"
+              : "border-transparent text-muted hover:text-foreground hover:bg-[#F9FAFB]",
           ].join(" ")}
         >
-          <Egg className="h-4 w-4 text-primary-hover" />
+          <Egg className={[
+            "h-4 w-4 transition-colors",
+            tab === "egg" ? "text-primary-hover" : "text-muted",
+          ].join(" ")} />
           <span>Stok Telur</span>
         </Link>
 
@@ -123,19 +128,24 @@ export default async function InventoryPage({
             asOf.dateString,
             asOf.today,
           )}
+          role="tab"
+          aria-selected={tab === "feed"}
           aria-current={
             tab === "feed"
               ? "page"
               : undefined
           }
           className={[
-            "flex items-center gap-2 min-w-0 border-b-2 px-5 py-3 text-sm font-semibold transition-all",
+            "flex items-center gap-2.5 min-w-0 border-b-2 px-5 py-3 text-sm font-semibold transition-all",
             tab === "feed"
-              ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
-              : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
+              ? "border-primary text-primary-hover bg-primary/10 rounded-t-[10px] shadow-xs"
+              : "border-transparent text-muted hover:text-foreground hover:bg-[#F9FAFB]",
           ].join(" ")}
         >
-          <Wheat className="h-4 w-4 text-primary-hover" />
+          <Wheat className={[
+            "h-4 w-4 transition-colors",
+            tab === "feed" ? "text-primary-hover" : "text-muted",
+          ].join(" ")} />
           <span>Stok Pakan</span>
         </Link>
       </div>

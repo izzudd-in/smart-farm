@@ -779,7 +779,7 @@ async function saveReport(
 
               const availableStockKg = Math.max(0, totalInKg - otherUsageKg);
 
-              if (totalInKg > 0 && requiredItemKg > availableStockKg + 0.001) {
+              if (requiredItemKg > availableStockKg + 0.001) {
                 throw ruleError(
                   `Stok pakan ${item.ingredientNameSnapshot} tidak mencukupi untuk pemakaian ${parsed.feedUsed} kg (${requiredItemKg.toFixed(2)} kg bahan). Sisa stok tersedia: ${availableStockKg.toFixed(2)} kg.`,
                 );

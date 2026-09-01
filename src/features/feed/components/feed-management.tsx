@@ -6,6 +6,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Boxes,
+  FlaskConical,
   Plus,
   Wheat,
 } from "lucide-react";
@@ -207,9 +209,11 @@ export function FeedManagement({
           </div>
         ) : null}
 
-        <div className="flex overflow-x-auto border-b border-border gap-2 pb-px">
+        <div className="flex overflow-x-auto border-b border-border gap-2 pb-px" role="tablist">
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === "usage"}
             onClick={() => {
               setTab("usage");
               window.history.replaceState(null, "", "/feed?tab=usage");
@@ -217,16 +221,21 @@ export function FeedManagement({
             className={[
               "flex items-center gap-2 shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-all",
               tab === "usage"
-                ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
-                : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
+                ? "border-primary text-primary-hover bg-primary/10 rounded-t-[10px] shadow-xs"
+                : "border-transparent text-muted hover:text-foreground hover:bg-[#F9FAFB]",
             ].join(" ")}
           >
-            <Wheat className="h-4 w-4" />
+            <Wheat className={[
+              "h-4 w-4 transition-colors",
+              tab === "usage" ? "text-primary-hover" : "text-muted",
+            ].join(" ")} />
             <span>Pemakaian</span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === "formula"}
             onClick={() => {
               setTab("formula");
               window.history.replaceState(null, "", "/feed?tab=formula");
@@ -234,14 +243,18 @@ export function FeedManagement({
             className={[
               "flex items-center gap-2 shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-all",
               tab === "formula"
-                ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
-                : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
+                ? "border-primary text-primary-hover bg-primary/10 rounded-t-[10px] shadow-xs"
+                : "border-transparent text-muted hover:text-foreground hover:bg-[#F9FAFB]",
             ].join(" ")}
           >
+            <FlaskConical className={[
+              "h-4 w-4 transition-colors",
+              tab === "formula" ? "text-primary-hover" : "text-muted",
+            ].join(" ")} />
             <span>Formula Pakan</span>
             <span
               className={[
-                "rounded-full px-2 py-0.5 text-xs font-medium",
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
                 tab === "formula"
                   ? "bg-primary text-white"
                   : "bg-[#F3F4F6] text-muted",
@@ -253,6 +266,8 @@ export function FeedManagement({
 
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === "ingredient"}
             onClick={() => {
               setTab("ingredient");
               window.history.replaceState(null, "", "/feed?tab=ingredient");
@@ -260,14 +275,18 @@ export function FeedManagement({
             className={[
               "flex items-center gap-2 shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-all",
               tab === "ingredient"
-                ? "border-primary text-primary-hover bg-primary/5 rounded-t-[8px]"
-                : "border-transparent text-muted hover:text-foreground hover:bg-muted/5",
+                ? "border-primary text-primary-hover bg-primary/10 rounded-t-[10px] shadow-xs"
+                : "border-transparent text-muted hover:text-foreground hover:bg-[#F9FAFB]",
             ].join(" ")}
           >
+            <Boxes className={[
+              "h-4 w-4 transition-colors",
+              tab === "ingredient" ? "text-primary-hover" : "text-muted",
+            ].join(" ")} />
             <span>Bahan Pakan</span>
             <span
               className={[
-                "rounded-full px-2 py-0.5 text-xs font-medium",
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
                 tab === "ingredient"
                   ? "bg-primary text-white"
                   : "bg-[#F3F4F6] text-muted",

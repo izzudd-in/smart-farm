@@ -442,15 +442,19 @@ export function FormulaFormDialog({
 
         {Math.abs(calculations.total - 100) >= 0.001 ? (
           formula?.isActive ? (
-            <div className="rounded-[8px] bg-danger-soft border border-[#FECACA] p-3 text-xs text-danger font-medium">
-              ⚠️ Formula aktif wajib memiliki total komposisi tepat 100% (saat ini {calculations.total}%).
+            <div className="rounded-[8px] bg-danger-soft border border-[#FECACA] p-3 text-xs text-danger font-semibold">
+              ⚠️ <strong>Validasi Formula Aktif:</strong> Formula aktif wajib memiliki total komposisi tepat 100% (saat ini {calculations.total}%). Perubahan tidak dapat disimpan sampai total tepat 100%.
             </div>
           ) : (
             <div className="rounded-[8px] bg-[#FFFBEB] border border-[#FDE68A] p-3 text-xs text-[#B45309]">
-              ℹ️ Total komposisi saat ini {calculations.total}%. Formula ini akan disimpan sebagai draft (baru dapat diaktifkan setelah total mencapai 100%).
+              ⚠️ <strong>Peringatan Total Komposisi:</strong> Total komposisi saat ini <strong>{calculations.total}%</strong> (belum mencapai 100%). Formula ini akan disimpan sebagai <em>draft</em> dan baru dapat diaktifkan setelah komposisi mencapai tepat 100%.
             </div>
           )
-        ) : null}
+        ) : (
+          <div className="rounded-[8px] bg-[#F0FDF4] border border-[#BBF7D0] p-3 text-xs text-[#15803D] font-medium">
+            ✅ Total komposisi sudah tepat <strong>100%</strong>. Formula siap disimpan dan diaktifkan.
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button

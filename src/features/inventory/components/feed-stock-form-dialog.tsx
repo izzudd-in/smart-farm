@@ -357,21 +357,50 @@ export function FeedStockFormDialog({
           }
         />
 
-        <Input
-          type="number"
-          inputMode="decimal"
-          min="0.001"
-          step="0.001"
-          label="Jumlah (kg)"
-          placeholder="500"
-          value={quantityKg}
-          disabled={isPending}
-          onChange={(event) =>
-            setQuantityKg(
-              event.target.value,
-            )
-          }
-        />
+        <div>
+          <Input
+            type="number"
+            inputMode="decimal"
+            min="0.001"
+            step="0.001"
+            label="Jumlah (kg)"
+            placeholder="Contoh: 500 (kg)"
+            value={quantityKg}
+            disabled={isPending}
+            onChange={(event) =>
+              setQuantityKg(
+                event.target.value,
+              )
+            }
+          />
+
+          {(() => {
+            const num = Number(quantityKg.replace(",", "."));
+            if (!Number.isFinite(num) || num <= 0) {
+              return (
+                <p className="mt-1 text-[11px] text-muted">
+                  Konversi satuan: 1 kuintal (kw) = 100 kg • 1 ton = 1.000 kg
+                </p>
+              );
+            }
+
+            const kw = num / 100;
+            const ton = num / 1000;
+
+            return (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                <span className="font-medium text-foreground">Setara:</span>
+                <span className="rounded-[6px] bg-[#F3F4F6] px-2 py-0.5 font-semibold text-foreground">
+                  {kw.toLocaleString("id-ID", { maximumFractionDigits: 2 })} kuintal
+                </span>
+                <span>•</span>
+                <span className="rounded-[6px] bg-[#F3F4F6] px-2 py-0.5 font-semibold text-foreground">
+                  {ton.toLocaleString("id-ID", { maximumFractionDigits: 3 })} ton
+                </span>
+              </div>
+            );
+          })()}
+        </div>
 
         {purchaseMode ? (
           <>

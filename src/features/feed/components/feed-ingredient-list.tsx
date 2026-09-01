@@ -44,7 +44,12 @@ export function FeedIngredientList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="rounded-[10px] border border-border bg-[#F9FAFB] p-3 text-xs text-muted">
+        <strong>Master Bahan Pakan:</strong> Daftar bahan pakan mentah (seperti Jagung, Konsentrat, Dedak) beserta harga acuan per kilogram untuk estimasi biaya racikan.
+      </div>
+
+      <div className="space-y-2">
       {ingredients.map(
         (ingredient) => (
           <Card
@@ -130,6 +135,7 @@ export function FeedIngredientList({
           </Card>
         ),
       )}
+      </div>
     </div>
   );
 }
