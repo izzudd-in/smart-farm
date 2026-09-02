@@ -19,14 +19,6 @@ import {
 } from "@/features/daily-operations/utils/date";
 
 import {
-  getDailyExpenseCostForPeriod,
-} from "@/features/expenses/queries/get-daily-expenses";
-
-import {
-  getRoutineCostAllocationForPeriod,
-} from "@/features/expenses/queries/get-routine-costs";
-
-import {
   calculateRoutineCostAllocationForPeriod,
   centsToMoney,
   moneyToCents,
@@ -176,17 +168,14 @@ export async function getHppForPeriod(
   }
 
   /*
-   * Tidak ada query per tanggal.
-   *
-   * Data periode diambil batch, lalu daily breakdown
-   * dibentuk in-memory.
+   * Mengambil data secara batch paralel.
+   * Tidak ada query per tanggal dan tidak ada pemanggilan
+   * query agregasi redundan.
    */
   const [
     reports,
     routineCosts,
     ownerDailyExpenses,
-    routineCost,
-    dailyExpenseCost,
   ] = await Promise.all([
     prisma.dailyReport.findMany({
       where: {
@@ -306,16 +295,6 @@ export async function getHppForPeriod(
           true,
       },
     }),
-
-    getRoutineCostAllocationForPeriod(
-      from,
-      to,
-    ),
-
-    getDailyExpenseCostForPeriod(
-      from,
-      to,
-    ),
   ]);
 
   const dateStrings =
@@ -343,6 +322,12 @@ export async function getHppForPeriod(
     BigInt(0);
 
   let knownFeedCostCents =
+    BigInt(0);
+
+  let totalOperationExpenseCents =
+    BigInt(0);
+
+  let totalOwnerExpenseCents =
     BigInt(0);
 
   let incompleteReportCount =
@@ -383,10 +368,16 @@ export async function getHppForPeriod(
         0,
       )
     ) {
-      day.operationExpenseCents +=
+      const incidentalCents =
         moneyToCents(
           report.incidentalExpense.toString(),
         );
+
+      totalOperationExpenseCents +=
+        incidentalCents;
+
+      day.operationExpenseCents +=
+        incidentalCents;
     }
 
     const status =
@@ -499,11 +490,48 @@ export async function getHppForPeriod(
       continue;
     }
 
-    day.ownerExpenseCents +=
+    const ownerCents =
       moneyToCents(
         expense.amount.toString(),
       );
+
+    totalOwnerExpenseCents +=
+      ownerCents;
+
+    day.ownerExpenseCents +=
+      ownerCents;
   }
+
+  const routineCost =
+    sumMoney(
+      routineCosts.map(
+        (
+          cost,
+        ) =>
+          calculateRoutineCostAllocationForPeriod(
+            {
+              amount:
+                cost.amount.toString(),
+
+              periodStart:
+                cost.periodStart,
+
+              periodEnd:
+                cost.periodEnd,
+
+              from,
+
+              to,
+            },
+          ),
+      ),
+    );
+
+  const dailyExpenseCost =
+    centsToMoney(
+      totalOwnerExpenseCents +
+        totalOperationExpenseCents,
+    );
 
   const daily:
     DailyHppBreakdown[] =

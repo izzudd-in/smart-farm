@@ -16,16 +16,40 @@ const globalForPrisma =
     prisma:
       | PrismaClient
       | undefined;
+    pool:
+      | Pool
+      | undefined;
   };
 
-function createPrismaClient() {
+function getPool(): Pool {
+  if (globalForPrisma.pool) {
+    return globalForPrisma.pool;
+  }
+
   const pool = new Pool({
     connectionString:
       env.DATABASE_URL,
-    max: 10,
+    max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   });
+
+  // Handle errors on idle connections to prevent unhandled crashes
+  pool.on("error", (err) => {
+    console.warn("Unexpected error on idle pg pool client:", err.message);
+  });
+
+  if (!env.IS_PRODUCTION) {
+    globalForPrisma.pool = pool;
+  }
+
+  return pool;
+}
+
+function createPrismaClient() {
+  const pool = getPool();
 
   const adapter =
     new PrismaPg(pool);
