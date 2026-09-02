@@ -1,5 +1,8 @@
 import type { ProductionReportRow } from "@/features/production/types/production";
-import { deriveEggProduction } from "@/features/production/utils/calculations";
+import {
+  calculateFcr,
+  deriveEggProduction,
+} from "@/features/production/utils/calculations";
 import { getDailyReportStatus } from "@/features/daily-operations/utils/status";
 
 type ProductionReportRecord = {
@@ -33,6 +36,11 @@ export function mapProductionReport(
       report.saleableEgg,
       report.damagedEgg,
     );
+
+  const fcr = calculateFcr(
+    report.feedUsed,
+    derived.totalEgg,
+  );
 
   return {
     id: report.id,
@@ -76,6 +84,13 @@ export function mapProductionReport(
 
     damagedPercentage:
       derived.damagedPercentage,
+
+    feedUsed:
+      report.feedUsed,
+
+    fcr,
+
+    henDay: null,
 
     mortality:
       report.mortality,

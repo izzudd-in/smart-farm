@@ -1,9 +1,12 @@
 import type { DailyReportStatus } from "@/features/daily-operations/types/daily-report";
 
+export type ProductionPeriodMode = "today" | "weekly" | "monthly" | "custom";
+
 export type ProductionFilters = {
   from: string;
   to: string;
   kandangId: string;
+  mode?: ProductionPeriodMode;
 };
 
 export type ProductionKandangOption = {
@@ -30,6 +33,10 @@ export type ProductionReportRow = {
   totalEgg: number | null;
   damagedPercentage: number | null;
 
+  feedUsed: number | null;
+  fcr: number | null;
+  henDay: number | null; // Hen-Day Production (%)
+
   mortality: number | null;
   status: DailyReportStatus;
 
@@ -42,13 +49,22 @@ export type ProductionTrendPoint = {
   totalProduction: number | null;
   saleableEgg: number | null;
   damagedEgg: number | null;
+  feedUsed: number | null;
+  mortality: number | null;
+  fcr: number | null;
+  henDay: number | null;
 };
 
 export type ProductionKpis = {
   totalProduction: number | null;
   saleableEgg: number | null;
   damagedEgg: number | null;
+  damagedPercentage: number | null;
+  feedUsed: number | null;
+  fcr: number | null;
+  henDay: number | null; // Hen-Day Production (%)
   activePopulation: number | null;
+  totalMortality: number | null;
 };
 
 export type ProductionKandangSummary = {
@@ -66,9 +82,42 @@ export type ProductionKandangSummary = {
   damagedEgg: number | null;
   damagedPercentage: number | null;
 
+  feedUsed: number | null;
+  fcr: number | null;
+  henDay: number | null;
+
   cumulativeMortality: number | null;
   estimatedPopulation: number | null;
+  mortalityInPeriod: number | null;
   mortalityOnEndDate: number | null;
+};
+
+export type TrendComparisonPoint = {
+  dayIndex: number;
+  dayLabel: string;
+  currentDate: string;
+  currentValue: number | null;
+  previousDate: string;
+  previousValue: number | null;
+};
+
+export type ProductionComparison = {
+  mode: ProductionPeriodMode;
+  previousPeriod: {
+    from: string;
+    to: string;
+  };
+  previousKpis: ProductionKpis;
+  changes: {
+    totalProduction: number | null; // ((current - prev) / prev) * 100%
+    saleableEgg: number | null;
+    damagedEgg: number | null;
+    feedUsed: number | null;
+    fcr: number | null;
+    henDay: number | null;
+    totalMortality: number | null;
+  };
+  trendComparison: TrendComparisonPoint[];
 };
 
 export type ProductionPageData = {
@@ -79,6 +128,7 @@ export type ProductionPageData = {
   trend: ProductionTrendPoint[];
   kandangs: ProductionKandangSummary[];
   history: ProductionReportRow[];
+  comparison: ProductionComparison;
 };
 
 export type ProductionFlockOption = {
@@ -100,6 +150,7 @@ export type ProductionKandangDetail = {
     from: string;
     to: string;
     flockId: string;
+    mode?: ProductionPeriodMode;
   };
 
   flockOptions: ProductionFlockOption[];
@@ -110,9 +161,15 @@ export type ProductionKandangDetail = {
   damagedEgg: number | null;
   damagedPercentage: number | null;
 
+  feedUsed: number | null;
+  fcr: number | null;
+  henDay: number | null;
+
+  totalMortalityInPeriod: number | null;
   cumulativeMortality: number | null;
   estimatedPopulation: number | null;
 
   trend: ProductionTrendPoint[];
   history: ProductionReportRow[];
+  comparison: ProductionComparison;
 };

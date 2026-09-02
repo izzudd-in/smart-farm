@@ -13,6 +13,7 @@ type ProductionKandangPageProps = {
     from?: string | string[];
     to?: string | string[];
     flock?: string | string[];
+    mode?: string | string[];
   }>;
 };
 
@@ -51,6 +52,10 @@ export default async function ProductionKandangPage({
 
       kandangId:
         resolvedParams.kandangId,
+
+      mode: firstValue(
+        resolvedSearchParams.mode,
+      ),
     });
 
   const data =
