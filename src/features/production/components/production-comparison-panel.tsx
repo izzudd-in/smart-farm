@@ -239,7 +239,7 @@ export function ProductionComparisonPanel({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
             {mode === "today" ? <Clock className="h-3.5 w-3.5" /> : <CalendarDays className="h-3.5 w-3.5" />}
-            <span>
+            <span suppressHydrationWarning>
               Aktif (Hijau): {filters.from === filters.to ? formatReportDate(filters.to) : `${formatReportDate(filters.from)} — ${formatReportDate(filters.to)}`}
             </span>
           </div>
@@ -248,7 +248,7 @@ export function ProductionComparisonPanel({
 
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-[#F9FAFB] px-3 py-1.5 font-medium text-[#4B5563]">
             <CalendarDays className="h-3.5 w-3.5 text-muted" />
-            <span>
+            <span suppressHydrationWarning>
               Sebelumnya (Abu-abu): {comparison.previousPeriod.from === comparison.previousPeriod.to ? formatReportDate(comparison.previousPeriod.to) : `${formatReportDate(comparison.previousPeriod.from)} — ${formatReportDate(comparison.previousPeriod.to)}`}
             </span>
           </div>

@@ -82,6 +82,7 @@ export default async function ProductionPage({
 
       {/* Interactive Date & Kandang Filters Panel */}
       <ProductionFiltersPanel
+        key={`filters-${data.filters.mode}-${data.filters.from}-${data.filters.to}-${data.filters.kandangId}`}
         filters={data.filters}
         kandangs={data.kandangOptions}
       />
@@ -94,6 +95,7 @@ export default async function ProductionPage({
 
       {/* FT-084, FT-085, FT-086, UX-021, UX-022, UX-023: Perbandingan Periode Aktif (Hijau) vs Pembanding (Abu-abu) */}
       <ProductionComparisonPanel
+        key={`comparison-${data.filters.mode}-${data.filters.from}-${data.filters.to}-${data.filters.kandangId}`}
         filters={data.filters}
         currentKpis={data.kpis}
         comparison={data.comparison}

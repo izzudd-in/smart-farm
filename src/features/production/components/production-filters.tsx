@@ -198,7 +198,7 @@ export function ProductionFiltersPanel({
 
         <div className="flex items-center gap-2 text-sm text-muted font-medium">
           <Calendar className="h-4 w-4 text-primary" />
-          <span>
+          <span suppressHydrationWarning>
             {from === to
               ? formatReportDate(from)
               : `${formatReportDate(from)} — ${formatReportDate(to)}`}

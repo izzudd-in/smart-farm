@@ -22,6 +22,8 @@ function mockRow(date: string, totalEgg: number): ProductionReportRow {
     kandangName: "Kandang 1",
     flockId: "f-1",
     flockName: "Flock A",
+    flockStartDate: "2026-01-01",
+    initialPopulation: 1000,
     status: "COMPLETE",
     saleableEgg: totalEgg,
     damagedEgg: 0,
@@ -30,7 +32,7 @@ function mockRow(date: string, totalEgg: number): ProductionReportRow {
     feedUsed: 100,
     fcr: 2.2,
     henDay: 85,
-    activePopulation: 1000,
+    estimatedPopulation: 1000,
     mortality: 0,
   };
 }
