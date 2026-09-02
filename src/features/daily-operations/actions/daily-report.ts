@@ -1003,6 +1003,18 @@ async function saveReport(
       EXPENSES_PATH,
     );
 
+    revalidatePath(
+      "/hpp",
+    );
+
+    revalidatePath(
+      "/reports",
+    );
+
+    revalidatePath(
+      "/dashboard",
+    );
+
     return {
       success: true,
       status,

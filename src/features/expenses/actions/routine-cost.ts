@@ -32,6 +32,19 @@ const EXPENSES_PATH =
 const DASHBOARD_PATH =
   "/dashboard";
 
+const HPP_PATH =
+  "/hpp";
+
+const REPORTS_PATH =
+  "/reports";
+
+function revalidateRelatedPaths() {
+  revalidatePath(EXPENSES_PATH);
+  revalidatePath(DASHBOARD_PATH);
+  revalidatePath(HPP_PATH);
+  revalidatePath(REPORTS_PATH);
+}
+
 function ruleError(
   message: string,
 ): Error {
@@ -178,13 +191,7 @@ export async function createRoutineCost(
       },
     );
 
-    revalidatePath(
-      EXPENSES_PATH,
-    );
-
-    revalidatePath(
-      DASHBOARD_PATH,
-    );
+    revalidateRelatedPaths();
 
     return {
       success:
@@ -304,13 +311,7 @@ export async function updateRoutineCost(
       },
     );
 
-    revalidatePath(
-      EXPENSES_PATH,
-    );
-
-    revalidatePath(
-      DASHBOARD_PATH,
-    );
+    revalidateRelatedPaths();
 
     return {
       success:
@@ -318,6 +319,100 @@ export async function updateRoutineCost(
 
       message:
         "Biaya rutin berhasil diperbarui.",
+    };
+  } catch (error) {
+    return handleError(
+      error,
+    );
+  }
+}
+
+export async function deleteRoutineCost(
+  routineCostId: string,
+): Promise<RoutineCostActionResult> {
+  try {
+    await requireRole(
+      UserRole.OWNER,
+    );
+
+    const id =
+      routineCostId.trim();
+
+    if (!id) {
+      throw ruleError(
+        "Biaya rutin tidak ditemukan.",
+      );
+    }
+
+    await prisma.$transaction(
+      async (
+        tx,
+      ) => {
+        const farm =
+          await tx.farm.findUnique({
+            where: {
+              scope:
+                "PRIMARY",
+            },
+
+            select: {
+              id:
+                true,
+
+              isActive:
+                true,
+            },
+          });
+
+        if (
+          !farm ||
+          !farm.isActive
+        ) {
+          throw ruleError(
+            "Farm utama tidak tersedia atau tidak aktif.",
+          );
+        }
+
+        const existing =
+          await tx.routineCost.findFirst({
+            where: {
+              id,
+
+              farmId:
+                farm.id,
+            },
+
+            select: {
+              id:
+                true,
+            },
+          });
+
+        if (
+          !existing
+        ) {
+          throw ruleError(
+            "Biaya rutin tidak ditemukan.",
+          );
+        }
+
+        await tx.routineCost.delete({
+          where: {
+            id:
+              existing.id,
+          },
+        });
+      },
+    );
+
+    revalidateRelatedPaths();
+
+    return {
+      success:
+        true,
+
+      message:
+        "Biaya rutin berhasil dihapus.",
     };
   } catch (error) {
     return handleError(

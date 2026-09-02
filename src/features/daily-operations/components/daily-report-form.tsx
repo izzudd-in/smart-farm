@@ -61,6 +61,19 @@ type DailyReportFormProps = {
   kandang: OperatorTodayKandang;
 };
 
+const currencyFormatter =
+  new Intl.NumberFormat(
+    "id-ID",
+    {
+      style:
+        "currency",
+      currency:
+        "IDR",
+      maximumFractionDigits:
+        2,
+    },
+  );
+
 function valueOrEmpty(
   value:
     | number
@@ -250,6 +263,17 @@ export function DailyReportForm({
       "" &&
     !incidentalExpenseCategory;
 
+  const incidentalNeedsAmount =
+    Boolean(incidentalExpenseCategory) &&
+    incidentalExpense.trim() === "";
+
+  const parsedIncidentalNumber = useMemo(() => {
+    const cleaned = incidentalExpense.trim().replace(",", ".");
+    if (!cleaned) return null;
+    const num = Number(cleaned);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }, [incidentalExpense]);
+
   const totalComposition =
     useMemo(
       () =>
@@ -357,6 +381,24 @@ export function DailyReportForm({
       const num = Number(mortality.trim());
       if (!Number.isInteger(num) || num < 0) {
         setError("Ayam Mati harus berupa angka bulat 0 atau lebih.");
+        return;
+      }
+    }
+
+    if (incidentalNeedsCategory) {
+      setError("Pilih kategori untuk pengeluaran insidental.");
+      return;
+    }
+
+    if (incidentalNeedsAmount) {
+      setError("Masukkan nominal untuk kategori pengeluaran yang dipilih.");
+      return;
+    }
+
+    if (incidentalExpense.trim() !== "") {
+      const num = Number(incidentalExpense.trim().replace(",", "."));
+      if (!Number.isFinite(num) || num <= 0) {
+        setError("Nominal pengeluaran insidental harus lebih dari 0.");
         return;
       }
     }
@@ -1075,7 +1117,7 @@ export function DailyReportForm({
                       htmlFor={`expense-category-${kandang.id}`}
                       className="text-[13px] font-medium text-foreground"
                     >
-                      Kategori
+                      Kategori Pengeluaran
                     </label>
 
                     <select
@@ -1084,24 +1126,23 @@ export function DailyReportForm({
                         incidentalExpenseCategory
                       }
                       disabled={
-                        disabled ||
-                        incidentalExpense.trim() ===
-                          ""
+                        disabled
                       }
                       onChange={(
                         event,
-                      ) =>
+                      ) => {
                         setIncidentalExpenseCategory(
                           event.target
                             .value as
                             | DailyExpenseCategoryValue
                             | "",
-                        )
-                      }
+                        );
+                        if (error) setError("");
+                      }}
                       className="h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
                     >
                       <option value="">
-                        Pilih kategori
+                        Pilih kategori pengeluaran...
                       </option>
 
                       {DAILY_EXPENSE_CATEGORY_VALUES.map(
@@ -1127,46 +1168,54 @@ export function DailyReportForm({
                     </select>
                   </div>
 
-                  <Input
-                    id={`incidental-expense-${kandang.id}`}
-                    type="number"
-                    inputMode="decimal"
-                    min="0.01"
-                    step="0.01"
-                    label="Nominal (IDR)"
-                    tooltip="Nominal pengeluaran insidental atau tak terduga untuk kandang ini hari ini."
-                    helperText="Mata uang Rupiah (IDR). Contoh: 150000"
-                    placeholder="150000"
-                    value={
-                      incidentalExpense
-                    }
-                    disabled={
-                      disabled
-                    }
-                    onChange={(
-                      event,
-                    ) => {
-                      const value =
-                        event.target.value;
-
-                      setIncidentalExpense(
-                        value,
-                      );
-
-                      if (
-                        value.trim() ===
-                        ""
-                      ) {
-                        setIncidentalExpenseCategory(
-                          "",
-                        );
+                  <div>
+                    <Input
+                      id={`incidental-expense-${kandang.id}`}
+                      type="number"
+                      inputMode="decimal"
+                      min="0.01"
+                      step="0.01"
+                      label="Nominal (IDR)"
+                      tooltip="Nominal pengeluaran insidental atau tak terduga untuk kandang ini hari ini."
+                      helperText="Mata uang Rupiah (IDR). Contoh: 150000"
+                      placeholder="150000"
+                      value={
+                        incidentalExpense
                       }
-                    }}
-                  />
+                      disabled={
+                        disabled
+                      }
+                      onChange={(
+                        event,
+                      ) => {
+                        setIncidentalExpense(
+                          event.target.value,
+                        );
+                        if (error) setError("");
+                      }}
+                    />
+
+                    {parsedIncidentalNumber !== null ? (
+                      <p className="mt-1 text-xs text-muted">
+                        Nominal:{" "}
+                        <span className="font-semibold text-foreground">
+                          {currencyFormatter.format(
+                            parsedIncidentalNumber,
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
 
                   {incidentalNeedsCategory ? (
                     <p className="text-xs text-danger">
                       Pilih kategori untuk pengeluaran ini.
+                    </p>
+                  ) : null}
+
+                  {incidentalNeedsAmount ? (
+                    <p className="text-xs text-danger">
+                      Masukkan nominal untuk kategori yang dipilih.
                     </p>
                   ) : null}
 
@@ -1188,14 +1237,15 @@ export function DailyReportForm({
                       disabled={
                         disabled
                       }
-                      placeholder="Opsional"
+                      placeholder="Catatan kejadian khusus atau rincian pengeluaran (opsional)..."
                       onChange={(
                         event,
-                      ) =>
+                      ) => {
                         setIncidentNote(
                           event.target.value,
-                        )
-                      }
+                        );
+                        if (error) setError("");
+                      }}
                       className="w-full resize-y rounded-[10px] border border-border bg-white px-3 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-light focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-[#F3F4F6]"
                     />
                   </div>
@@ -1228,7 +1278,8 @@ export function DailyReportForm({
                 disabled={
                   isPending ||
                   compositionInvalid ||
-                  incidentalNeedsCategory
+                  incidentalNeedsCategory ||
+                  incidentalNeedsAmount
                 }
               >
                 {isPending

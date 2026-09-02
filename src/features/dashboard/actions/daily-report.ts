@@ -997,6 +997,14 @@ async function saveReport(
     );
 
     revalidatePath(
+      "/hpp",
+    );
+
+    revalidatePath(
+      "/reports",
+    );
+
+    revalidatePath(
       DASHBOARD_PATH,
     );
 

@@ -32,6 +32,19 @@ const EXPENSES_PATH =
 const DASHBOARD_PATH =
   "/dashboard";
 
+const HPP_PATH =
+  "/hpp";
+
+const REPORTS_PATH =
+  "/reports";
+
+function revalidateRelatedPaths() {
+  revalidatePath(EXPENSES_PATH);
+  revalidatePath(DASHBOARD_PATH);
+  revalidatePath(HPP_PATH);
+  revalidatePath(REPORTS_PATH);
+}
+
 function ruleError(
   message: string,
 ): Error {
@@ -172,13 +185,7 @@ export async function createDailyExpense(
       },
     );
 
-    revalidatePath(
-      EXPENSES_PATH,
-    );
-
-    revalidatePath(
-      DASHBOARD_PATH,
-    );
+    revalidateRelatedPaths();
 
     return {
       success:
@@ -292,13 +299,7 @@ export async function updateDailyExpense(
       },
     );
 
-    revalidatePath(
-      EXPENSES_PATH,
-    );
-
-    revalidatePath(
-      DASHBOARD_PATH,
-    );
+    revalidateRelatedPaths();
 
     return {
       success:
@@ -306,6 +307,100 @@ export async function updateDailyExpense(
 
       message:
         "Pengeluaran berhasil diperbarui.",
+    };
+  } catch (error) {
+    return handleError(
+      error,
+    );
+  }
+}
+
+export async function deleteDailyExpense(
+  dailyExpenseId: string,
+): Promise<DailyExpenseActionResult> {
+  try {
+    await requireRole(
+      UserRole.OWNER,
+    );
+
+    const id =
+      dailyExpenseId.trim();
+
+    if (!id) {
+      throw ruleError(
+        "Pengeluaran tidak ditemukan.",
+      );
+    }
+
+    await prisma.$transaction(
+      async (
+        tx,
+      ) => {
+        const farm =
+          await tx.farm.findUnique({
+            where: {
+              scope:
+                "PRIMARY",
+            },
+
+            select: {
+              id:
+                true,
+
+              isActive:
+                true,
+            },
+          });
+
+        if (
+          !farm ||
+          !farm.isActive
+        ) {
+          throw ruleError(
+            "Farm utama tidak tersedia atau tidak aktif.",
+          );
+        }
+
+        const existing =
+          await tx.dailyExpense.findFirst({
+            where: {
+              id,
+
+              farmId:
+                farm.id,
+            },
+
+            select: {
+              id:
+                true,
+            },
+          });
+
+        if (
+          !existing
+        ) {
+          throw ruleError(
+            "Pengeluaran tidak ditemukan.",
+          );
+        }
+
+        await tx.dailyExpense.delete({
+          where: {
+            id:
+              existing.id,
+          },
+        });
+      },
+    );
+
+    revalidateRelatedPaths();
+
+    return {
+      success:
+        true,
+
+      message:
+        "Pengeluaran berhasil dihapus.",
     };
   } catch (error) {
     return handleError(

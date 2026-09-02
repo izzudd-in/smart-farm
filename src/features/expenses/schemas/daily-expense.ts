@@ -25,9 +25,16 @@ export class DailyExpenseValidationError extends Error {}
 function parseDate(
   value: string,
 ): Date {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed) {
+    throw new DailyExpenseValidationError(
+      "Tanggal pengeluaran wajib diisi.",
+    );
+  }
+
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(
-      value,
+      trimmed,
     )
   ) {
     throw new DailyExpenseValidationError(
@@ -36,7 +43,7 @@ function parseDate(
   }
 
   const date =
-    parseDateOnly(value);
+    parseDateOnly(trimmed);
 
   if (
     Number.isNaN(
@@ -44,7 +51,7 @@ function parseDate(
     ) ||
     date
       .toISOString()
-      .slice(0, 10) !== value
+      .slice(0, 10) !== trimmed
   ) {
     throw new DailyExpenseValidationError(
       "Tanggal tidak valid.",
@@ -74,9 +81,15 @@ function parseAmount(
   value: string,
 ): string {
   const normalized =
-    value
+    (typeof value === "string" ? value : "")
       .trim()
       .replace(",", ".");
+
+  if (!normalized) {
+    throw new DailyExpenseValidationError(
+      "Nominal pengeluaran wajib diisi.",
+    );
+  }
 
   if (
     !/^\d{1,16}(\.\d{1,2})?$/.test(
@@ -84,7 +97,7 @@ function parseAmount(
     )
   ) {
     throw new DailyExpenseValidationError(
-      "Nominal harus berupa angka dengan maksimal 2 angka desimal.",
+      "Nominal harus berupa angka positif dengan maksimal 2 angka desimal.",
     );
   }
 
@@ -97,7 +110,7 @@ function parseAmount(
     cents <= BigInt(0)
   ) {
     throw new DailyExpenseValidationError(
-      "Nominal harus lebih dari 0.",
+      "Nominal pengeluaran harus lebih dari 0.",
     );
   }
 
