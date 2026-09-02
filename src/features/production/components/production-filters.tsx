@@ -135,7 +135,7 @@ export function ProductionFiltersPanel({
       {/* Mode Selection Tabs (FT-087, FT-088, FT-089, FT-090) */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-muted mr-1">
+          <span className="text-sm font-semibold text-muted mr-1">
             Mode Analisa:
           </span>
 
@@ -143,13 +143,13 @@ export function ProductionFiltersPanel({
           <button
             type="button"
             onClick={() => handleSelectMode("today")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 min-h-[44px] text-sm font-semibold transition-all ${
               activeMode === "today"
                 ? "bg-primary text-white shadow-xs"
-                : "bg-[#F3F4F6] text-[#4B5563] hover:bg-border hover:text-foreground"
+                : "bg-[#F3F4F6] text-[#374151] hover:bg-border hover:text-foreground"
             }`}
           >
-            <Clock className="h-3.5 w-3.5" />
+            <Clock className="h-4 w-4" />
             <span>Hari Ini</span>
           </button>
 
@@ -157,13 +157,13 @@ export function ProductionFiltersPanel({
           <button
             type="button"
             onClick={() => handleSelectMode("weekly")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 min-h-[44px] text-sm font-semibold transition-all ${
               activeMode === "weekly"
                 ? "bg-primary text-white shadow-xs"
-                : "bg-[#F3F4F6] text-[#4B5563] hover:bg-border hover:text-foreground"
+                : "bg-[#F3F4F6] text-[#374151] hover:bg-border hover:text-foreground"
             }`}
           >
-            <CalendarDays className="h-3.5 w-3.5" />
+            <CalendarDays className="h-4 w-4" />
             <span>Minggu Ini (Default)</span>
           </button>
 
@@ -171,13 +171,13 @@ export function ProductionFiltersPanel({
           <button
             type="button"
             onClick={() => handleSelectMode("monthly")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 min-h-[44px] text-sm font-semibold transition-all ${
               activeMode === "monthly"
                 ? "bg-primary text-white shadow-xs"
-                : "bg-[#F3F4F6] text-[#4B5563] hover:bg-border hover:text-foreground"
+                : "bg-[#F3F4F6] text-[#374151] hover:bg-border hover:text-foreground"
             }`}
           >
-            <CalendarRange className="h-3.5 w-3.5" />
+            <CalendarRange className="h-4 w-4" />
             <span>Bulan Ini</span>
           </button>
 
@@ -185,20 +185,19 @@ export function ProductionFiltersPanel({
           <button
             type="button"
             onClick={() => handleSelectMode("custom")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 min-h-[44px] text-sm font-semibold transition-all ${
               activeMode === "custom"
                 ? "bg-primary text-white shadow-xs"
-                : "bg-[#F3F4F6] text-[#4B5563] hover:bg-border hover:text-foreground"
+                : "bg-[#F3F4F6] text-[#374151] hover:bg-border hover:text-foreground"
             }`}
           >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <SlidersHorizontal className="h-4 w-4" />
             <span>Kustom</span>
           </button>
         </div>
 
-        {/* Current Period Label */}
-        <div className="flex items-center gap-1.5 text-xs text-muted">
-          <Calendar className="h-3.5 w-3.5 text-primary" />
+        <div className="flex items-center gap-2 text-sm text-muted font-medium">
+          <Calendar className="h-4 w-4 text-primary" />
           <span>
             {from === to
               ? formatReportDate(from)
@@ -210,12 +209,12 @@ export function ProductionFiltersPanel({
       {/* Filter Form (Always allows selecting Kandang, and allows date inputs if Custom or adjustments) */}
       <form
         onSubmit={handleSubmit}
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[170px_170px_1fr_auto]"
+        className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[180px_180px_1fr_auto]"
       >
         <div>
           <label
             htmlFor="prod-from"
-            className="mb-1.5 block text-xs font-medium text-muted"
+            className="mb-1.5 block text-sm font-medium text-[#374151]"
           >
             Dari
           </label>
@@ -230,14 +229,14 @@ export function ProductionFiltersPanel({
               validate(e.target.value, to);
             }}
             disabled={isPending}
-            className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
+            className="min-h-[44px] h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
           />
         </div>
 
         <div>
           <label
             htmlFor="prod-to"
-            className="mb-1.5 block text-xs font-medium text-muted"
+            className="mb-1.5 block text-sm font-medium text-[#374151]"
           >
             Sampai
           </label>
@@ -252,14 +251,14 @@ export function ProductionFiltersPanel({
               validate(from, e.target.value);
             }}
             disabled={isPending}
-            className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
+            className="min-h-[44px] h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
           />
         </div>
 
         <div>
           <label
             htmlFor="prod-kandang"
-            className="mb-1.5 block text-xs font-medium text-muted"
+            className="mb-1.5 block text-sm font-medium text-[#374151]"
           >
             Filter Kandang
           </label>
@@ -268,7 +267,7 @@ export function ProductionFiltersPanel({
             value={kandangId}
             onChange={(e) => setKandangId(e.target.value)}
             disabled={isPending}
-            className="h-10 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
+            className="min-h-[44px] h-11 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60"
           >
             <option value="">Semua Kandang</option>
             {kandangs.map((k) => (
@@ -279,12 +278,11 @@ export function ProductionFiltersPanel({
           </select>
         </div>
 
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 pt-1 sm:pt-0">
           <Button
             type="submit"
-            size="sm"
             disabled={isPending || !!validationError}
-            className="min-w-24 gap-1.5"
+            className="min-h-[44px] h-11 min-w-28 gap-1.5 text-sm font-semibold"
           >
             {isPending ? (
               <>
@@ -302,10 +300,9 @@ export function ProductionFiltersPanel({
           <Button
             type="button"
             variant="secondary"
-            size="sm"
             onClick={handleReset}
             disabled={isPending}
-            className="gap-1 text-xs"
+            className="min-h-[44px] h-11 gap-1.5 px-4 text-sm font-medium"
             title="Reset filter ke default Minggu Ini"
           >
             <RotateCcw className="h-3.5 w-3.5 text-muted" />

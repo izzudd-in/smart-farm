@@ -10,6 +10,7 @@ import {
 import {
   useRouter,
 } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
 
 import {
   ArrowLeft,
@@ -95,6 +96,7 @@ export function DailyReportForm({
 }: DailyReportFormProps) {
   const router =
     useRouter();
+  const { toast } = useToast();
 
   const report =
     kandang.report;
@@ -450,10 +452,15 @@ export function DailyReportForm({
           setError(
             result.error,
           );
+          toast.error("Gagal menyimpan laporan", result.error);
           return;
         }
 
         setSuccess(
+          result.message,
+        );
+        toast.success(
+          coreComplete ? "Laporan Berhasil Diselesaikan" : "Draft Berhasil Disimpan",
           result.message,
         );
 
@@ -709,9 +716,9 @@ export function DailyReportForm({
                   inputMode="decimal"
                   min={0}
                   step="any"
-                  label="Telur Jual (kg)"
-                  tooltip="Total berat telur utuh dan berkualitas baik yang siap untuk dijual hari ini."
-                  helperText="Satuan kilogram (kg). Contoh: 45.5"
+                  label="Telur Jual - Berat (kg)"
+                  tooltip="Saleable Egg Weight: Total berat massa telur utuh layak jual yang siap dipasarkan hari ini (kg)."
+                  helperText="Satuan: Kilogram (kg). Contoh: 185.5"
                   placeholder="0"
                   value={
                     saleableEgg
@@ -732,12 +739,12 @@ export function DailyReportForm({
                 <Input
                   id="damaged-egg"
                   type="number"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   min={0}
-                  step="any"
-                  label="Telur Rusak (kg)"
-                  tooltip="Total berat telur retak, pecah, atau tidak layak jual yang terkumpul hari ini."
-                  helperText="Satuan kilogram (kg). Contoh: 1.2"
+                  step={1}
+                  label="Telur Rusak - Jumlah (butir)"
+                  tooltip="Damaged Egg Count: Total butir telur retak, pecah, atau rusak yang terkumpul hari ini (butir)."
+                  helperText="Satuan: Butir (bukan kg). Contoh: 3 butir"
                   placeholder="0"
                   value={
                     damagedEgg

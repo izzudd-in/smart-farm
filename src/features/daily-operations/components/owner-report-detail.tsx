@@ -141,7 +141,7 @@ export function OwnerReportDetail({
         <div className="space-y-5 p-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Metric
-              label="Telur Jual"
+              label="Telur Jual (Berat)"
               value={formatAmount(
                 report.saleableEgg,
                 "kg",
@@ -149,11 +149,12 @@ export function OwnerReportDetail({
             />
 
             <Metric
-              label="Telur Rusak"
-              value={formatAmount(
-                report.damagedEgg,
-                "kg",
-              )}
+              label="Telur Rusak (Jumlah)"
+              value={
+                report.damagedEgg === null
+                  ? "—"
+                  : `${numberFormatter.format(report.damagedEgg)} butir`
+              }
             />
 
             <Metric

@@ -78,8 +78,8 @@ function getModeMeta(mode: ProductionPeriodMode) {
         title: "Perbandingan Produksi Tanggal Terpilih vs Hari Sebelumnya",
         chartTitle: "Line Chart Produksi: Hari Sebelumnya vs Hari Terpilih",
         chartDesc: "Membandingkan total produksi tanggal terpilih dengan hari sebelumnya.",
-        currentLegend: "Hari Terpilih (Hari Ini)",
-        previousLegend: "Hari Sebelumnya (Kemarin)",
+        currentLegend: "Hari Terpilih (Garis Hijau)",
+        previousLegend: "Hari Sebelumnya (Garis Abu-abu)",
       };
     case "weekly":
       return {
@@ -87,8 +87,8 @@ function getModeMeta(mode: ProductionPeriodMode) {
         title: "Perbandingan Produksi Minggu Ini vs Minggu Sebelumnya",
         chartTitle: "Grafik Produksi Harian Minggu Berjalan vs Minggu Lalu",
         chartDesc: "Menampilkan produksi per hari selama minggu berjalan dan dibandingkan dengan minggu sebelumnya.",
-        currentLegend: "Minggu Ini (Berjalan)",
-        previousLegend: "Minggu Sebelumnya",
+        currentLegend: "Minggu Ini / Aktif (Garis Hijau)",
+        previousLegend: "Minggu Sebelumnya (Garis Abu-abu)",
       };
     case "monthly":
       return {
@@ -96,8 +96,8 @@ function getModeMeta(mode: ProductionPeriodMode) {
         title: "Perbandingan Produksi Bulan Ini vs Bulan Sebelumnya",
         chartTitle: "Grafik Agregasi Mingguan Bulan Ini vs Bulan Lalu",
         chartDesc: "Menampilkan produksi bulan berjalan dibanding bulan sebelumnya dengan agregasi mingguan agar grafik tidak terlalu padat.",
-        currentLegend: "Bulan Ini",
-        previousLegend: "Bulan Sebelumnya",
+        currentLegend: "Bulan Ini / Aktif (Garis Hijau)",
+        previousLegend: "Bulan Sebelumnya (Garis Abu-abu)",
       };
     case "custom":
     default:
@@ -106,8 +106,8 @@ function getModeMeta(mode: ProductionPeriodMode) {
         title: "Perbandingan Produksi Periode Aktif vs Periode Sebelumnya",
         chartTitle: "Grafik Komparasi Harian Periode Aktif vs Sebelumnya",
         chartDesc: "Membandingkan total produksi telur harian dalam rentang hari yang bersesuaian.",
-        currentLegend: "Periode Aktif",
-        previousLegend: "Periode Sebelumnya",
+        currentLegend: "Periode Aktif (Garis Hijau)",
+        previousLegend: "Periode Sebelumnya (Garis Abu-abu)",
       };
   }
 }
@@ -137,7 +137,6 @@ export function ProductionComparisonPanel({
     return values.map((val, idx) => {
       let x = 50;
       if (pointsCount === 2) {
-        // Mode Hari Ini (Kemarin & Hari Ini)
         x = idx === 0 ? 25 : 75;
       } else if (pointsCount > 1) {
         x = (idx / (pointsCount - 1)) * 92 + 4;
@@ -175,7 +174,7 @@ export function ProductionComparisonPanel({
       current: currentKpis.damagedEgg,
       previous: prev.damagedEgg,
       change: changes.damagedEgg,
-      unit: "kg",
+      unit: "butir",
       invertColor: true,
     },
     {
@@ -212,17 +211,22 @@ export function ProductionComparisonPanel({
     },
   ];
 
+  const hoveredIdx = hoveredDay
+    ? trendPoints.findIndex((p) => p.dayIndex === hoveredDay.dayIndex)
+    : -1;
+  const hoveredX = hoveredIdx >= 0 ? curCoords[hoveredIdx]?.x : null;
+
   return (
     <Card className="p-5 space-y-5">
       {/* Header & Period Information */}
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <GitCompare className="h-5 w-5 text-primary" />
+            <GitCompare className="h-5 w-5 text-emerald-600" />
             <h2 className="font-bold text-foreground">
               {modeMeta.title}
             </h2>
-            <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[11px] font-semibold text-primary-hover">
+            <span className="rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
               {modeMeta.badge}
             </span>
           </div>
@@ -233,10 +237,10 @@ export function ProductionComparisonPanel({
 
         {/* Period Badges */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary-soft px-3 py-1.5 font-medium text-primary-hover">
+          <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
             {mode === "today" ? <Clock className="h-3.5 w-3.5" /> : <CalendarDays className="h-3.5 w-3.5" />}
             <span>
-              Aktif: {filters.from === filters.to ? formatReportDate(filters.to) : `${formatReportDate(filters.from)} — ${formatReportDate(filters.to)}`}
+              Aktif (Hijau): {filters.from === filters.to ? formatReportDate(filters.to) : `${formatReportDate(filters.from)} — ${formatReportDate(filters.to)}`}
             </span>
           </div>
 
@@ -245,7 +249,7 @@ export function ProductionComparisonPanel({
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-[#F9FAFB] px-3 py-1.5 font-medium text-[#4B5563]">
             <CalendarDays className="h-3.5 w-3.5 text-muted" />
             <span>
-              Sebelumnya: {comparison.previousPeriod.from === comparison.previousPeriod.to ? formatReportDate(comparison.previousPeriod.to) : `${formatReportDate(comparison.previousPeriod.from)} — ${formatReportDate(comparison.previousPeriod.to)}`}
+              Sebelumnya (Abu-abu): {comparison.previousPeriod.from === comparison.previousPeriod.to ? formatReportDate(comparison.previousPeriod.to) : `${formatReportDate(comparison.previousPeriod.from)} — ${formatReportDate(comparison.previousPeriod.to)}`}
             </span>
           </div>
         </div>
@@ -297,7 +301,7 @@ export function ProductionComparisonPanel({
         })}
       </div>
 
-      {/* Comparison Chart (FT-086, FT-087, FT-088, FT-089) */}
+      {/* Comparison Chart with Green Active Line and Gray Previous Line (UX-021, UX-023) */}
       <div className="space-y-3 pt-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -309,10 +313,10 @@ export function ProductionComparisonPanel({
             </p>
           </div>
 
-          {/* Legend */}
+          {/* Legend with explicit Green and Gray indicators (UX-021, UX-023) */}
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-5 rounded-full bg-[#2563EB]" />
+              <span className="h-2.5 w-5 rounded-full bg-[#16A34A]" />
               <span className="font-semibold text-foreground">{modeMeta.currentLegend}</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -332,7 +336,7 @@ export function ProductionComparisonPanel({
               viewBox="0 0 100 38"
               preserveAspectRatio="none"
               role="img"
-              aria-label="Grafik perbandingan produksi"
+              aria-label="Grafik perbandingan produksi aktif (hijau) vs pembanding (abu-abu)"
               className="h-44 w-full overflow-visible"
             >
               {/* Grid lines */}
@@ -340,13 +344,27 @@ export function ProductionComparisonPanel({
               <line x1="0" y1="20" x2="100" y2="20" stroke="#E5E7EB" strokeWidth="0.4" strokeDasharray="1 1" />
               <line x1="0" y1="34" x2="100" y2="34" stroke="#D1D5DB" strokeWidth="0.5" />
 
-              {/* Previous Period Polyline (Dashed) */}
+              {/* Guideline when hovering (UX-022) */}
+              {hoveredX !== null ? (
+                <line
+                  x1={hoveredX}
+                  y1={4}
+                  x2={hoveredX}
+                  y2={34}
+                  stroke="#16A34A"
+                  strokeWidth="0.6"
+                  strokeDasharray="1.5 1.5"
+                  opacity={0.6}
+                />
+              ) : null}
+
+              {/* Previous Period Polyline: Garis Abu-abu (UX-021, UX-023) */}
               {prevCoords.length > 1 ? (
                 <polyline
                   points={prevPolyline}
                   fill="none"
                   stroke="#9CA3AF"
-                  strokeWidth="1.6"
+                  strokeWidth="1.8"
                   strokeDasharray="3 2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -354,20 +372,20 @@ export function ProductionComparisonPanel({
                 />
               ) : null}
 
-              {/* Current Period Polyline (Solid) */}
+              {/* Current Period Polyline: Garis Hijau (UX-021, UX-023) */}
               {curCoords.length > 1 ? (
                 <polyline
                   points={curPolyline}
                   fill="none"
-                  stroke="#2563EB"
-                  strokeWidth="2.2"
+                  stroke="#16A34A"
+                  strokeWidth="2.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   vectorEffect="non-scaling-stroke"
                 />
               ) : null}
 
-              {/* Current Period Points */}
+              {/* Current Period Points: Garis Hijau */}
               {curCoords.map(({ x, y }, idx) => {
                 const point = trendPoints[idx];
                 const isHovered = hoveredDay?.dayIndex === point.dayIndex;
@@ -383,16 +401,16 @@ export function ProductionComparisonPanel({
                     <circle
                       cx={x}
                       cy={y}
-                      r={isHovered ? "2.4" : "1.4"}
-                      fill={isHovered ? "#FFFFFF" : "#2563EB"}
-                      stroke="#2563EB"
-                      strokeWidth={isHovered ? "1.4" : "0.5"}
+                      r={isHovered ? "2.6" : "1.5"}
+                      fill={isHovered ? "#FFFFFF" : "#16A34A"}
+                      stroke="#16A34A"
+                      strokeWidth={isHovered ? "1.6" : "0.5"}
                     />
                   </g>
                 );
               })}
 
-              {/* Previous Period Points */}
+              {/* Previous Period Points: Garis Abu-abu */}
               {prevCoords.map(({ x, y }, idx) => {
                 const point = trendPoints[idx];
                 const isHovered = hoveredDay?.dayIndex === point.dayIndex;
@@ -402,9 +420,9 @@ export function ProductionComparisonPanel({
                     key={`prev-${point.dayIndex}`}
                     cx={x}
                     cy={y}
-                    r={isHovered ? "2" : "1.2"}
+                    r={isHovered ? "2.2" : "1.3"}
                     fill="#9CA3AF"
-                    opacity={0.8}
+                    opacity={0.9}
                   />
                 );
               })}
@@ -415,8 +433,8 @@ export function ProductionComparisonPanel({
               {trendPoints.map((point) => (
                 <span
                   key={point.dayIndex}
-                  className={`cursor-pointer hover:text-foreground ${
-                    hoveredDay?.dayIndex === point.dayIndex ? "font-bold text-primary" : ""
+                  className={`cursor-pointer hover:text-foreground transition-colors ${
+                    hoveredDay?.dayIndex === point.dayIndex ? "font-bold text-emerald-700" : ""
                   }`}
                   onClick={() => setHoveredDay(point)}
                 >
@@ -425,36 +443,64 @@ export function ProductionComparisonPanel({
               ))}
             </div>
 
-            {/* Day/Interval Inspection Details Box */}
+            {/* Detailed Tooltip / Inspection Box (UX-022) */}
             {hoveredDay ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary-soft/60 p-3 text-xs">
-                <span className="font-bold text-foreground">
-                  📌 {hoveredDay.dayLabel}:
-                </span>
-
-                <div className="flex flex-wrap items-center gap-4">
-                  <div>
-                    <span className="text-muted">
-                      {modeMeta.currentLegend} ({formatReportDate(hoveredDay.currentDate)}):
-                    </span>{" "}
-                    <b>{formatNumber(hoveredDay.currentValue, "kg")}</b>
+              <div className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50/70 p-3.5 text-xs shadow-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-foreground">
+                      📌 Detail Komparasi: {hoveredDay.dayLabel}
+                    </span>
                   </div>
 
-                  <div>
-                    <span className="text-muted">
-                      {modeMeta.previousLegend} ({formatReportDate(hoveredDay.previousDate)}):
-                    </span>{" "}
-                    <b>{formatNumber(hoveredDay.previousValue, "kg")}</b>
-                  </div>
-
-                  <div>
-                    <span className="text-muted">Perubahan:</span>{" "}
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <span className="text-muted">Perubahan:</span>
                     <ChangeBadge
                       percentage={calculatePercentageChange(
                         hoveredDay.currentValue,
                         hoveredDay.previousValue,
                       )}
                     />
+                  </div>
+                </div>
+
+                {/* Values Comparison Breakdown (UX-022) */}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 pt-1">
+                  <div className="rounded-lg bg-white p-2.5 border border-emerald-200 shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-muted">
+                      <span className="h-2 w-2 rounded-full bg-[#16A34A]" />
+                      <span>Periode Aktif ({formatReportDate(hoveredDay.currentDate)})</span>
+                    </div>
+                    <p className="mt-1 text-base font-bold text-foreground">
+                      {formatNumber(hoveredDay.currentValue, "kg")}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-white p-2.5 border border-border shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-muted">
+                      <span className="h-2 w-2 rounded-full bg-[#9CA3AF]" />
+                      <span>Periode Pembanding ({formatReportDate(hoveredDay.previousDate)})</span>
+                    </div>
+                    <p className="mt-1 text-base font-bold text-foreground">
+                      {formatNumber(hoveredDay.previousValue, "kg")}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-white p-2.5 border border-border shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-muted">
+                      <span>Selisih Nominal Produksi</span>
+                    </div>
+                    <p className="mt-1 text-base font-bold text-foreground">
+                      {hoveredDay.currentValue !== null && hoveredDay.previousValue !== null ? (
+                        <>
+                          {hoveredDay.currentValue - hoveredDay.previousValue > 0
+                            ? `+${formatter.format(hoveredDay.currentValue - hoveredDay.previousValue)} kg`
+                            : `${formatter.format(hoveredDay.currentValue - hoveredDay.previousValue)} kg`}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>

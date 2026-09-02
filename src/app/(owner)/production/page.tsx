@@ -5,8 +5,10 @@ import { ProductionKpiCards } from "@/features/production/components/production-
 import { ProductionTrend } from "@/features/production/components/production-trend";
 import { ProductionEfficiencySection } from "@/features/production/components/production-efficiency-section";
 import { ProductionComparisonPanel } from "@/features/production/components/production-comparison-panel";
+import { ProductionWeeklyInsight } from "@/features/production/components/production-weekly-insight";
 import { getProductionPageData } from "@/features/production/queries/get-production-page-data";
 import { parseProductionFilters } from "@/features/production/schemas/production-filter";
+import { FarmOnboardingEmptyState } from "@/components/ui/farm-onboarding-empty-state";
 import { formatReportDate } from "@/features/daily-operations/utils/date";
 
 type ProductionPageProps = {
@@ -55,6 +57,26 @@ export default async function ProductionPage({
         </p>
       </div>
 
+      {/* REL-020 / UX-017 / BUG-016: Onboarding empty state untuk farm baru */}
+      {data.kandangOptions.length === 0 ? (
+        <FarmOnboardingEmptyState
+          hasKandangs={false}
+          hasFlocks={false}
+          hasFormulas={false}
+          title="Mulai Setup Peternakan Baru Anda"
+          description="Belum ada kandang terdaftar di farm ini. Ikuti panduan langkah demi langkah di bawah untuk memulai pencatatan produksi telur dan monitoring pakan."
+        />
+      ) : null}
+
+      {/* UX-020: Insight Mingguan langsung saat pertama kali membuka halaman */}
+      <ProductionWeeklyInsight
+        kpis={data.kpis}
+        comparison={data.comparison}
+        trend={data.trend}
+        from={data.filters.from}
+        to={data.filters.to}
+      />
+
       {/* KPI Overview Cards */}
       <ProductionKpiCards kpis={data.kpis} />
 
@@ -70,7 +92,7 @@ export default async function ProductionPage({
         comparison={data.comparison}
       />
 
-      {/* FT-084, FT-085, FT-086: Perbandingan dengan Periode Sebelumnya & Dual-Line Chart */}
+      {/* FT-084, FT-085, FT-086, UX-021, UX-022, UX-023: Perbandingan Periode Aktif (Hijau) vs Pembanding (Abu-abu) */}
       <ProductionComparisonPanel
         filters={data.filters}
         currentKpis={data.kpis}

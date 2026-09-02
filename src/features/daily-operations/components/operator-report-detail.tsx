@@ -162,7 +162,7 @@ export function OperatorReportDetail({
         <div className="space-y-5 p-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Metric
-              label="Telur Jual"
+              label="Telur Jual (Berat)"
               value={formatAmount(
                 report.saleableEgg,
                 "kg",
@@ -170,10 +170,10 @@ export function OperatorReportDetail({
             />
 
             <Metric
-              label="Telur Rusak"
+              label="Telur Rusak (Jumlah)"
               value={formatAmount(
                 report.damagedEgg,
-                "kg",
+                "butir",
               )}
             />
 

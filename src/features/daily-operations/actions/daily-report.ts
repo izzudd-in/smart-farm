@@ -691,19 +691,66 @@ async function saveReport(
             );
           }
 
-          // Validasi stok pakan tidak boleh negatif (BUG-007 / DT-007)
+          // Validasi stok pakan tidak boleh negatif (BUG-007 / DT-007 / PERF-004)
           if (
             parsed.feedUsed !== null &&
             parsed.feedUsed > 0 &&
             snapshot &&
             snapshot.items.length > 0
           ) {
-            for (const item of snapshot.items) {
-              const itemPct = Number(item.percentage) / 100;
-              const requiredItemKg = parsed.feedUsed * itemPct;
+            const ingredientIds = snapshot.items.map((i) => i.ingredientId);
 
-              const [purchasesAgg, adjustmentsAgg, otherReports] =
-                await Promise.all([
+            // Fetch other reports ONCE for all ingredients to avoid N redundant queries
+            const otherReports = await tx.dailyReport.findMany({
+              where: {
+                kandang: {
+                  farmId: kandang.farmId,
+                },
+                id: existing ? { not: existing.id } : undefined,
+                date: {
+                  lte: reportDate,
+                },
+                feedUsed: {
+                  not: null,
+                },
+              },
+              select: {
+                feedUsed: true,
+                feedItems: {
+                  where: {
+                    ingredientId: {
+                      in: ingredientIds,
+                    },
+                  },
+                  select: {
+                    ingredientId: true,
+                    percentage: true,
+                  },
+                },
+              },
+            });
+
+            // Map other usage per ingredient in-memory
+            const otherUsageMap = new Map<string, number>();
+            for (const rep of otherReports) {
+              if (rep.feedUsed && rep.feedItems.length > 0) {
+                for (const fi of rep.feedItems) {
+                  const usedKg = rep.feedUsed * (Number(fi.percentage) / 100);
+                  otherUsageMap.set(
+                    fi.ingredientId,
+                    (otherUsageMap.get(fi.ingredientId) ?? 0) + usedKg,
+                  );
+                }
+              }
+            }
+
+            // Parallelize stock checks across all ingredients in a single wave
+            await Promise.all(
+              snapshot.items.map(async (item) => {
+                const itemPct = Number(item.percentage) / 100;
+                const requiredItemKg = parsed.feedUsed! * itemPct;
+
+                const [purchasesAgg, adjustmentsAgg] = await Promise.all([
                   tx.feedPurchase.aggregate({
                     where: {
                       farmId: kandang.farmId,
@@ -729,62 +776,28 @@ async function saveReport(
                       quantityKg: true,
                     },
                   }),
-                  tx.dailyReport.findMany({
-                    where: {
-                      kandang: {
-                        farmId: kandang.farmId,
-                      },
-                      id: existing
-                        ? { not: existing.id }
-                        : undefined,
-                      date: {
-                        lte: reportDate,
-                      },
-                      feedUsed: {
-                        not: null,
-                      },
-                    },
-                    select: {
-                      feedUsed: true,
-                      feedItems: {
-                        where: {
-                          ingredientId: item.ingredientId,
-                        },
-                        select: {
-                          percentage: true,
-                        },
-                      },
-                    },
-                  }),
                 ]);
 
-              let totalInKg = Number(purchasesAgg._sum.quantityKg ?? 0);
-              for (const adj of adjustmentsAgg) {
-                const q = Number(adj._sum.quantityKg ?? 0);
-                if (adj.type === "OPENING" || adj.type === "INCREASE") {
-                  totalInKg += q;
-                } else if (adj.type === "DECREASE") {
-                  totalInKg -= q;
-                }
-              }
-
-              let otherUsageKg = 0;
-              for (const rep of otherReports) {
-                if (rep.feedUsed && rep.feedItems.length > 0) {
-                  for (const fi of rep.feedItems) {
-                    otherUsageKg += rep.feedUsed * (Number(fi.percentage) / 100);
+                let totalInKg = Number(purchasesAgg._sum.quantityKg ?? 0);
+                for (const adj of adjustmentsAgg) {
+                  const q = Number(adj._sum.quantityKg ?? 0);
+                  if (adj.type === "OPENING" || adj.type === "INCREASE") {
+                    totalInKg += q;
+                  } else if (adj.type === "DECREASE") {
+                    totalInKg -= q;
                   }
                 }
-              }
 
-              const availableStockKg = Math.max(0, totalInKg - otherUsageKg);
+                const otherUsageKg = otherUsageMap.get(item.ingredientId) ?? 0;
+                const availableStockKg = Math.max(0, totalInKg - otherUsageKg);
 
-              if (requiredItemKg > availableStockKg + 0.001) {
-                throw ruleError(
-                  `Stok pakan ${item.ingredientNameSnapshot} tidak mencukupi untuk pemakaian ${parsed.feedUsed} kg (${requiredItemKg.toFixed(2)} kg bahan). Sisa stok tersedia: ${availableStockKg.toFixed(2)} kg.`,
-                );
-              }
-            }
+                if (requiredItemKg > availableStockKg + 0.001) {
+                  throw ruleError(
+                    `Stok pakan ${item.ingredientNameSnapshot} tidak mencukupi untuk pemakaian ${parsed.feedUsed} kg (${requiredItemKg.toFixed(2)} kg bahan). Sisa stok tersedia: ${availableStockKg.toFixed(2)} kg.`,
+                  );
+                }
+              }),
+            );
           }
 
           // Validasi mortality tidak boleh melebihi sisa populasi aktif flock (DT-008 / BUG-006)

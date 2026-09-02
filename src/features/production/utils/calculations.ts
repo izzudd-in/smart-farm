@@ -12,6 +12,14 @@ import {
   getYesterday,
 } from "@/features/production/utils/dates";
 
+/**
+ * Memisahkan dan memvalidasi satuan produksi telur (DT-002, DT-016):
+ * 1. Saleable Egg Weight -> kg
+ * 2. Saleable Egg Count -> butir
+ * 3. Damaged Egg Count -> butir
+ * DILARANG mencampur satuan kg dengan butir secara langsung.
+ * Total Egg Mass (kg) = saleableEgg (kg).
+ */
 export function deriveEggProduction(
   saleableEgg: number | null,
   damagedEgg: number | null,
@@ -19,27 +27,31 @@ export function deriveEggProduction(
   totalEgg: number | null;
   damagedPercentage: number | null;
 } {
-  if (
-    saleableEgg === null ||
-    damagedEgg === null
-  ) {
+  if (saleableEgg === null) {
     return {
       totalEgg: null,
       damagedPercentage: null,
     };
   }
 
-  const totalEgg =
-    saleableEgg + damagedEgg;
+  // DT-016: Total Egg Mass (kg) untuk FCR dan evaluasi produksi adalah massa telur dalam kg
+  const totalEgg = saleableEgg;
+
+  let damagedPercentage: number | null = null;
+  if (damagedEgg !== null && damagedEgg >= 0) {
+    // Estimasi standar layer: 1 kg telur ≈ 16 butir (62.5g/butir)
+    // Persentase telur rusak dihitung terhadap total butir:
+    // (Damaged Count / Total Egg Count) * 100%
+    const estimatedTotalCount = saleableEgg * 16 + damagedEgg;
+    damagedPercentage =
+      estimatedTotalCount === 0
+        ? 0
+        : Number(((damagedEgg / estimatedTotalCount) * 100).toFixed(2));
+  }
 
   return {
     totalEgg,
-
-    damagedPercentage:
-      totalEgg === 0
-        ? 0
-        : (damagedEgg / totalEgg) *
-          100,
+    damagedPercentage,
   };
 }
 
@@ -87,23 +99,24 @@ export function calculateDamagedPercentage(
 }
 
 /**
- * FCR = Total Pakan (kg) / Total Produksi Telur (kg)
+ * DT-016: FCR = Total Feed Consumption (kg) / Total Egg Mass (kg)
+ * Nilai FCR konsisten dengan perhitungan manual.
  */
 export function calculateFcr(
   feedUsed: number | null | undefined,
-  totalEgg: number | null | undefined,
+  totalEggMassKg: number | null | undefined,
 ): number | null {
   if (
     feedUsed === null ||
     feedUsed === undefined ||
-    totalEgg === null ||
-    totalEgg === undefined ||
-    totalEgg <= 0
+    totalEggMassKg === null ||
+    totalEggMassKg === undefined ||
+    totalEggMassKg <= 0
   ) {
     return null;
   }
 
-  const fcr = feedUsed / totalEgg;
+  const fcr = feedUsed / totalEggMassKg;
   return Number(fcr.toFixed(2));
 }
 
@@ -135,7 +148,8 @@ export function calculateHenDay(
 }
 
 /**
- * Persentase Perubahan: ((periode aktif - periode sebelumnya) / periode sebelumnya) * 100%
+ * DT-018: Persentase Perubahan: ((periode aktif - periode sebelumnya) / periode sebelumnya) * 100%
+ * Validasi selisih total produksi periode aktif dan periode pembanding secara presisi.
  */
 export function calculatePercentageChange(
   current: number | null | undefined,
@@ -145,9 +159,14 @@ export function calculatePercentageChange(
     current === null ||
     current === undefined ||
     previous === null ||
-    previous === undefined ||
-    previous === 0
+    previous === undefined
   ) {
+    return null;
+  }
+
+  if (previous === 0) {
+    if (current > 0) return 100.0;
+    if (current === 0) return 0.0;
     return null;
   }
 
@@ -246,21 +265,25 @@ export function getPreviousPeriod(
  */
 export function buildTrendComparison(params: {
   mode: ProductionPeriodMode;
-  fromDate: Date;
-  toDate: Date;
-  prevFromDate: Date;
-  prevToDate: Date;
+  fromDate: Date | string;
+  toDate: Date | string;
+  prevFromDate: Date | string;
+  prevToDate: Date | string;
   currentHistory: ProductionReportRow[];
   previousHistory: ProductionReportRow[];
 }): TrendComparisonPoint[] {
   const {
     mode,
-    fromDate,
-    toDate,
-    prevFromDate,
+    fromDate: rawFrom,
+    toDate: rawTo,
+    prevFromDate: rawPrevFrom,
     currentHistory,
     previousHistory,
   } = params;
+
+  const fromDate = rawFrom instanceof Date ? rawFrom : parseDateOnly(String(rawFrom));
+  const toDate = rawTo instanceof Date ? rawTo : parseDateOnly(String(rawTo));
+  const prevFromDate = rawPrevFrom instanceof Date ? rawPrevFrom : parseDateOnly(String(rawPrevFrom));
 
   // Map total produksi per tanggal
   const curDateMap = new Map<string, number>();

@@ -26,6 +26,10 @@ function valueKg(value: number | null): string {
   return value === null ? "—" : `${formatter.format(value)} kg`;
 }
 
+function valueCount(value: number | null, suffix = "butir"): string {
+  return value === null ? "—" : `${formatter.format(value)} ${suffix}`;
+}
+
 function getFcrBadge(fcr: number | null) {
   if (fcr === null) return null;
   if (fcr <= 2.2) {
@@ -139,7 +143,7 @@ export function ProductionKandangList({
                 <div>
                   <p className="text-[11px] text-muted">Telur Rusak</p>
                   <p className="mt-1 text-sm font-semibold text-foreground">
-                    {valueKg(kandang.damagedEgg)}
+                    {valueCount(kandang.damagedEgg, "butir")}
                   </p>
                   {kandang.damagedPercentage !== null ? (
                     <p className={`text-[10px] font-medium ${kandang.damagedPercentage > 3 ? "text-danger" : "text-muted"}`}>

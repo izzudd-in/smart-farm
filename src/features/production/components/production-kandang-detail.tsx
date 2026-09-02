@@ -61,6 +61,10 @@ function birds(value: number | null): string {
   return value === null ? "—" : `${formatter.format(value)} ekor`;
 }
 
+function count(value: number | null, suffix = "butir"): string {
+  return value === null ? "—" : `${formatter.format(value)} ${suffix}`;
+}
+
 function getFcrBadge(fcr: number | null) {
   if (fcr === null) return null;
   if (fcr <= 2.2) {
@@ -209,7 +213,7 @@ export function ProductionKandangDetailView({
     },
     {
       label: "Telur Rusak",
-      value: kg(data.damagedEgg),
+      value: count(data.damagedEgg, "butir"),
       subValue: data.damagedPercentage !== null ? `${data.damagedPercentage.toFixed(1)}% dari total` : undefined,
       subValueAlert: (data.damagedPercentage ?? 0) > 3,
       icon: TriangleAlert,

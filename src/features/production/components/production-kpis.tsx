@@ -26,6 +26,10 @@ function formatKg(value: number | null): string {
     : `${formatter.format(value)} kg`;
 }
 
+function formatCount(value: number | null, suffix = "butir"): string {
+  return value === null ? "—" : `${formatter.format(value)} ${suffix}`;
+}
+
 function formatBirds(value: number | null): string {
   return value === null ? "—" : `${formatter.format(value)} ekor`;
 }
@@ -91,7 +95,7 @@ export function ProductionKpiCards({ kpis }: ProductionKpisProps) {
     },
     {
       label: "Telur Rusak",
-      value: formatKg(kpis.damagedEgg),
+      value: formatCount(kpis.damagedEgg),
       subValue: kpis.damagedPercentage !== null ? `${kpis.damagedPercentage.toFixed(1)}% dari produksi` : undefined,
       subValueAlert: (kpis.damagedPercentage ?? 0) > 3,
       icon: TriangleAlert,

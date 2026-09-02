@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, Table2 } from "lucide-react";
+import { ArrowUpDown, LayoutGrid, Table2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { ReportStatusBadge } from "@/features/daily-operations/components/report-status-badge";
@@ -18,6 +18,21 @@ type ProductionHistoryListProps = {
   showKandang?: boolean;
 };
 
+type SortKey =
+  | "date"
+  | "kandang"
+  | "flock"
+  | "totalEgg"
+  | "saleableEgg"
+  | "damagedEgg"
+  | "feedUsed"
+  | "fcr"
+  | "henDay"
+  | "mortality"
+  | "status";
+
+type SortDirection = "asc" | "desc";
+
 const formatter = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 2,
 });
@@ -26,12 +41,91 @@ function valueKg(value: number | null): string {
   return value === null ? "—" : `${formatter.format(value)} kg`;
 }
 
+function valueCount(value: number | null, suffix = "butir"): string {
+  return value === null ? "—" : `${formatter.format(value)} ${suffix}`;
+}
+
 export function ProductionHistoryList({
   rows,
   filters,
   showKandang = true,
 }: ProductionHistoryListProps) {
   const [viewMode, setViewMode] = useState<"card" | "table">("table");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("desc");
+    }
+  };
+
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      let valA: number | string = 0;
+      let valB: number | string = 0;
+
+      switch (sortKey) {
+        case "date":
+          valA = a.date;
+          valB = b.date;
+          break;
+        case "kandang":
+          valA = a.kandangCode;
+          valB = b.kandangCode;
+          break;
+        case "flock":
+          valA = a.flockName;
+          valB = b.flockName;
+          break;
+        case "totalEgg":
+          valA = a.totalEgg ?? -1;
+          valB = b.totalEgg ?? -1;
+          break;
+        case "saleableEgg":
+          valA = a.saleableEgg ?? -1;
+          valB = b.saleableEgg ?? -1;
+          break;
+        case "damagedEgg":
+          valA = a.damagedEgg ?? -1;
+          valB = b.damagedEgg ?? -1;
+          break;
+        case "feedUsed":
+          valA = a.feedUsed ?? -1;
+          valB = b.feedUsed ?? -1;
+          break;
+        case "fcr":
+          valA = a.fcr ?? -1;
+          valB = b.fcr ?? -1;
+          break;
+        case "henDay":
+          valA = a.henDay ?? -1;
+          valB = b.henDay ?? -1;
+          break;
+        case "mortality":
+          valA = a.mortality ?? -1;
+          valB = b.mortality ?? -1;
+          break;
+        case "status":
+          valA = a.status;
+          valB = b.status;
+          break;
+      }
+
+      if (typeof valA === "string" && typeof valB === "string") {
+        return sortDirection === "asc"
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+
+      return sortDirection === "asc"
+        ? (valA as number) - (valB as number)
+        : (valB as number) - (valA as number);
+    });
+  }, [rows, sortKey, sortDirection]);
 
   if (rows.length === 0) {
     return (
@@ -48,10 +142,10 @@ export function ProductionHistoryList({
 
   return (
     <div className="space-y-3">
-      {/* View Mode Toggle */}
+      {/* View Mode Toggle & Counter */}
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted font-medium">
-          Menampilkan {rows.length} riwayat laporan
+          Menampilkan <b>{rows.length}</b> riwayat laporan produksi
         </span>
 
         <div className="flex items-center gap-1 rounded-lg border border-border bg-white p-0.5">
@@ -65,7 +159,7 @@ export function ProductionHistoryList({
             }`}
           >
             <Table2 className="h-3.5 w-3.5" />
-            <span>Tabel</span>
+            <span>Tabel Zebra</span>
           </button>
           <button
             type="button"
@@ -82,29 +176,131 @@ export function ProductionHistoryList({
         </div>
       </div>
 
-      {/* Table View */}
+      {/* Table View with Zebra Striping and Column Sorting (HE-003, DT-002) */}
       {viewMode === "table" ? (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-[#F9FAFB] font-semibold text-[#4B5563]">
+              <thead className="border-b border-border bg-[#F3F4F6] font-semibold text-[#374151]">
                 <tr>
-                  <th className="px-3 py-2.5">Tanggal</th>
-                  {showKandang ? <th className="px-3 py-2.5">Kandang</th> : null}
-                  <th className="px-3 py-2.5">Flock</th>
-                  <th className="px-3 py-2.5 text-right">Total Telur</th>
-                  <th className="px-3 py-2.5 text-right">Telur Jual</th>
-                  <th className="px-3 py-2.5 text-right">Telur Rusak</th>
-                  <th className="px-3 py-2.5 text-right">Pakan</th>
-                  <th className="px-3 py-2.5 text-right">FCR</th>
-                  <th className="px-3 py-2.5 text-right">HD (%)</th>
-                  <th className="px-3 py-2.5 text-right">Mati</th>
-                  <th className="px-3 py-2.5 text-center">Status</th>
-                  {showKandang ? <th className="px-3 py-2.5 text-center">Aksi</th> : null}
+                  <th className="px-3.5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("date")}
+                      className="flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Tanggal</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  {showKandang ? (
+                    <th className="px-3.5 py-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSort("kandang")}
+                        className="flex items-center gap-1 hover:text-primary transition-colors"
+                      >
+                        <span>Kandang</span>
+                        <ArrowUpDown className="h-3 w-3 text-muted" />
+                      </button>
+                    </th>
+                  ) : null}
+
+                  <th className="px-3.5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("flock")}
+                      className="flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Flock</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("saleableEgg")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Telur Jual (kg)</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("damagedEgg")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Telur Rusak (butir)</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("feedUsed")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Pakan (kg)</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("fcr")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>FCR</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("henDay")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>HD (%)</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("mortality")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Mati</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  <th className="px-3.5 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("status")}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <span>Status</span>
+                      <ArrowUpDown className="h-3 w-3 text-muted" />
+                    </button>
+                  </th>
+
+                  {showKandang ? <th className="px-3.5 py-3 text-center">Aksi</th> : null}
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-border">
-                {rows.map((row) => {
+                {sortedRows.map((row, idx) => {
                   const query = new URLSearchParams();
                   if (filters) {
                     query.set("from", filters.from);
@@ -112,28 +308,37 @@ export function ProductionHistoryList({
                   }
                   query.set("flock", row.flockId);
 
+                  // Zebra striping (HE-003)
+                  const stripeClass = idx % 2 === 0 ? "bg-white" : "bg-[#F9FAFB]/75";
+
                   return (
-                    <tr key={row.id} className="hover:bg-[#F9FAFB]/75 transition-colors">
-                      <td className="whitespace-nowrap px-3 py-2.5 font-medium text-foreground">
+                    <tr
+                      key={row.id}
+                      className={`${stripeClass} hover:bg-primary-soft/30 transition-colors`}
+                    >
+                      <td className="whitespace-nowrap px-3.5 py-3 font-medium text-foreground">
                         {formatReportDate(row.date)}
                       </td>
+
                       {showKandang ? (
-                        <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-foreground">
+                        <td className="whitespace-nowrap px-3.5 py-3 font-semibold text-foreground">
                           {row.kandangCode}
                         </td>
                       ) : null}
-                      <td className="whitespace-nowrap px-3 py-2.5 text-muted max-w-[120px] truncate">
+
+                      <td className="whitespace-nowrap px-3.5 py-3 text-muted max-w-[120px] truncate">
                         {row.flockName}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold text-foreground">
-                        {valueKg(row.totalEgg)}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-foreground">
+
+                      {/* Telur Jual (kg) */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-right font-semibold text-foreground">
                         {valueKg(row.saleableEgg)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                        <span className={row.damagedPercentage && row.damagedPercentage > 3 ? "font-semibold text-danger" : "text-foreground"}>
-                          {valueKg(row.damagedEgg)}
+
+                      {/* Telur Rusak (butir) (DT-002: no unit mixing) */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-right">
+                        <span className={row.damagedPercentage && row.damagedPercentage > 3 ? "font-semibold text-danger" : "text-muted"}>
+                          {valueCount(row.damagedEgg, "butir")}
                         </span>
                         {row.damagedPercentage !== null ? (
                           <span className="ml-1 text-[10px] text-muted">
@@ -141,28 +346,39 @@ export function ProductionHistoryList({
                           </span>
                         ) : null}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-foreground">
+
+                      {/* Pakan (kg) */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-right text-foreground">
                         {valueKg(row.feedUsed)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium text-foreground">
+
+                      {/* FCR */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-right font-medium text-foreground">
                         {row.fcr !== null ? formatter.format(row.fcr) : "—"}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium text-foreground">
+
+                      {/* Hen-Day (%) */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-right font-medium text-foreground">
                         {row.henDay !== null && row.henDay !== undefined ? `${row.henDay}%` : "—"}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right">
+
+                      {/* Ayam Mati */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-right">
                         <span className={row.mortality && row.mortality > 0 ? "font-semibold text-danger" : "text-muted"}>
                           {row.mortality ?? 0}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-center">
+
+                      {/* Status Visual Indicator: Hijau for Complete, Kuning for Draft/Incomplete (HE-003) */}
+                      <td className="whitespace-nowrap px-3.5 py-3 text-center">
                         <ReportStatusBadge status={row.status} />
                       </td>
+
                       {showKandang ? (
-                        <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                        <td className="whitespace-nowrap px-3.5 py-3 text-center">
                           <Link
                             href={`/production/${row.kandangId}?${query.toString()}`}
-                            className="font-semibold text-primary-hover hover:underline"
+                            className="inline-flex items-center rounded-lg border border-border bg-white px-2 py-0.5 font-semibold text-primary-hover hover:bg-primary-soft transition-colors"
                           >
                             Detail
                           </Link>
@@ -177,8 +393,8 @@ export function ProductionHistoryList({
         </Card>
       ) : (
         /* Card View */
-        <div className="space-y-2.5">
-          {rows.map((row) => {
+        <div className="space-y-3">
+          {sortedRows.map((row) => {
             const query = new URLSearchParams();
             if (filters) {
               query.set("from", filters.from);
@@ -187,10 +403,10 @@ export function ProductionHistoryList({
             query.set("flock", row.flockId);
 
             return (
-              <Card key={row.id} className="min-w-0 p-4">
+              <Card key={row.id} className="min-w-0 p-4 transition-shadow hover:shadow-xs">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
+                    <p className="text-sm font-bold text-foreground">
                       {showKandang
                         ? `${row.kandangCode} · ${row.kandangName}`
                         : row.flockName}
@@ -208,7 +424,7 @@ export function ProductionHistoryList({
                     {showKandang ? (
                       <Link
                         href={`/production/${row.kandangId}?${query.toString()}`}
-                        className="rounded bg-primary-soft px-2 py-1 text-xs font-semibold text-primary-hover hover:bg-primary/20"
+                        className="rounded-lg bg-primary-soft px-2.5 py-1 text-xs font-semibold text-primary-hover hover:bg-primary/20 transition-colors"
                       >
                         Detail Kandang
                       </Link>
@@ -216,54 +432,33 @@ export function ProductionHistoryList({
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-6 text-xs">
+                <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4">
                   <div>
-                    <span className="text-muted">Total Produksi</span>
-                    <p className="mt-0.5 font-bold text-foreground">
-                      {valueKg(row.totalEgg)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-muted">Telur Jual</span>
-                    <p className="mt-0.5 font-medium text-foreground">
+                    <p className="text-[11px] text-muted">Telur Jual (kg)</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">
                       {valueKg(row.saleableEgg)}
                     </p>
                   </div>
 
                   <div>
-                    <span className="text-muted">Telur Rusak</span>
-                    <p className="mt-0.5 font-medium text-foreground">
-                      {valueKg(row.damagedEgg)}{" "}
-                      {row.damagedPercentage !== null ? (
-                        <span className="text-[10px] text-muted">
-                          ({row.damagedPercentage.toFixed(1)}%)
-                        </span>
-                      ) : null}
+                    <p className="text-[11px] text-muted">Telur Rusak (butir)</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">
+                      {valueCount(row.damagedEgg, "butir")}
                     </p>
                   </div>
 
                   <div>
-                    <span className="text-muted">Pakan & FCR</span>
-                    <p className="mt-0.5 font-medium text-foreground">
-                      {valueKg(row.feedUsed)}{" "}
-                      <span className="text-[10px] text-muted">
-                        (FCR: {row.fcr !== null ? formatter.format(row.fcr) : "—"})
-                      </span>
+                    <p className="text-[11px] text-muted">FCR / HD (%)</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">
+                      {row.fcr !== null ? formatter.format(row.fcr) : "—"} /{" "}
+                      {row.henDay !== null ? `${row.henDay}%` : "—"}
                     </p>
                   </div>
 
                   <div>
-                    <span className="text-muted">Hen-Day (HD)</span>
-                    <p className="mt-0.5 font-bold text-foreground">
-                      {row.henDay !== null && row.henDay !== undefined ? `${row.henDay}%` : "—"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <span className="text-muted">Ayam Mati</span>
-                    <p className={`mt-0.5 font-medium ${row.mortality && row.mortality > 0 ? "text-danger font-semibold" : "text-foreground"}`}>
-                      {row.mortality ?? 0} ekor
+                    <p className="text-[11px] text-muted">Pakan / Mati</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">
+                      {valueKg(row.feedUsed)} / {row.mortality ?? 0} ekor
                     </p>
                   </div>
                 </div>

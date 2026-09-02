@@ -141,9 +141,13 @@ model DailyReport {
   flockId    String
   operatorId String
 
+  /// Berat telur utuh layak jual (Satuan: Kilogram / kg)
   saleableEgg Float?
+  /// Jumlah butir telur rusak / retak / pecah (Satuan: Butir / count)
   damagedEgg  Float?
+  /// Berat pakan yang dikonsumsi harian (Satuan: Kilogram / kg)
   feedUsed    Float?
+  /// Jumlah kematian ayam harian (Satuan: Ekor / birds)
   mortality   Int?
 
   incidentalExpense         Decimal?              @db.Decimal(14, 2)
