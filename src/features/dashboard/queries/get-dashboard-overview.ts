@@ -288,7 +288,7 @@ async function getRecentActivities(): Promise<
       },
 
       take:
-        3,
+        6,
 
       select: {
         id:
@@ -335,7 +335,7 @@ async function getRecentActivities(): Promise<
       },
 
       take:
-        3,
+        6,
 
       select: {
         id:
@@ -369,7 +369,7 @@ async function getRecentActivities(): Promise<
       },
 
       take:
-        3,
+        6,
 
       select: {
         id:
@@ -407,7 +407,7 @@ async function getRecentActivities(): Promise<
       },
 
       take:
-        3,
+        6,
 
       select: {
         id:
@@ -441,7 +441,7 @@ async function getRecentActivities(): Promise<
       },
 
       take:
-        3,
+        6,
 
       select: {
         id:
@@ -478,7 +478,7 @@ async function getRecentActivities(): Promise<
       },
 
       take:
-        3,
+        6,
 
       select: {
         id:
@@ -1290,6 +1290,31 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       actionLabel:
         "Periksa stok",
     });
+  } else {
+    const eggStockNumeric = Number(eggStock.currentStockKg);
+    if (eggStockNumeric >= 0 && eggStockNumeric < 50) {
+      alerts.push({
+        id:
+          "egg-stock-low",
+
+        severity:
+          "WARNING",
+
+        title:
+          "Stok telur menipis",
+
+        description:
+          `Sisa stok telur saat ini ${formatActivityQuantity(
+            eggStock.currentStockKg,
+          )} kg (kurang dari batas aman 50 kg).`,
+
+        href:
+          "/inventory?tab=egg",
+
+        actionLabel:
+          "Periksa stok",
+      });
+    }
   }
 
   for (
@@ -1297,31 +1322,110 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     of feedStock.ingredients
   ) {
     if (
-      !ingredient.isNegative
+      ingredient.isNegative
     ) {
+      alerts.push({
+        id:
+          `feed-stock-negative:${ingredient.ingredientId}`,
+
+        severity:
+          "CRITICAL",
+
+        title:
+          `Stok ${ingredient.ingredientName} negatif`,
+
+        description:
+          `Posisi stok ${ingredient.ingredientName} saat ini ${formatActivityQuantity(
+            ingredient.currentStockKg,
+          )} kg.`,
+
+        href:
+          "/inventory?tab=feed",
+
+        actionLabel:
+          "Periksa stok",
+      });
+
       continue;
     }
 
+    const stockNumeric = Number(ingredient.currentStockKg);
+    if (stockNumeric >= 0 && stockNumeric < 100) {
+      alerts.push({
+        id:
+          `feed-stock-low:${ingredient.ingredientId}`,
+
+        severity:
+          "WARNING",
+
+        title:
+          `Stok ${ingredient.ingredientName} menipis`,
+
+        description:
+          `Sisa stok ${ingredient.ingredientName} tersisa ${formatActivityQuantity(
+            ingredient.currentStockKg,
+          )} kg (kurang dari batas aman 100 kg).`,
+
+        href:
+          "/inventory?tab=feed",
+
+        actionLabel:
+          "Beli pakan",
+      });
+    }
+  }
+
+  let totalMortalityToday = 0;
+  const criticalMortalityKandangs: string[] = [];
+
+  for (const kandang of kandangs) {
+    if (kandang.mortality !== null && kandang.mortality > 0) {
+      totalMortalityToday += kandang.mortality;
+      if (kandang.mortality >= 5) {
+        criticalMortalityKandangs.push(`${kandang.kandangName} (${kandang.mortality} ekor)`);
+      }
+    }
+  }
+
+  if (criticalMortalityKandangs.length > 0) {
     alerts.push({
       id:
-        `feed-stock-negative:${ingredient.ingredientId}`,
+        "high-mortality-critical",
 
       severity:
         "CRITICAL",
 
       title:
-        `Stok ${ingredient.ingredientName} negatif`,
+        "Mortalitas tinggi terdeteksi hari ini",
 
       description:
-        `Posisi stok ${ingredient.ingredientName} saat ini ${formatActivityQuantity(
-          ingredient.currentStockKg,
-        )} kg.`,
+        `Kematian ayam di ${criticalMortalityKandangs.join(", ")}. Total kematian hari ini: ${totalMortalityToday} ekor.`,
 
       href:
-        "/inventory?tab=feed",
+        `/daily?date=${todayString}`,
 
       actionLabel:
-        "Periksa stok",
+        "Periksa operasional",
+    });
+  } else if (totalMortalityToday >= 10) {
+    alerts.push({
+      id:
+        "high-mortality-warning",
+
+      severity:
+        "WARNING",
+
+      title:
+        "Total kematian ayam meningkat",
+
+      description:
+        `Total mortalitas hari ini mencapai ${totalMortalityToday} ekor dari seluruh kandang operasional.`,
+
+      href:
+        `/daily?date=${todayString}`,
+
+      actionLabel:
+        "Periksa operasional",
     });
   }
 

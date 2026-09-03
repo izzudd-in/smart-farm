@@ -664,14 +664,23 @@ function AlertsSection({
 }) {
   return (
     <Card className="min-w-0 p-4">
-      <div>
-        <h2 className="font-semibold text-foreground">
-          Perlu Perhatian
-        </h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-foreground">
+              Perlu Perhatian
+            </h2>
+            {alerts.length > 0 ? (
+              <span className="inline-flex items-center rounded-full bg-[#FEF2F2] border border-[#FECACA] px-2 py-0.5 text-xs font-semibold text-danger">
+                {alerts.length} Kondisi
+              </span>
+            ) : null}
+          </div>
 
-        <p className="mt-1 text-xs text-muted">
-          Kondisi faktual yang perlu ditindaklanjuti.
-        </p>
+          <p className="mt-1 text-xs text-muted">
+            Kondisi kritis & faktual yang perlu ditindaklanjuti.
+          </p>
+        </div>
       </div>
 
       {alerts.length >

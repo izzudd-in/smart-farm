@@ -113,11 +113,6 @@ export async function getReportExportDataForPeriod(
           date:
             "asc",
         },
-
-        {
-          createdAt:
-            "asc",
-        },
       ],
 
       select: {

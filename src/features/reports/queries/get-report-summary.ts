@@ -111,10 +111,6 @@ export async function getReportSummaryForPeriod(
           date:
             "asc",
         },
-        {
-          createdAt:
-            "asc",
-        },
       ],
 
       select: {

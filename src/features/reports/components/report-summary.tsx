@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
-  FileSpreadsheet,
+  Info,
 } from "lucide-react";
 
 import {
@@ -13,6 +13,10 @@ import {
 import {
   Card,
 } from "@/components/ui/card";
+
+import {
+  ExportReportButton,
+} from "@/features/reports/components/export-report-button";
 
 import type {
   HppStatus,
@@ -29,7 +33,15 @@ import type {
 type ReportSummaryProps = {
   data: ReportSummaryForPeriod;
   exportHref: string;
+  preset?: string;
 };
+
+const PRESET_OPTIONS = [
+  { id: "today", label: "Hari Ini" },
+  { id: "7d", label: "7 Hari Terakhir" },
+  { id: "this-month", label: "Bulan Ini" },
+  { id: "30d", label: "30 Hari Terakhir" },
+] as const;
 
 const currencyFormatter =
   new Intl.NumberFormat(
@@ -238,34 +250,57 @@ function KpiCard({
   label,
   value,
   emphasized = false,
+  badge,
 }: {
   label: string;
   value: string;
   emphasized?: boolean;
+  badge?: {
+    text: string;
+    variant: "success" | "danger" | "neutral";
+  };
 }) {
   return (
     <Card
       className={[
-        "min-w-0 p-4",
+        "min-w-0 p-4 flex flex-col justify-between",
         emphasized
-          ? "border-primary/30"
+          ? "border-primary/40 shadow-sm"
           : "",
       ].join(" ")}
     >
-      <p className="text-xs font-medium text-muted">
-        {label}
-      </p>
+      <div>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-xs font-medium text-muted">
+            {label}
+          </p>
+          {badge ? (
+            <span
+              className={[
+                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold border",
+                badge.variant === "success"
+                  ? "bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]"
+                  : badge.variant === "danger"
+                  ? "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]"
+                  : "bg-[#F9FAFB] text-muted border-border",
+              ].join(" ")}
+            >
+              {badge.text}
+            </span>
+          ) : null}
+        </div>
 
-      <p
-        className={[
-          "mt-1 break-words text-lg font-semibold sm:text-xl",
-          emphasized
-            ? "text-primary-hover"
-            : "text-foreground",
-        ].join(" ")}
-      >
-        {value}
-      </p>
+        <p
+          className={[
+            "mt-2 break-words text-lg font-semibold sm:text-xl",
+            emphasized
+              ? "text-primary-hover"
+              : "text-foreground",
+          ].join(" ")}
+        >
+          {value}
+        </p>
+      </div>
     </Card>
   );
 }
@@ -293,6 +328,7 @@ function Metric({
 export function ReportSummary({
   data,
   exportHref,
+  preset,
 }: ReportSummaryProps) {
   const hasDataQualityIssue =
     data.dataQuality.incompleteReports >
@@ -303,6 +339,33 @@ export function ReportSummary({
       "READY" ||
     data.profit.status !==
       "READY";
+
+  const isPeriodEmpty =
+    Number(data.production.totalEggKg) === 0 &&
+    data.sales.orderCount === 0 &&
+    (data.cost.totalOperationalCost === null || Number(data.cost.totalOperationalCost) === 0);
+
+  // Profit badge logic
+  let profitBadge: { text: string; variant: "success" | "danger" | "neutral" } | undefined = undefined;
+  if (data.profit.estimatedOperationalProfit !== null) {
+    const profitNum = Number(data.profit.estimatedOperationalProfit);
+    if (profitNum > 0) {
+      profitBadge = { text: "Untung", variant: "success" };
+    } else if (profitNum < 0) {
+      profitBadge = { text: "Rugi", variant: "danger" };
+    } else {
+      profitBadge = { text: "Impas", variant: "neutral" };
+    }
+  }
+
+  // Cost breakdown calculation
+  const totalCost = data.cost.totalOperationalCost ? Number(data.cost.totalOperationalCost) : 0;
+  const feedCost = data.cost.feedCost ? Number(data.cost.feedCost) : 0;
+  const routineCost = Number(data.cost.routineCost) || 0;
+
+  const feedPct = totalCost > 0 ? Math.round((feedCost / totalCost) * 100) : 0;
+  const routinePct = totalCost > 0 ? Math.round((routineCost / totalCost) * 100) : 0;
+  const expensePct = totalCost > 0 ? Math.max(0, 100 - feedPct - routinePct) : 0;
 
   return (
     <div className="min-w-0 space-y-6">
@@ -317,17 +380,35 @@ export function ReportSummary({
           </p>
         </div>
 
-        <Link
-          href={exportHref}
-          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-[10px] border border-primary bg-white px-4 text-sm font-semibold text-primary-hover transition-colors hover:bg-primary-soft sm:w-auto"
-        >
-          <FileSpreadsheet className="h-4 w-4 shrink-0" />
-
-          Export Excel
-        </Link>
+        <ExportReportButton exportHref={exportHref} />
       </div>
 
-      <Card className="p-4">
+      <Card className="p-4 space-y-3">
+        {/* Quick Period Presets */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+          <span className="text-xs font-medium text-muted mr-1">
+            Periode Cepat:
+          </span>
+          {PRESET_OPTIONS.map((p) => {
+            const isActive = preset === p.id;
+            return (
+              <Link
+                key={p.id}
+                href={`/reports?preset=${p.id}`}
+                className={[
+                  "inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-white"
+                    : "border border-border bg-white text-foreground hover:bg-[#F9FAFB]",
+                ].join(" ")}
+              >
+                {p.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Custom Date Form */}
         <form
           method="get"
           className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end"
@@ -378,6 +459,21 @@ export function ReportSummary({
           </Button>
         </form>
       </Card>
+
+      {/* Empty State Banner */}
+      {isPeriodEmpty ? (
+        <div className="rounded-[10px] border border-blue-200 bg-[#EFF6FF] p-4 text-sm text-blue-900 flex items-start gap-3">
+          <Info className="mt-0.5 h-5 w-5 text-blue-600 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="font-semibold text-blue-900">
+              Belum ada aktivitas pada periode ini
+            </p>
+            <p className="text-xs text-blue-700">
+              Tidak ditemukan catatan produksi, pesanan telur, atau biaya operasional pada rentang tanggal {formatDate(data.period.from)} – {formatDate(data.period.to)}.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <section className="space-y-3">
         <div>
@@ -435,12 +531,14 @@ export function ReportSummary({
                       .estimatedOperationalProfit,
                   )
             }
+            badge={profitBadge}
             emphasized
           />
         </div>
       </section>
 
       <section className="grid min-w-0 gap-4 xl:grid-cols-2">
+        {/* Produksi Card */}
         <Card className="min-w-0 p-4">
           <h2 className="font-semibold text-foreground">
             Produksi
@@ -467,13 +565,26 @@ export function ReportSummary({
               )}
             />
 
-            <Metric
-              label="Persentase Rusak"
-              value={formatPercent(
-                data.production
-                  .damageRatePercent,
-              )}
-            />
+            <div className="min-w-0 rounded-[10px] bg-[#F9FAFB] p-3">
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-xs text-muted">
+                  Persentase Rusak
+                </p>
+                {data.production.damageRatePercent !== null &&
+                Number(data.production.damageRatePercent) > 2.0 ? (
+                  <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.2 text-[9px] font-medium text-amber-800">
+                    Waspada (&gt;2%)
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-1 break-words text-sm font-semibold text-foreground">
+                {formatPercent(
+                  data.production
+                    .damageRatePercent,
+                )}
+              </p>
+            </div>
 
             <Metric
               label="Mortalitas"
@@ -536,6 +647,7 @@ export function ReportSummary({
           </div>
         </Card>
 
+        {/* Penjualan Card */}
         <Card className="min-w-0 p-4">
           <h2 className="font-semibold text-foreground">
             Penjualan
@@ -582,6 +694,7 @@ export function ReportSummary({
           </div>
         </Card>
 
+        {/* Biaya Card with Visual Breakdown Bar */}
         <Card className="min-w-0 p-4">
           <h2 className="font-semibold text-foreground">
             Biaya
@@ -622,8 +735,48 @@ export function ReportSummary({
               )}
             />
           </div>
+
+          {totalCost > 0 ? (
+            <div className="mt-4 border-t border-border pt-3">
+              <p className="text-xs font-medium text-muted mb-1.5">
+                Proporsi Biaya Operasional
+              </p>
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-border/40">
+                <div
+                  style={{ width: `${feedPct}%` }}
+                  className="bg-amber-500 transition-all"
+                  title={`Pakan: ${feedPct}%`}
+                />
+                <div
+                  style={{ width: `${routinePct}%` }}
+                  className="bg-blue-500 transition-all"
+                  title={`Rutin: ${routinePct}%`}
+                />
+                <div
+                  style={{ width: `${expensePct}%` }}
+                  className="bg-purple-500 transition-all"
+                  title={`Harian: ${expensePct}%`}
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-muted">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
+                  Pakan {feedPct}%
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-blue-500 inline-block" />
+                  Rutin {routinePct}%
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-purple-500 inline-block" />
+                  Harian {expensePct}%
+                </span>
+              </div>
+            </div>
+          ) : null}
         </Card>
 
+        {/* HPP & Profit Card */}
         <Card className="min-w-0 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -694,6 +847,7 @@ export function ReportSummary({
         </Card>
       </section>
 
+      {/* Stok Akhir Section */}
       <section>
         <Card className="min-w-0 p-4">
           <div>
@@ -714,31 +868,45 @@ export function ReportSummary({
           <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
             <div
               className={[
-                "rounded-[10px] border p-4",
+                "rounded-[10px] border p-4 flex flex-col justify-between",
                 data.inventory
                   .eggStockNegative
                   ? "border-[#FECACA] bg-[#FEF2F2]"
                   : "border-border bg-[#F9FAFB]",
               ].join(" ")}
             >
-              <p className="text-xs text-muted">
-                Stok Telur Akhir
-              </p>
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted">
+                    Stok Telur Akhir
+                  </p>
+                  <span
+                    className={[
+                      "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                      data.inventory.eggStockNegative
+                        ? "border-[#FECACA] bg-white text-[#B91C1C]"
+                        : "border-[#BBF7D0] bg-white text-[#15803D]",
+                    ].join(" ")}
+                  >
+                    {data.inventory.eggStockNegative ? "Defisit" : "Normal"}
+                  </span>
+                </div>
 
-              <p
-                className={[
-                  "mt-1 break-words text-xl font-semibold",
-                  data.inventory
-                    .eggStockNegative
-                    ? "text-danger"
-                    : "text-foreground",
-                ].join(" ")}
-              >
-                {formatKg(
-                  data.inventory
-                    .eggStockKg,
-                )}
-              </p>
+                <p
+                  className={[
+                    "mt-2 break-words text-xl font-semibold",
+                    data.inventory
+                      .eggStockNegative
+                      ? "text-danger"
+                      : "text-foreground",
+                  ].join(" ")}
+                >
+                  {formatKg(
+                    data.inventory
+                      .eggStockKg,
+                  )}
+                </p>
+              </div>
             </div>
 
             <div className="min-w-0">
@@ -760,11 +928,18 @@ export function ReportSummary({
                         }
                         className="flex min-w-0 items-center justify-between gap-4 px-3 py-2.5"
                       >
-                        <span className="min-w-0 truncate text-sm text-foreground">
-                          {
-                            ingredient.ingredientName
-                          }
-                        </span>
+                        <div className="min-w-0 flex items-center gap-2">
+                          <span className="truncate text-sm text-foreground">
+                            {
+                              ingredient.ingredientName
+                            }
+                          </span>
+                          {ingredient.isNegative ? (
+                            <span className="shrink-0 inline-flex rounded-full border border-[#FECACA] bg-[#FEF2F2] px-1.5 py-0.2 text-[9px] font-medium text-[#B91C1C]">
+                              Defisit
+                            </span>
+                          ) : null}
+                        </div>
 
                         <span
                           className={[
@@ -794,6 +969,7 @@ export function ReportSummary({
         </Card>
       </section>
 
+      {/* Data Quality Section */}
       <section>
         <Card className="min-w-0 p-4">
           <div className="flex items-start gap-3">

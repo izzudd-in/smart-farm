@@ -3,16 +3,16 @@ import {
 } from "@/features/daily-operations/utils/date";
 
 import {
-  parseRoutineCostFilters,
-} from "@/features/expenses/schemas/routine-cost";
-
-import {
   ReportSummary,
 } from "@/features/reports/components/report-summary";
 
 import {
   getReportSummaryForPeriod,
 } from "@/features/reports/queries/get-report-summary";
+
+import {
+  parseReportFilters,
+} from "@/features/reports/schemas/report-filter";
 
 type ReportsPageProps = {
   searchParams: Promise<{
@@ -21,6 +21,10 @@ type ReportsPageProps = {
       | string[];
 
     to?:
+      | string
+      | string[];
+
+    preset?:
       | string
       | string[];
   }>;
@@ -57,7 +61,7 @@ export default async function ReportsPage({
     await searchParams;
 
   const filters =
-    parseRoutineCostFilters({
+    parseReportFilters({
       from:
         firstValue(
           params.from,
@@ -66,6 +70,11 @@ export default async function ReportsPage({
       to:
         firstValue(
           params.to,
+        ),
+
+      preset:
+        firstValue(
+          params.preset,
         ),
     });
 
@@ -88,6 +97,7 @@ export default async function ReportsPage({
   return (
     <ReportSummary
       data={data}
+      preset={filters.preset}
       exportHref={buildExportHref(
         data.period.from,
         data.period.to,
