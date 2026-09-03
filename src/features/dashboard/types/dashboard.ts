@@ -66,11 +66,23 @@ export type DashboardAlertSeverity =
   | "WARNING"
   | "INFO";
 
+export type DashboardAlertType =
+  | "EGG_STOCK"
+  | "FEED_STOCK"
+  | "MORTALITY"
+  | "OPERATIONS"
+  | "COST"
+  | "PRICE"
+  | "GENERAL";
+
 export type DashboardAlert = {
   id: string;
 
   severity:
     DashboardAlertSeverity;
+
+  type?:
+    DashboardAlertType;
 
   title: string;
   description: string;
@@ -144,6 +156,14 @@ export type DashboardActivity = {
   href?: string;
 };
 
+export type DashboardOnboarding = {
+  isCompleted: boolean;
+  hasKandang: boolean;
+  hasOperator: boolean;
+  hasFormula: boolean;
+  hasEggPrice: boolean;
+};
+
 export type DashboardOverview = {
   today: string;
 
@@ -182,4 +202,7 @@ export type DashboardOverview = {
 
   recentActivities:
     DashboardActivity[];
+
+  onboarding:
+    DashboardOnboarding;
 };

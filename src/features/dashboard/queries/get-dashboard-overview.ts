@@ -813,6 +813,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     profitMonthToDate,
     activeEggPrice,
     recentActivities,
+    totalKandangsCount,
+    assignedOperatorsCount,
+    totalFormulasCount,
   ] = await Promise.all([
     prisma.kandang.findMany({
       where: {
@@ -988,6 +991,35 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     ),
 
     getRecentActivities(),
+
+    prisma.kandang.count({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+    }),
+
+    prisma.user.count({
+      where: {
+        role:
+          UserRole.OPERATOR,
+
+        kandangs: {
+          some: {},
+        },
+      },
+    }),
+
+    prisma.feedFormula.count({
+      where: {
+        farm: {
+          scope:
+            "PRIMARY",
+        },
+      },
+    }),
   ]);
 
   /*
@@ -1276,6 +1308,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       severity:
         "CRITICAL",
 
+      type:
+        "EGG_STOCK",
+
       title:
         "Stok telur negatif",
 
@@ -1299,6 +1334,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
         severity:
           "WARNING",
+
+        type:
+          "EGG_STOCK",
 
         title:
           "Stok telur menipis",
@@ -1331,6 +1369,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         severity:
           "CRITICAL",
 
+        type:
+          "FEED_STOCK",
+
         title:
           `Stok ${ingredient.ingredientName} negatif`,
 
@@ -1357,6 +1398,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
         severity:
           "WARNING",
+
+        type:
+          "FEED_STOCK",
 
         title:
           `Stok ${ingredient.ingredientName} menipis`,
@@ -1395,6 +1439,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       severity:
         "CRITICAL",
 
+      type:
+        "MORTALITY",
+
       title:
         "Mortalitas tinggi terdeteksi hari ini",
 
@@ -1414,6 +1461,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
       severity:
         "WARNING",
+
+      type:
+        "MORTALITY",
 
       title:
         "Total kematian ayam meningkat",
@@ -1470,6 +1520,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       severity:
         "WARNING",
 
+      type:
+        "OPERATIONS",
+
       title:
         `${unfinishedKandangs.length} kandang belum menyelesaikan laporan hari ini`,
 
@@ -1504,6 +1557,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       severity:
         "WARNING",
 
+      type:
+        "COST",
+
       title:
         "Biaya pakan historis belum lengkap",
 
@@ -1532,6 +1588,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       severity:
         "WARNING",
 
+      type:
+        "COST",
+
       title:
         "Estimasi Profit belum dapat dihitung",
 
@@ -1555,6 +1614,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 
       severity:
         "WARNING",
+
+      type:
+        "PRICE",
 
       title:
         "Belum ada harga telur aktif",
@@ -1700,5 +1762,25 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     productionTrend,
 
     recentActivities,
+
+    onboarding: {
+      isCompleted:
+        totalKandangsCount > 0 &&
+        assignedOperatorsCount > 0 &&
+        totalFormulasCount > 0 &&
+        activeEggPrice !== null,
+
+      hasKandang:
+        totalKandangsCount > 0,
+
+      hasOperator:
+        assignedOperatorsCount > 0,
+
+      hasFormula:
+        totalFormulasCount > 0,
+
+      hasEggPrice:
+        activeEggPrice !== null,
+    },
   };
 }

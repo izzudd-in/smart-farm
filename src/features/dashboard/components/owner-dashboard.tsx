@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowRight,
+  Bell,
   Boxes,
   CheckCircle2,
   ClipboardCheck,
@@ -10,8 +12,13 @@ import {
   PackagePlus,
   Receipt,
   ShoppingCart,
+  Sparkles,
   Tag,
+  TrendingDown,
+  TrendingUp,
+  UserCheck,
   Wallet,
+  Warehouse,
   Wheat,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +32,7 @@ import type {
   DashboardActivityType,
   DashboardAlert,
   DashboardAlertSeverity,
+  DashboardAlertType,
   DashboardKandangToday,
   DashboardOverview,
   DashboardProductionTrendPoint,
@@ -58,6 +66,13 @@ type KpiCardProps = {
   badge?: KpiBadge;
 
   secondaryDetail?: string;
+
+  valueClassName?: string;
+
+  trend?: {
+    direction: "up" | "down";
+    label?: string;
+  };
 };
 
 const moneyFormatter =
@@ -320,9 +335,11 @@ function KpiCard({
   icon: Icon,
   badge,
   secondaryDetail,
+  valueClassName,
+  trend,
 }: KpiCardProps) {
   return (
-    <Card className="flex min-w-0 flex-col p-4">
+    <Card className="flex min-w-0 flex-col p-4 shadow-xs transition-shadow hover:shadow-sm">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-primary-soft text-primary-hover">
           <Icon className="h-[18px] w-[18px]" />
@@ -331,7 +348,7 @@ function KpiCard({
         {badge ? (
           <span
             className={[
-              "max-w-full rounded-full border px-2 py-1 text-[10px] font-medium",
+              "max-w-full rounded-full border px-2 py-0.5 text-[10px] font-semibold",
               badgeClass(
                 badge.variant,
               ),
@@ -344,21 +361,53 @@ function KpiCard({
         ) : null}
       </div>
 
-      <div className="mt-4 min-w-0">
+      <div className="mt-3 min-w-0">
         <p className="text-xs font-medium text-muted">
           {title}
         </p>
 
-        <p className="mt-1 break-words text-xl font-semibold tracking-tight text-foreground lg:text-2xl">
-          {value}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <p
+            className={[
+              "break-words text-xl font-bold tracking-tight lg:text-2xl",
+              valueClassName ?? "text-foreground",
+            ].join(" ")}
+          >
+            {value}
+          </p>
 
-        <p className="mt-2 break-words text-xs leading-5 text-muted">
+          {trend ? (
+            <div
+              className={[
+                "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                trend.direction === "up"
+                  ? "bg-[#F0FDF4] text-[#15803D]"
+                  : "bg-[#FEF2F2] text-danger",
+              ].join(" ")}
+              title={trend.label}
+            >
+              {trend.direction === "up" ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : (
+                <TrendingDown className="h-3 w-3" />
+              )}
+              {trend.label ? <span>{trend.label}</span> : null}
+            </div>
+          ) : null}
+        </div>
+
+        <p
+          className="mt-1.5 break-words text-xs leading-4 text-muted truncate"
+          title={detail}
+        >
           {detail}
         </p>
 
         {secondaryDetail ? (
-          <p className="mt-1 break-words text-xs leading-5 text-muted">
+          <p
+            className="mt-0.5 break-words text-[11px] leading-4 text-muted truncate"
+            title={secondaryDetail}
+          >
             {secondaryDetail}
           </p>
         ) : null}
@@ -367,7 +416,7 @@ function KpiCard({
       <div className="mt-auto pt-3">
         <Link
           href={href}
-          className="inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-primary-hover hover:text-primary"
+          className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-primary-hover transition-colors hover:text-primary"
         >
           {actionLabel}
 
@@ -446,47 +495,123 @@ function getProductionBadge(
 function getProfitBadge(
   data: DashboardOverview,
 ): KpiBadge {
-  switch (
-    data
-      .estimatedProfitMonthToDate
-      .status
+  const profit =
+    data.estimatedProfitMonthToDate;
+
+  if (
+    profit.estimatedOperationalProfit !== null
   ) {
-    case "READY":
+    const num = Number(
+      profit.estimatedOperationalProfit,
+    );
+    if (num > 0) {
       return {
         label:
-          "Lengkap",
+          "Untung",
 
         variant:
           "success",
       };
-
-    case "PROVISIONAL":
+    } else if (num < 0) {
       return {
         label:
-          "Sementara",
-
-        variant:
-          "warning",
-      };
-
-    case "MISSING_COST":
-      return {
-        label:
-          "Biaya belum lengkap",
+          "Rugi",
 
         variant:
           "danger",
       };
-
-    case "NO_REVENUE":
+    } else {
       return {
         label:
-          "Belum ada penjualan",
+          "Impas",
 
         variant:
           "neutral",
       };
+    }
   }
+
+  if (
+    profit.status ===
+    "MISSING_COST"
+  ) {
+    return {
+      label:
+        "Biaya belum lengkap",
+
+      variant:
+        "warning",
+    };
+  }
+
+  return {
+    label:
+      "Belum ada penjualan",
+
+    variant:
+      "neutral",
+  };
+}
+
+function getProfitValueClassName(
+  data: DashboardOverview,
+): string | undefined {
+  const profit =
+    data.estimatedProfitMonthToDate;
+
+  if (
+    profit.estimatedOperationalProfit !== null
+  ) {
+    const num = Number(
+      profit.estimatedOperationalProfit,
+    );
+    if (num > 0) {
+      return "text-[#15803D]";
+    }
+    if (num < 0) {
+      return "text-danger";
+    }
+  }
+  return undefined;
+}
+
+function getProfitTrend(
+  data: DashboardOverview,
+):
+  | {
+      direction:
+        | "up"
+        | "down";
+      label?: string;
+    }
+  | undefined {
+  const profit =
+    data.estimatedProfitMonthToDate;
+
+  if (
+    profit.estimatedOperationalProfit !== null
+  ) {
+    const num = Number(
+      profit.estimatedOperationalProfit,
+    );
+    if (num > 0) {
+      return {
+        direction:
+          "up",
+        label:
+          "Untung",
+      };
+    }
+    if (num < 0) {
+      return {
+        direction:
+          "down",
+        label:
+          "Rugi",
+      };
+    }
+  }
+  return undefined;
 }
 
 function getProfitValue(
@@ -582,6 +707,31 @@ function alertStyle(
   }
 }
 
+function AlertIcon({
+  type,
+  className,
+}: {
+  type?: DashboardAlertType;
+  className?: string;
+}) {
+  switch (type) {
+    case "EGG_STOCK":
+      return <Egg className={className} />;
+    case "FEED_STOCK":
+      return <Wheat className={className} />;
+    case "MORTALITY":
+      return <AlertCircle className={className} />;
+    case "OPERATIONS":
+      return <ClipboardCheck className={className} />;
+    case "COST":
+      return <Wallet className={className} />;
+    case "PRICE":
+      return <Tag className={className} />;
+    default:
+      return <AlertTriangle className={className} />;
+  }
+}
+
 function AlertRow({
   alert,
 }: {
@@ -595,21 +745,27 @@ function AlertRow({
   return (
     <div
       className={[
-        "rounded-[10px] border p-3",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[10px] border p-3 transition-colors",
         style.border,
       ].join(
         " ",
       )}
     >
       <div className="flex min-w-0 items-start gap-3">
-        <AlertTriangle
+        <div
           className={[
-            "mt-0.5 h-4 w-4 shrink-0",
-            style.icon,
-          ].join(
-            " ",
-          )}
-        />
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-2xs",
+            style.badge,
+          ].join(" ")}
+        >
+          <AlertIcon
+            type={alert.type}
+            className={[
+              "h-4 w-4",
+              style.icon,
+            ].join(" ")}
+          />
+        </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -619,7 +775,7 @@ function AlertRow({
 
             <span
               className={[
-                "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
                 style.badge,
               ].join(
                 " ",
@@ -635,23 +791,25 @@ function AlertRow({
             </span>
           </div>
 
-          <p className="mt-1 break-words text-xs leading-5 text-muted">
+          <p
+            className="mt-0.5 break-words text-xs leading-5 text-muted"
+            title={alert.description}
+          >
             {alert.description}
           </p>
-
-          {alert.href &&
-          alert.actionLabel ? (
-            <Link
-              href={alert.href}
-              className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-primary-hover hover:text-primary"
-            >
-              {alert.actionLabel}
-
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          ) : null}
         </div>
       </div>
+
+      {alert.href &&
+      alert.actionLabel ? (
+        <Link
+          href={alert.href}
+          className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-white px-3 py-1 text-xs font-semibold text-primary-hover shadow-2xs transition-colors hover:bg-primary-soft"
+        >
+          <span>{alert.actionLabel}</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -662,23 +820,35 @@ function AlertsSection({
   alerts:
     DashboardAlert[];
 }) {
+  const criticalCount = alerts.filter(
+    (a) => a.severity === "CRITICAL",
+  ).length;
+
   return (
     <Card className="min-w-0 p-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-primary" />
             <h2 className="font-semibold text-foreground">
-              Perlu Perhatian
+              Notifikasi & Peringatan
             </h2>
             {alerts.length > 0 ? (
-              <span className="inline-flex items-center rounded-full bg-[#FEF2F2] border border-[#FECACA] px-2 py-0.5 text-xs font-semibold text-danger">
-                {alerts.length} Kondisi
+              <span
+                className={[
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold",
+                  criticalCount > 0
+                    ? "border-[#FECACA] bg-[#FEF2F2] text-danger animate-pulse"
+                    : "border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]",
+                ].join(" ")}
+              >
+                {alerts.length} Notifikasi
               </span>
             ) : null}
           </div>
 
           <p className="mt-1 text-xs text-muted">
-            Kondisi kritis & faktual yang perlu ditindaklanjuti.
+            Kondisi penting yang memerlukan perhatian dan tindakan manajemen.
           </p>
         </div>
       </div>
@@ -706,7 +876,7 @@ function AlertsSection({
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#15803D]" />
 
           <p className="text-sm leading-5 text-[#166534]">
-            Tidak ada masalah utama yang perlu ditindaklanjuti.
+            Semua sistem berjalan normal. Tidak ada kondisi abnormal atau alert aktif.
           </p>
         </div>
       )}
@@ -1168,7 +1338,7 @@ function ActivityRow({
 }) {
   const content = (
     <>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F4F6] text-[#4B5563]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-primary-soft text-primary-hover">
         <ActivityIcon
           type={activity.type}
           className="h-4 w-4"
@@ -1176,21 +1346,26 @@ function ActivityRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="break-words text-sm font-medium text-foreground">
-          {activity.title}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-xs font-semibold text-foreground">
+            {activity.title}
+          </p>
+
+          <span className="shrink-0 text-[10px] font-medium text-muted">
+            {formatActivityTime(
+              activity.occurredAt,
+            )}
+          </span>
+        </div>
 
         {activity.description ? (
-          <p className="mt-0.5 break-words text-xs leading-5 text-muted">
+          <p
+            className="mt-0.5 truncate text-[11px] text-muted"
+            title={activity.description}
+          >
             {activity.description}
           </p>
         ) : null}
-
-        <p className="mt-1 text-[10px] text-muted-light">
-          {formatActivityTime(
-            activity.occurredAt,
-          )}
-        </p>
       </div>
     </>
   );
@@ -1203,7 +1378,7 @@ function ActivityRow({
         href={
           activity.href
         }
-        className="flex min-h-11 min-w-0 items-start gap-3 rounded-[10px] p-2 transition-colors hover:bg-[#F9FAFB]"
+        className="flex min-h-10 min-w-0 items-center gap-3 rounded-[8px] p-2 transition-colors hover:bg-primary-soft/40"
       >
         {content}
       </Link>
@@ -1211,7 +1386,7 @@ function ActivityRow({
   }
 
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-[10px] p-2">
+    <div className="flex min-w-0 items-center gap-3 rounded-[8px] p-2">
       {content}
     </div>
   );
@@ -1262,6 +1437,181 @@ function RecentActivities({
   );
 }
 
+function OnboardingStepIcon({
+  stepNumber,
+  className,
+}: {
+  stepNumber: number;
+  className?: string;
+}) {
+  switch (stepNumber) {
+    case 1:
+      return <Warehouse className={className} />;
+    case 2:
+      return <UserCheck className={className} />;
+    case 3:
+      return <Wheat className={className} />;
+    case 4:
+      return <Tag className={className} />;
+    default:
+      return null;
+  }
+}
+
+function OnboardingSection({
+  onboarding,
+}: {
+  onboarding:
+    DashboardOverview["onboarding"];
+}) {
+  if (
+    onboarding.isCompleted
+  ) {
+    return null;
+  }
+
+  const steps = [
+    {
+      number: 1,
+      title:
+        "1. Setup Kandang",
+      description:
+        "Daftarkan unit kandang",
+      href:
+        "/farm",
+      completed:
+        onboarding.hasKandang,
+    },
+    {
+      number: 2,
+      title:
+        "2. Assign Operator",
+      description:
+        "Tugaskan operator kandang",
+      href:
+        "/settings",
+      completed:
+        onboarding.hasOperator,
+    },
+    {
+      number: 3,
+      title:
+        "3. Buat Formula Pakan",
+      description:
+        "Komposisi pakan harian",
+      href:
+        "/feed",
+      completed:
+        onboarding.hasFormula,
+    },
+    {
+      number: 4,
+      title:
+        "4. Set Harga Telur",
+      description:
+        "Atur harga telur aktif",
+      href:
+        "/sales",
+      completed:
+        onboarding.hasEggPrice,
+    },
+  ];
+
+  const completedCount =
+    steps.filter(
+      (
+        s,
+      ) =>
+        s.completed,
+    ).length;
+
+  return (
+    <Card className="min-w-0 border-primary/30 bg-gradient-to-r from-primary-soft/40 via-white to-white p-4 shadow-xs">
+      <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+
+            <h2 className="text-sm font-bold text-foreground">
+              Panduan Memulai Farm (Onboarding)
+            </h2>
+
+            <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-semibold text-primary-hover">
+              {completedCount}
+              /4 Selesai
+            </span>
+          </div>
+
+          <p className="mt-0.5 text-xs text-muted">
+            Selesaikan langkah setup awal agar pencatatan operasional dan laporan analitik farm akurat.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map(
+          (
+            step,
+          ) => (
+            <Link
+              key={
+                step.number
+              }
+              href={
+                step.href
+              }
+              className={[
+                "flex items-center gap-2.5 rounded-[10px] border p-2.5 transition-all hover:shadow-xs",
+                step.completed
+                  ? "border-[#BBF7D0] bg-[#F0FDF4]/70 text-[#166534]"
+                  : "border-border bg-white text-foreground hover:border-primary/40",
+              ].join(
+                " ",
+              )}
+            >
+              <div
+                className={[
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+                  step.completed
+                    ? "bg-[#BBF7D0] text-[#15803D]"
+                    : "bg-primary-soft text-primary-hover",
+                ].join(
+                  " ",
+                )}
+              >
+                {step.completed ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <OnboardingStepIcon
+                    stepNumber={
+                      step.number
+                    }
+                    className="h-3.5 w-3.5"
+                  />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold">
+                  {
+                    step.title
+                  }
+                </p>
+
+                <p className="truncate text-[10px] text-muted">
+                  {
+                    step.description
+                  }
+                </p>
+              </div>
+            </Link>
+          ),
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function OwnerDashboard({
   data,
 }: OwnerDashboardProps) {
@@ -1283,86 +1633,117 @@ export function OwnerDashboard({
         </p>
       </div>
 
-      <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiCard
-          title="Produksi Hari Ini"
-          value={formatKg(
-            data.productionToday
-              .saleableEggKg,
-          )}
-          detail={getProductionDetail(
-            data,
-          )}
-          href="/production"
-          actionLabel="Lihat produksi"
-          icon={Egg}
-          badge={getProductionBadge(
-            data,
-          )}
-        />
+      <OnboardingSection
+        onboarding={
+          data.onboarding
+        }
+      />
 
-        <KpiCard
-          title="Penjualan Hari Ini"
-          value={formatMoney(
-            data.salesToday.revenue,
-          )}
-          detail={`${formatKg(
-            data.salesToday.soldKg,
-          )} · ${data.salesToday.orderCount.toLocaleString(
-            "id-ID",
-          )} order`}
-          href="/sales?tab=order"
-          actionLabel="Lihat penjualan"
-          icon={ShoppingCart}
-        />
+      {/* Sticky Summary KPI Cards (UX-003) */}
+      <div className="sticky top-14 md:top-0 z-20 -mx-1 px-1 py-2 bg-background/90 backdrop-blur-md transition-all">
+        <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
+          <KpiCard
+            title="Produksi Hari Ini"
+            value={formatKg(
+              data.productionToday
+                .saleableEggKg,
+            )}
+            detail={getProductionDetail(
+              data,
+            )}
+            href="/production"
+            actionLabel="Lihat produksi"
+            icon={Egg}
+            badge={getProductionBadge(
+              data,
+            )}
+          />
 
-        <KpiCard
-          title="Stok Telur"
-          value={formatKg(
-            data.eggStock
-              .currentStockKg,
-          )}
-          detail={`Per ${formatDate(
-            data.today,
-          )}`}
-          href="/inventory?tab=egg"
-          actionLabel="Lihat stok"
-          icon={Boxes}
-          badge={
-            data.eggStock.isNegative
-              ? {
-                  label:
-                    "Stok negatif",
+          <KpiCard
+            title="Penjualan Hari Ini"
+            value={formatMoney(
+              data.salesToday
+                .revenue,
+            )}
+            detail={`${formatKg(
+              data.salesToday
+                .soldKg,
+            )} · ${data.salesToday.orderCount.toLocaleString(
+              "id-ID",
+            )} order`}
+            href="/sales?tab=order"
+            actionLabel="Lihat penjualan"
+            icon={ShoppingCart}
+          />
 
-                  variant:
-                    "danger",
-                }
-              : undefined
-          }
-        />
+          <KpiCard
+            title="Stok Telur"
+            value={formatKg(
+              data.eggStock
+                .currentStockKg,
+            )}
+            detail={`Per ${formatDate(
+              data.today,
+            )}`}
+            href="/inventory?tab=egg"
+            actionLabel="Lihat stok"
+            icon={Boxes}
+            badge={
+              data.eggStock
+                .isNegative
+                ? {
+                    label:
+                      "Stok negatif",
 
-        <KpiCard
-          title="Estimasi Profit Bulan Ini"
-          value={getProfitValue(
-            data,
-          )}
-          detail={getProfitDetail(
-            data,
-          )}
-          secondaryDetail={
-            profit.hppPerKg
-              ? `HPP ${formatMoney(
-                  profit.hppPerKg,
-                )}/kg`
-              : undefined
-          }
-          href="/hpp"
-          actionLabel="Lihat HPP & Profit"
-          icon={Wallet}
-          badge={getProfitBadge(
-            data,
-          )}
-        />
+                    variant:
+                      "danger",
+                  }
+                : Number(
+                      data
+                        .eggStock
+                        .currentStockKg,
+                    ) <
+                    50
+                  ? {
+                      label:
+                        "Stok menipis",
+
+                      variant:
+                        "warning",
+                    }
+                  : undefined
+            }
+          />
+
+          <KpiCard
+            title="Estimasi Profit Bulan Ini"
+            value={getProfitValue(
+              data,
+            )}
+            detail={getProfitDetail(
+              data,
+            )}
+            secondaryDetail={
+              profit.hppPerKg
+                ? `HPP ${formatMoney(
+                    profit.hppPerKg,
+                  )}/kg`
+                : undefined
+            }
+            href="/hpp"
+            actionLabel="Lihat HPP & Profit"
+            icon={Wallet}
+            badge={getProfitBadge(
+              data,
+            )}
+            valueClassName={getProfitValueClassName(
+              data,
+            )}
+            trend={getProfitTrend(
+              data,
+            )}
+          />
+        </div>
       </div>
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
