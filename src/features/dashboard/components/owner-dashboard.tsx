@@ -339,7 +339,7 @@ function KpiCard({
   trend,
 }: KpiCardProps) {
   return (
-    <Card className="flex min-w-0 flex-col p-4 shadow-xs transition-shadow hover:shadow-sm">
+    <Card className="flex min-w-0 flex-col overflow-hidden p-4 shadow-xs transition-shadow hover:shadow-sm">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-primary-soft text-primary-hover">
           <Icon className="h-[18px] w-[18px]" />
@@ -348,7 +348,7 @@ function KpiCard({
         {badge ? (
           <span
             className={[
-              "max-w-full rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+              "max-w-full rounded-full border px-2 py-0.5 text-[10px] font-semibold truncate",
               badgeClass(
                 badge.variant,
               ),
@@ -369,7 +369,7 @@ function KpiCard({
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <p
             className={[
-              "break-words text-xl font-bold tracking-tight lg:text-2xl",
+              "break-words text-xl font-bold tracking-tight lg:text-2xl max-w-full",
               valueClassName ?? "text-foreground",
             ].join(" ")}
           >
@@ -1153,17 +1153,75 @@ function ProductionTrend({
         null,
     );
 
+  const totalProduction = validNumbers.reduce((acc, v) => acc + v, 0);
+  const avgProduction =
+    validNumbers.length > 0 ? totalProduction / validNumbers.length : 0;
+
+  // Trend direction: compare recent half vs older half
+  const recentSlice = validNumbers.slice(-3);
+  const priorSlice = validNumbers.slice(0, -3);
+  const recentAvg =
+    recentSlice.length > 0
+      ? recentSlice.reduce((a, b) => a + b, 0) / recentSlice.length
+      : 0;
+  const priorAvg =
+    priorSlice.length > 0
+      ? priorSlice.reduce((a, b) => a + b, 0) / priorSlice.length
+      : 0;
+  const isTrendingUp = priorAvg > 0 && recentAvg >= priorAvg;
+
   return (
     <Card className="min-w-0 p-4">
-      <div>
-        <h2 className="font-semibold text-foreground">
-          Produksi 7 Hari Terakhir
-        </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+        <div>
+          <h2 className="font-semibold text-foreground">
+            Trend Produksi 7 Hari Terakhir
+          </h2>
 
-        <p className="mt-1 text-xs text-muted">
-          Telur jual dari Daily Report COMPLETE.
-        </p>
+          <p className="mt-0.5 text-xs text-muted">
+            Grafik mini dan statistik hasil telur jual dari Daily Report COMPLETE.
+          </p>
+        </div>
+
+        {hasFinalData ? (
+          <div className="flex items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-0.5 text-xs font-semibold text-[#15803D]">
+            {isTrendingUp ? (
+              <>
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span>Trend Meningkat</span>
+              </>
+            ) : (
+              <>
+                <TrendingDown className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-amber-700">Trend Fluktuatif</span>
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
+
+      {hasFinalData ? (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="rounded-[10px] bg-[#F9FAFB] p-2.5 text-center">
+            <p className="text-[11px] font-medium text-muted">Total 7 Hari</p>
+            <p className="mt-0.5 text-sm font-bold text-foreground sm:text-base">
+              {formatKg(totalProduction.toFixed(3))}
+            </p>
+          </div>
+          <div className="rounded-[10px] bg-[#F9FAFB] p-2.5 text-center">
+            <p className="text-[11px] font-medium text-muted">Rata-Rata / Hari</p>
+            <p className="mt-0.5 text-sm font-bold text-foreground sm:text-base">
+              {formatKg(avgProduction.toFixed(3))}
+            </p>
+          </div>
+          <div className="rounded-[10px] bg-[#F9FAFB] p-2.5 text-center">
+            <p className="text-[11px] font-medium text-muted">Puncak Harian</p>
+            <p className="mt-0.5 text-sm font-bold text-foreground sm:text-base">
+              {formatKg(maxProduction.toFixed(3))}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {!hasFinalData ? (
         <div className="mt-4 rounded-[10px] border border-dashed border-border p-4">
@@ -1330,26 +1388,90 @@ function ActivityIcon({
   }
 }
 
+function getActivityCategory(type: DashboardActivityType): {
+  badgeClass: string;
+  iconClass: string;
+  label: string;
+} {
+  switch (type) {
+    case "DAILY_REPORT":
+      return {
+        badgeClass: "bg-blue-50 border-blue-200",
+        iconClass: "text-blue-700",
+        label: "Laporan",
+      };
+    case "ORDER":
+      return {
+        badgeClass: "bg-emerald-50 border-emerald-200",
+        iconClass: "text-emerald-700",
+        label: "Order",
+      };
+    case "FEED_PURCHASE":
+      return {
+        badgeClass: "bg-amber-50 border-amber-200",
+        iconClass: "text-amber-700",
+        label: "Beli Pakan",
+      };
+    case "DAILY_EXPENSE":
+      return {
+        badgeClass: "bg-rose-50 border-rose-200",
+        iconClass: "text-rose-700",
+        label: "Biaya",
+      };
+    case "EGG_STOCK_ADJUSTMENT":
+      return {
+        badgeClass: "bg-purple-50 border-purple-200",
+        iconClass: "text-purple-700",
+        label: "Koreksi Telur",
+      };
+    case "FEED_STOCK_ADJUSTMENT":
+      return {
+        badgeClass: "bg-indigo-50 border-indigo-200",
+        iconClass: "text-indigo-700",
+        label: "Koreksi Pakan",
+      };
+  }
+}
+
 function ActivityRow({
   activity,
 }: {
   activity:
     DashboardActivity;
 }) {
+  const category = getActivityCategory(activity.type);
+
   const content = (
     <>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-primary-soft text-primary-hover">
+      <div
+        className={[
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border",
+          category.badgeClass,
+        ].join(" ")}
+      >
         <ActivityIcon
           type={activity.type}
-          className="h-4 w-4"
+          className={["h-4 w-4", category.iconClass].join(" ")}
         />
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-xs font-semibold text-foreground">
-            {activity.title}
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span
+              className={[
+                "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold",
+                category.badgeClass,
+                category.iconClass,
+              ].join(" ")}
+            >
+              {category.label}
+            </span>
+
+            <p className="truncate text-xs font-semibold text-foreground">
+              {activity.title}
+            </p>
+          </div>
 
           <span className="shrink-0 text-[10px] font-medium text-muted">
             {formatActivityTime(
@@ -1639,9 +1761,9 @@ export function OwnerDashboard({
         }
       />
 
-      {/* Sticky Summary KPI Cards (UX-003) */}
+      {/* Sticky Summary KPI Cards (UX-003 & RSP-001) */}
       <div className="sticky top-14 md:top-0 z-20 -mx-1 px-1 py-2 bg-background/90 backdrop-blur-md transition-all">
-        <div className="grid min-w-0 grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <KpiCard
             title="Produksi Hari Ini"
             value={formatKg(
@@ -1804,6 +1926,14 @@ export function OwnerDashboard({
         </Card>
       </div>
 
+      {/* Hierarchy 3: Trend Produksi 7 Hari */}
+      <ProductionTrend
+        points={
+          data.productionTrend
+        }
+      />
+
+      {/* Status Kandang */}
       <KandangStatusSection
         kandangs={
           data.kandangs
@@ -1813,19 +1943,12 @@ export function OwnerDashboard({
         }
       />
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(300px,2fr)]">
-        <ProductionTrend
-          points={
-            data.productionTrend
-          }
-        />
-
-        <RecentActivities
-          activities={
-            data.recentActivities
-          }
-        />
-      </div>
+      {/* Hierarchy 4: Aktivitas Terbaru */}
+      <RecentActivities
+        activities={
+          data.recentActivities
+        }
+      />
     </div>
   );
 }

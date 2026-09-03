@@ -205,11 +205,6 @@ export async function getReportExportDataForPeriod(
           orderedAt:
             "asc",
         },
-
-        {
-          createdAt:
-            "asc",
-        },
       ],
 
       select: {
@@ -315,11 +310,6 @@ export async function getReportExportDataForPeriod(
       orderBy: [
         {
           occurredAt:
-            "asc",
-        },
-
-        {
-          createdAt:
             "asc",
         },
       ],

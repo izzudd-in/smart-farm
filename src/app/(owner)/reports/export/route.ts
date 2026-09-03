@@ -24,6 +24,9 @@ export const runtime =
 export const dynamic =
   "force-dynamic";
 
+export const maxDuration =
+  60;
+
 type ValidatedBusinessDate = {
   value: string;
   date: Date;
@@ -186,8 +189,18 @@ export async function GET(
     const filename =
       `udinfarm-report-${from.value}_${to.value}.xlsx`;
 
+    const stream =
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            workbookBuffer,
+          );
+          controller.close();
+        },
+      });
+
     return new Response(
-      workbookBuffer as unknown as BodyInit,
+      stream,
       {
         status: 200,
 
@@ -198,8 +211,17 @@ export async function GET(
           "Content-Disposition":
             `attachment; filename="${filename}"`,
 
+          "Content-Length":
+            workbookBuffer.length.toString(),
+
+          "Transfer-Encoding":
+            "chunked",
+
           "Cache-Control":
-            "no-store",
+            "no-store, no-cache, must-revalidate",
+
+          "X-Content-Type-Options":
+            "nosniff",
         },
       },
     );

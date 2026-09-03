@@ -43,8 +43,7 @@ function shiftDays(dateStr: string, days: number): string {
 function getCurrentMonthRange(todayStr: string): { from: string; to: string } {
   const [year, month] = todayStr.split("-").map(Number);
   const from = `${year}-${String(month).padStart(2, "0")}-01`;
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const to = todayStr;
   return { from, to };
 }
 

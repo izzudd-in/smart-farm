@@ -43,6 +43,7 @@ import {
 
 import type {
   DashboardActivity,
+  DashboardActivityType,
   DashboardAlert,
   DashboardAlertSeverity,
   DashboardKandangToday,
@@ -258,8 +259,130 @@ function createProductionTrendDates(
 async function getRecentActivities(): Promise<
   DashboardActivity[]
 > {
+  try {
+    const rawRows = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        source_type: DashboardActivityType;
+        occurred_at: Date;
+        title: string;
+        description: string | null;
+        href: string | null;
+      }>
+    >`
+      SELECT id, source_type, occurred_at, title, description, href
+      FROM (
+        (
+          SELECT
+            dr.id,
+            'DAILY_REPORT' as source_type,
+            dr."updatedAt" as occurred_at,
+            CONCAT('Laporan ', k.name, ' diperbarui') as title,
+            CONCAT('Telur jual: ', COALESCE(dr."saleableEgg"::text, '0'), ' kg · ', TO_CHAR(dr.date, 'DD Mon YYYY')) as description,
+            CONCAT('/daily?date=', TO_CHAR(dr.date, 'YYYY-MM-DD')) as href
+          FROM "DailyReport" dr
+          JOIN "Kandang" k ON dr."kandangId" = k.id
+          JOIN "Farm" f ON k."farmId" = f.id
+          WHERE f.scope = 'PRIMARY'
+          ORDER BY dr."updatedAt" DESC
+          LIMIT 6
+        )
+        UNION ALL
+        (
+          SELECT
+            o.id,
+            'ORDER' as source_type,
+            o."createdAt" as occurred_at,
+            CONCAT('Order ', o."quantityKg"::text, ' kg untuk ', o."customerNameSnapshot") as title,
+            CONCAT('Tanggal transaksi ', TO_CHAR(o."orderedAt", 'DD Mon YYYY')) as description,
+            CONCAT('/sales/orders/', o.id) as href
+          FROM "Order" o
+          JOIN "Farm" f ON o."farmId" = f.id
+          WHERE f.scope = 'PRIMARY'
+          ORDER BY o."createdAt" DESC
+          LIMIT 6
+        )
+        UNION ALL
+        (
+          SELECT
+            fp.id,
+            'FEED_PURCHASE' as source_type,
+            fp."createdAt" as occurred_at,
+            CONCAT('Pembelian ', fi.name, ' ', fp."quantityKg"::text, ' kg') as title,
+            CONCAT('Tanggal pembelian ', TO_CHAR(fp."purchasedAt", 'DD Mon YYYY')) as description,
+            '/inventory?tab=feed' as href
+          FROM "FeedPurchase" fp
+          JOIN "FeedIngredient" fi ON fp."ingredientId" = fi.id
+          JOIN "Farm" f ON fp."farmId" = f.id
+          WHERE f.scope = 'PRIMARY'
+          ORDER BY fp."createdAt" DESC
+          LIMIT 6
+        )
+        UNION ALL
+        (
+          SELECT
+            de.id,
+            'DAILY_EXPENSE' as source_type,
+            de."updatedAt" as occurred_at,
+            CONCAT('Pengeluaran: ', de.description) as title,
+            CONCAT('Biaya Rp', TO_CHAR(de.amount, 'FM999,999,999,990.00'), ' · ', TO_CHAR(de."occurredAt", 'DD Mon YYYY')) as description,
+            '/expenses?tab=daily' as href
+          FROM "DailyExpense" de
+          JOIN "Farm" f ON de."farmId" = f.id
+          WHERE f.scope = 'PRIMARY'
+          ORDER BY de."updatedAt" DESC
+          LIMIT 6
+        )
+        UNION ALL
+        (
+          SELECT
+            esa.id,
+            'EGG_STOCK_ADJUSTMENT' as source_type,
+            esa."createdAt" as occurred_at,
+            CONCAT('Koreksi Stok Telur: ', esa."quantityKg"::text, ' kg') as title,
+            CONCAT(COALESCE(esa.note, ''), ' · ', TO_CHAR(esa."occurredAt", 'DD Mon YYYY')) as description,
+            '/inventory?tab=egg' as href
+          FROM "EggStockAdjustment" esa
+          JOIN "Farm" f ON esa."farmId" = f.id
+          WHERE f.scope = 'PRIMARY'
+          ORDER BY esa."createdAt" DESC
+          LIMIT 6
+        )
+        UNION ALL
+        (
+          SELECT
+            fsa.id,
+            'FEED_STOCK_ADJUSTMENT' as source_type,
+            fsa."createdAt" as occurred_at,
+            CONCAT('Koreksi Stok Pakan: ', fi.name, ' ', fsa."quantityKg"::text, ' kg') as title,
+            CONCAT(COALESCE(fsa.note, ''), ' · ', TO_CHAR(fsa."occurredAt", 'DD Mon YYYY')) as description,
+            '/inventory?tab=feed' as href
+          FROM "FeedStockAdjustment" fsa
+          JOIN "FeedIngredient" fi ON fsa."ingredientId" = fi.id
+          JOIN "Farm" f ON fsa."farmId" = f.id
+          WHERE f.scope = 'PRIMARY'
+          ORDER BY fsa."createdAt" DESC
+          LIMIT 6
+        )
+      ) recent_union
+      ORDER BY occurred_at DESC
+      LIMIT 6;
+    `;
+
+    return rawRows.map((r) => ({
+      id: `${r.source_type.toLowerCase()}:${r.id}`,
+      type: r.source_type,
+      occurredAt: r.occurred_at.toISOString(),
+      title: r.title,
+      description: r.description,
+      href: r.href ?? undefined,
+    }));
+  } catch {
+    // Fallback if raw query is not supported or errors
+  }
+
   /*
-   * Hanya beberapa row terbaru per source.
+   * Fallback: Hanya beberapa row terbaru per source.
    * Setelah itu merge + sort + top 6.
    *
    * Tidak ada Activity table.
@@ -803,19 +926,14 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
    * Status Kandang hari ini tetap dibangun hanya
    * dari Kandang aktif + active flock.
    */
+  /*
+   * Batch Sub-query 1: Operasional & Produksi (Maksimal 4 concurrent pool connections)
+   */
   const [
     operationalKandangs,
     reportsToday,
     trendReports,
     salesToday,
-    eggStock,
-    feedStock,
-    profitMonthToDate,
-    activeEggPrice,
-    recentActivities,
-    totalKandangsCount,
-    assignedOperatorsCount,
-    totalFormulasCount,
   ] = await Promise.all([
     prisma.kandang.findMany({
       where: {
@@ -972,7 +1090,17 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
           true,
       },
     }),
+  ]);
 
+  /*
+   * Batch Sub-query 2: Finansial & Inventori (Maksimal 4 concurrent pool connections)
+   */
+  const [
+    eggStock,
+    feedStock,
+    profitMonthToDate,
+    activeEggPrice,
+  ] = await Promise.all([
     getEggStockAsOfDate(
       today,
     ),
@@ -989,7 +1117,17 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     getEggPriceForDate(
       today,
     ),
+  ]);
 
+  /*
+   * Batch Sub-query 3: Aktivitas & Onboarding Checklist (Maksimal 4 concurrent pool connections)
+   */
+  const [
+    recentActivities,
+    totalKandangsCount,
+    assignedOperatorsCount,
+    totalFormulasCount,
+  ] = await Promise.all([
     getRecentActivities(),
 
     prisma.kandang.count({

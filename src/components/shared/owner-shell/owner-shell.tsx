@@ -13,6 +13,8 @@ import {
 
 import {
   Boxes,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   Egg,
   FileSpreadsheet,
@@ -206,9 +208,11 @@ function isPathActive(
 function SidebarItem({
   item,
   active,
+  collapsed = false,
 }: {
   item: NavigationItem;
   active: boolean;
+  collapsed?: boolean;
 }) {
   const Icon =
     item.icon;
@@ -218,11 +222,14 @@ function SidebarItem({
       <div
         aria-disabled="true"
         title={`${item.label} belum tersedia`}
-        className="flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-muted-light opacity-60 md:justify-center lg:justify-start"
+        className={[
+          "flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-muted-light opacity-60",
+          collapsed ? "justify-center" : "md:justify-center lg:justify-start",
+        ].join(" ")}
       >
         <Icon className="h-[18px] w-[18px] shrink-0" />
 
-        <span className="hidden lg:inline">
+        <span className={collapsed ? "hidden" : "hidden lg:inline"}>
           {item.label}
         </span>
       </div>
@@ -245,7 +252,7 @@ function SidebarItem({
       className={[
         "flex h-10 items-center gap-3 rounded-lg px-3",
         "text-sm font-medium transition-colors",
-        "md:justify-center lg:justify-start",
+        collapsed ? "justify-center" : "md:justify-center lg:justify-start",
         active
           ? "bg-primary-soft text-primary-hover"
           : "text-[#4B5563] hover:bg-[#F3F4F6] hover:text-foreground",
@@ -255,7 +262,7 @@ function SidebarItem({
     >
       <Icon className="h-[18px] w-[18px] shrink-0" />
 
-      <span className="hidden lg:inline">
+      <span className={collapsed ? "hidden" : "hidden lg:inline"}>
         {item.label}
       </span>
     </Link>
@@ -272,6 +279,13 @@ export function OwnerShell({
   const [
     moreOpen,
     setMoreOpen,
+  ] = useState(
+    false,
+  );
+
+  const [
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
   ] = useState(
     false,
   );
@@ -357,20 +371,47 @@ export function OwnerShell({
 
   return (
     <div className="flex min-h-screen w-full overflow-x-hidden bg-background md:flex-row">
-      <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col border-r border-border bg-white md:flex lg:w-64">
-        <div className="flex h-16 shrink-0 items-center justify-center border-b border-border lg:justify-start lg:px-6">
+      <aside
+        className={[
+          "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-white transition-all duration-200 md:flex",
+          isSidebarCollapsed ? "w-[72px]" : "w-[72px] lg:w-64",
+        ].join(" ")}
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-3 lg:px-4">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 font-bold text-foreground"
+            className="flex items-center gap-2 overflow-hidden font-bold text-foreground"
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-white">
               U
             </div>
 
-            <span className="hidden text-lg lg:inline">
+            <span
+              className={[
+                "text-lg truncate",
+                isSidebarCollapsed ? "hidden" : "hidden lg:inline",
+              ].join(" ")}
+            >
               UdinFarm
             </span>
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            aria-label={
+              isSidebarCollapsed
+                ? "Perbesar sidebar"
+                : "Kecilkan sidebar"
+            }
+            className="hidden h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-[#F3F4F6] hover:text-foreground md:flex"
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
@@ -386,7 +427,14 @@ export function OwnerShell({
                 className="space-y-1"
               >
                 {group.title ? (
-                  <p className="mb-1.5 hidden px-3 text-[11px] font-medium uppercase tracking-wide text-muted-light lg:block">
+                  <p
+                    className={[
+                      "mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-light",
+                      isSidebarCollapsed
+                        ? "hidden"
+                        : "hidden lg:block",
+                    ].join(" ")}
+                  >
                     {
                       group.title
                     }
@@ -403,6 +451,9 @@ export function OwnerShell({
                       }
                       item={
                         item
+                      }
+                      collapsed={
+                        isSidebarCollapsed
                       }
                       active={
                         item.href
@@ -431,7 +482,10 @@ export function OwnerShell({
                   : undefined
               }
               className={[
-                "flex w-full min-w-0 flex-1 items-center justify-center gap-3 rounded-lg p-1.5 transition-colors lg:justify-start",
+                "flex w-full min-w-0 flex-1 items-center justify-center gap-3 rounded-lg p-1.5 transition-colors",
+                isSidebarCollapsed
+                  ? "justify-center"
+                  : "lg:justify-start",
                 settingsActive
                   ? "bg-primary-soft text-primary-hover"
                   : "hover:bg-[#F3F4F6]",
@@ -443,7 +497,14 @@ export function OwnerShell({
                 <User className="h-4 w-4 text-[#4B5563]" />
               </div>
 
-              <div className="hidden min-w-0 flex-1 lg:block">
+              <div
+                className={[
+                  "min-w-0 flex-1",
+                  isSidebarCollapsed
+                    ? "hidden"
+                    : "hidden lg:block",
+                ].join(" ")}
+              >
                 <p className="truncate text-sm font-medium text-foreground">
                   {
                     user.name
@@ -483,14 +544,14 @@ export function OwnerShell({
           </Badge>
         </header>
 
-        <main className="min-w-0 flex-1 pb-24 md:pb-0">
+        <main className="min-w-0 flex-1 pb-24 md:pb-0 w-full md:min-w-[60%]">
           <div className="mx-auto w-full max-w-[1320px] p-4 md:p-6 lg:p-8">
             {children}
           </div>
         </main>
       </div>
 
-      <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-40 flex h-16 border-t border-border bg-white px-2 md:hidden">
+      <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-white px-1 overflow-x-auto scrollbar-none md:hidden">
         <Link
           href="/dashboard"
           aria-current={
@@ -499,17 +560,17 @@ export function OwnerShell({
               : undefined
           }
           className={[
-            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            "flex h-full min-w-[44px] min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center touch-manipulation transition-colors select-none",
             dashboardActive
-              ? "text-primary-hover"
+              ? "text-primary-hover font-semibold"
               : "text-muted",
           ].join(
             " ",
           )}
         >
-          <LayoutDashboard className="h-5 w-5" />
+          <LayoutDashboard className="h-5 w-5 shrink-0" />
 
-          <span className="text-[10px] font-medium">
+          <span className="text-[10px] font-medium leading-tight truncate max-w-full tracking-tight">
             Dashboard
           </span>
         </Link>
@@ -522,17 +583,17 @@ export function OwnerShell({
               : undefined
           }
           className={[
-            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            "flex h-full min-w-[44px] min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center touch-manipulation transition-colors select-none",
             dailyActive
-              ? "text-primary-hover"
+              ? "text-primary-hover font-semibold"
               : "text-muted",
           ].join(
             " ",
           )}
         >
-          <ClipboardCheck className="h-5 w-5" />
+          <ClipboardCheck className="h-5 w-5 shrink-0" />
 
-          <span className="text-[10px] font-medium">
+          <span className="text-[10px] font-medium leading-tight truncate max-w-full tracking-tight">
             Operasional
           </span>
         </Link>
@@ -545,17 +606,17 @@ export function OwnerShell({
               : undefined
           }
           className={[
-            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            "flex h-full min-w-[44px] min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center touch-manipulation transition-colors select-none",
             salesActive
-              ? "text-primary-hover"
+              ? "text-primary-hover font-semibold"
               : "text-muted",
           ].join(
             " ",
           )}
         >
-          <ShoppingCart className="h-5 w-5" />
+          <ShoppingCart className="h-5 w-5 shrink-0" />
 
-          <span className="text-[10px] font-medium">
+          <span className="text-[10px] font-medium leading-tight truncate max-w-full tracking-tight">
             Penjualan
           </span>
         </Link>
@@ -568,17 +629,17 @@ export function OwnerShell({
               : undefined
           }
           className={[
-            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            "flex h-full min-w-[44px] min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center touch-manipulation transition-colors select-none",
             inventoryActive
-              ? "text-primary-hover"
+              ? "text-primary-hover font-semibold"
               : "text-muted",
           ].join(
             " ",
           )}
         >
-          <Boxes className="h-5 w-5" />
+          <Boxes className="h-5 w-5 shrink-0" />
 
-          <span className="text-[10px] font-medium">
+          <span className="text-[10px] font-medium leading-tight truncate max-w-full tracking-tight">
             Stok
           </span>
         </Link>
@@ -595,18 +656,18 @@ export function OwnerShell({
             )
           }
           className={[
-            "flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            "flex h-full min-w-[44px] min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center touch-manipulation transition-colors select-none",
             moreOpen ||
             moreSectionActive
-              ? "text-primary-hover"
+              ? "text-primary-hover font-semibold"
               : "text-muted",
           ].join(
             " ",
           )}
         >
-          <MoreHorizontal className="h-5 w-5" />
+          <MoreHorizontal className="h-5 w-5 shrink-0" />
 
-          <span className="text-[10px]">
+          <span className="text-[10px] font-medium leading-tight truncate max-w-full tracking-tight">
             Lainnya
           </span>
         </button>
